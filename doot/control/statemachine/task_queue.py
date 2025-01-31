@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -18,11 +17,6 @@ import re
 import time
 import types
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NewType,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -43,6 +37,34 @@ from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   type Abstract[T] = T
+   type Concrete[T] = T
+   type ActionElem  = ActionSpec|RelationSpec
+   type ActionGroup = list[ActionElem]
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging          = logmod.getLogger(__name__)
 printer          = doot.subprinter()
@@ -54,10 +76,6 @@ ROOT                           : Final[str]                  = "root::_.$gen$" #
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 
-type Abstract[T] = T
-type Concrete[T] = T
-type ActionElem  = ActionSpec|RelationSpec
-type ActionGroup = list[ActionElem]
 
 class TaskQueue:
     """ The queue of active tasks. """
@@ -111,11 +129,11 @@ class TaskQueue:
 
         match self._queue.pop():
             case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
-                track_l.warning("Task halted due to reaching minimum priority while tracking: %s", focus)
+                track_l.trace("Task halted due to reaching minimum priority while tracking: %s", focus)
                 self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self._registry.tasks[focus].priority -= 1
-                track_l.debug("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
+                track_l.trace("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
             case TaskArtifact() as focus:
                 focus.priority -= 1
 
@@ -206,7 +224,7 @@ class TaskQueue:
                 self._registry.set_status(final_name, status)
             case None:
                 status = self._registry.get_status(final_name)
-        logging.debug("Queued Entry at priority: %s, status: %s: %s", target_priority, status, final_name)
+        logging.trace("Queued Entry at priority: %s, status: %s: %s", target_priority, status, final_name)
         return final_name
 
     def clear_queue(self) -> None:

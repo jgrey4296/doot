@@ -99,11 +99,11 @@ class TaskRegistry(TaskMatcher_m):
             if spec.name in self.specs:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
+                logging.detail("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
             self.specs[spec.name] = spec
-            logging.debug("Registered Spec: %s", spec.name)
+            logging.trace("Registered Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
             if TaskMeta_e.JOB in spec.meta:
@@ -133,7 +133,7 @@ class TaskRegistry(TaskMatcher_m):
           Returns True on status update,
           False on no task or artifact to update.
         """
-        logging.debug("Updating State: %s -> %s", task, status)
+        logging.trace("Updating State: %s -> %s", task, status)
         match task, status:
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
@@ -142,7 +142,7 @@ class TaskRegistry(TaskMatcher_m):
             case TaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status
             case TaskName(), TaskStatus_e():
-                logging.debug("Not Setting Status of %s, its hasn't been started", task)
+                logging.detail("Not Setting Status of %s, its hasn't been started", task)
                 return False
             case _, _:
                 raise doot.errors.TrackingError("Bad task update status args", task, status)
@@ -150,7 +150,7 @@ class TaskRegistry(TaskMatcher_m):
         return True
 
     def _register_artifact(self, art:TaskArtifact, *tasks:TaskName):
-        logging.debug("Registering Artifact: %s, %s", art, tasks)
+        logging.trace("Registering Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
         # Add it to the relevant abstract/concrete set
         if not art.is_concrete():
@@ -179,7 +179,7 @@ class TaskRegistry(TaskMatcher_m):
         for rel in spec.action_group_elements():
             match rel:
                 case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_uniq():
-                    logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
+                    logging.trace("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
                 case _: # Ignore action specs and non
@@ -188,26 +188,26 @@ class TaskRegistry(TaskMatcher_m):
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|Concrete[TaskName]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name not in self.specs:
-            logging.debug("Not reusing instantiation because name doesn't have a matching spec: %s", name)
+            logging.detail("Not reusing instantiation because name doesn't have a matching spec: %s", name)
             return None
         if extra or add_cli:
-            logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
+            logging.detail("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
         if name.is_uniq():
             return name
 
         if not bool(self.concrete[name]):
-            logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
+            logging.detail("Not reusing instantiation because there is no instantiation to reuse: %s", name)
             return None
 
         abstract = self.specs[name]
         match [x for x in self.concrete[name] if abstract != (concrete:=self.specs[x]) and self.match_with_constraints(concrete, abstract)]:
             case []:
-                logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
+                logging.detail("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
             case [x, *xs]:
-                logging.debug("Reusing Concrete Spec: %s for %s", x, name)
+                logging.detail("Reusing Concrete Spec: %s for %s", x, name)
                 # Can use an existing concrete spec
                 return x
 
@@ -219,7 +219,7 @@ class TaskRegistry(TaskMatcher_m):
             case None:
                 pass
             case TaskName() as existing:
-                track_l.debug("Reusing instantiation: %s for %s", existing, name)
+                track_l.detail("Reusing instantiation: %s for %s", existing, name)
                 return existing
 
         spec = self.specs[name]
@@ -235,7 +235,7 @@ class TaskRegistry(TaskMatcher_m):
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        track_l.debug("Instantiating: %s into %s", name, instance_spec.name)
+        track_l.trace("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -258,17 +258,20 @@ class TaskRegistry(TaskMatcher_m):
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
-        logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.trace("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         assert(control in self.specs)
         assert(rel.target in self.specs)
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
-        match InjectSpec.build(rel, sources=[control_spec]):
-            case None:
-                extra = {}
-            case x:
-                extra = x.as_dict(constraint=target_spec)
+        try:
+            match InjectSpec.build(rel, sources=[control_spec]):
+                case None:
+                    extra = {}
+                case x:
+                    extra = x.as_dict(constraint=target_spec)
+        except doot.errors.InjectionError as err:
+            raise doot.errors.TrackingError(*err.args, control, rel) from None
 
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
@@ -287,20 +290,20 @@ class TaskRegistry(TaskMatcher_m):
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints")
-                logging.warning("Using New Instance: %s", instance)
+                logging.detail("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.warning("Reusing Instance: %s", instance)
+                logging.detail("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.warning("Reusing latest Instance: %s", instance)
+                logging.detail("Reusing latest Instance: %s", instance)
                 return instance
 
     def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_i=None) -> ConcreteId:
@@ -316,7 +319,7 @@ class TaskRegistry(TaskMatcher_m):
         if name in self.tasks:
             return name
 
-        logging.debug("Constructing Task Object: %s", name)
+        logging.detail("Constructing Task Object: %s", name)
         match task_obj:
             case None:
                 spec = self.specs[name]

@@ -98,7 +98,7 @@ class InjectSpec(BaseModel):
     @classmethod
     def build(cls, data:dict, /, sources:Maybe[Iterable]=None, insertion:Any=None, constraint:Maybe[ConstraintData]=None) -> Maybe[Self]:
         """ builds an InjectSpec from basic data """
-
+        logging.trace("Building Injection: %s", data)
         match data:
             case None | RelationSpec(inject=None):
                 return None
@@ -115,7 +115,7 @@ class InjectSpec(BaseModel):
         try:
             result             = cls.model_validate(data)
         except ValidationError as err:
-            logging.info("Buildinig Injection Failed: %s : %s", data, err)
+            logging.detail("Building Injection Failed: %s : %s", data, err)
             return None
 
         if not bool(result):
@@ -209,8 +209,6 @@ class InjectSpec(BaseModel):
                 return
             case dict() | ChainGuard()  as x if not bool(x):
                 return
-            case TaskSpec() as x if not bool(x.extra):
-                return
             case dict() | ChainGuard():
                 pass
             case TaskSpec():
@@ -218,16 +216,19 @@ class InjectSpec(BaseModel):
             case _:
                 raise doot.errors.InjectionError("Unknown constraint data type", constraint)
 
+        logging.trace("Validating Injection against constraint: %s", constraint)
+
         constraint_defaults = {k:v for k,v in constraint.items() if k != MUST_INJECT_K}
         cli                 = {cli.name : cli.default for cli in constraint.get(CLI_K, [])}
 
         inject_keys         = {} | self.delay.keys() | self.now.keys() | self.insert.keys()
+
+        if not bool(inject_keys):
+            return None
+
         spec_keys           = {str(x) for x in constraint_defaults.keys()}
         cli_keys            = {str(cli.name) for cli in constraint.get(CLI_K, [])}
         required_keys       = {str(x) for x in constraint.get(MUST_INJECT_K, [])}
-
-        if not bool(spec_keys | required_keys):
-            return None
 
         if bool(missing:=required_keys - inject_keys):
             raise doot.errors.InjectionError("Required Keys not injected", missing)

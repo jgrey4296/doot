@@ -99,11 +99,11 @@ class _Registration_m:
             if spec.name in self.specs:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
+                logging.detail("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
             self.specs[spec.name] = spec
-            logging.debug("Registered Spec: %s", spec.name)
+            logging.trace("Registered Spec: %s", spec.name)
 
             # Register the abstract head and cleanup tasks
             if spec.name.is_uniq():
@@ -129,7 +129,7 @@ class _Registration_m:
         for rel in spec.action_group_elements():
             match rel:
                 case RelationSpec(target=TaskArtifact() as art):
-                    logging.debug("Registering Artifact Relation: %s, %s", art, spec.name)
+                    logging.trace("Registering Artifact Relation: %s, %s", art, spec.name)
                     # Link artifact to its source task
                     self.artifacts[art].add(spec.name)
                     # Add it to the relevant abstract/concrete set
@@ -152,7 +152,7 @@ class _Registration_m:
         for rel in spec.action_group_elements():
             match rel:
                 case RelationSpec(target=target, relation=RelationMeta_e.blocks):
-                    logging.debug("Registering Indirect Relation: %s %s", spec.name, rel)
+                    logging.trace("Registering Indirect Relation: %s %s", spec.name, rel)
                     rel.object = spec.name
                     self._indirect_deps[target].append(rel)
                 case _: # Ignore action specs
@@ -164,26 +164,26 @@ class _Instantiation_m:
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[Ident]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name.is_uniq():
-            logging.debug("Not reusing instantiation because name is concrete: %s", name)
+            logging.detail("Not reusing instantiation because name is concrete: %s", name)
             return None
         if name not in self.specs:
-            logging.debug("Not reusing instantiation because name doesn't have a matching spec: %s", name)
+            logging.detail("Not reusing instantiation because name doesn't have a matching spec: %s", name)
             return None
         if extra or add_cli:
-            logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
+            logging.detail("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
         if not bool(self.concrete[name]):
-            logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
+            logging.detail("Not reusing instantiation because there is no instantiation to reuse: %s", name)
             return None
 
         abstract = self.specs[name]
         match [x for x in self.concrete[name] if abstract != (concrete:=self.specs[x]) and self.match_with_constraints(concrete, abstract)]:
             case []:
-                logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
+                logging.detail("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
             case [x, *xs]:
-                logging.debug("Reusing Concrete Spec: %s for %s", x, name)
+                logging.detail("Reusing Concrete Spec: %s for %s", x, name)
                 # Can use an existing concrete spec
                 return x
 
@@ -231,13 +231,14 @@ class _Instantiation_m:
             case None:
                 pass
             case TaskName() as existing:
-                track_l.debug("Reusing instantiation: %s for %s", existing, name)
+                track_l.trace("Reusing instantiation: %s for %s", existing, name)
                 return existing
 
         spec = self.specs[name]
         # Instantiate the spec from its source chain
         match self._get_task_source_chain(name):
             case []:
+                # There should always be a source for a spec
                 raise doot.errors.TrackingError("this shouldn't be possible", name)
             case [x]:
                 # No chain, just instantiate the spec
@@ -247,7 +248,7 @@ class _Instantiation_m:
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        track_l.debug("Instantiating: %s into %s", name, instance_spec.name)
+        track_l.trace("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -270,7 +271,7 @@ class _Instantiation_m:
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
-        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.trace("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         if control not in self.specs:
             raise doot.errors.TrackingError("Relation Control is missing from registered specs", control, rel)
         if rel.target not in self.specs:
@@ -279,11 +280,14 @@ class _Instantiation_m:
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
-        match InjectSpec.build(rel, sources=[control_spec]):
-            case None:
-                extra = {}
-            case x:
-                extra     : dict       = x.as_dict(constraint=target_spec)
+        try:
+            match InjectSpec.build(rel, sources=[control_spec]):
+                case None:
+                    extra = {}
+                case x:
+                    extra     : dict       = x.as_dict(constraint=target_spec)
+        except doot.errors.InjectionError as err:
+            raise doot.errors.TrackingError(*err.args, control, rel) from None
 
         # Get and test existing concrete specs to see if they can be reused
         match self.concrete.get(rel.target, None):
@@ -301,20 +305,20 @@ class _Instantiation_m:
                 instance  : TaskName   = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints", str(control_spec.name), str(instance), rel)
-                logging.info("Using New Instance: %s", instance)
+                logging.detail("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.info("Reusing Instance: %s", instance)
+                logging.detail("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.info("Reusing latest Instance: %s", instance)
+                logging.detail("Reusing latest Instance: %s", instance)
                 return instance
 
     def _make_task(self, name:Concrete[Ident], *, task_obj:Maybe[Task_i]=None) -> Concrete[Ident]:
@@ -332,7 +336,7 @@ class _Instantiation_m:
         if name in self.tasks:
             return name
 
-        logging.debug("Constructing Task Object: %s", name)
+        logging.detail("Constructing Task Object: %s", name)
         match task_obj:
             case None:
                 spec = self.specs[name]
@@ -389,7 +393,7 @@ class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
           Returns True on status update,
           False on no task or artifact to update.
         """
-        logging.debug("Updating State: %s -> %s", task, status)
+        logging.trace("Updating State: %s -> %s", task, status)
         match task, status:
             case TaskName(), _ if task == self._root_node:
                 return False
@@ -400,7 +404,7 @@ class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
             case TaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status
             case TaskName(), TaskStatus_e():
-                logging.debug("Not Setting Status of %s, its hasn't been started", task)
+                logging.detail("Not Setting Status of %s, its hasn't been started", task)
                 return False
             case _, _:
                 raise doot.errors.TrackingError("Bad task update status args", task, status)
@@ -419,12 +423,12 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
         to_expand                                             = set()
 
-        track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
-        logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        track_l.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.detail("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         to_expand.update(self._expand_generated_tasks(spec))
 
-        logging.debug("Connecting Relations")
+        logging.trace("Connecting Relations")
         # Connect Relations
         for rel in itz.chain(spec.action_group_elements()):
             if not isinstance(rel, RelationSpec):
@@ -447,7 +451,7 @@ class _Expansion_m:
             assert(name in self.network.nodes)
             self.network.nodes[name][EXPANDED] = True
 
-        track_l.debug("<-- Task Expansion Complete: %s", name)
+        track_l.trace("<-- Task Expansion Complete: %s", name)
         to_expand.update(self._expand_indirect_relations(spec))
 
         return to_expand
@@ -475,17 +479,17 @@ class _Expansion_m:
           instantiate and connect a job's head task
           TODO these could be shifted into the task/job class
         """
-        logging.debug("Expanding generated tasks")
+        logging.trace("Expanding generated tasks")
 
         if TaskMeta_e.JOB in spec.meta:
-            logging.debug("Generating Job Head for: %s", spec.name)
+            logging.trace("Generating Job Head for: %s", spec.name)
             head_name = spec.name.de_uniq().with_head()
             head_instance = self._instantiate_spec(head_name, extra=spec.model_extra)
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
         if not spec.name.is_cleanup():
-            logging.debug("Generating Cleanup for: %s", spec.name)
+            logging.trace("Generating Cleanup for: %s", spec.name)
             # Instantiate and connect the cleanup task
             cleanup = self._instantiate_spec(spec.name.de_uniq().with_cleanup())
             self.connect(spec.name, cleanup, cleanup=True)
@@ -500,10 +504,10 @@ class _Expansion_m:
         assert(artifact in self.artifacts)
         assert(artifact in self.network.nodes)
         assert(not self.network.nodes[artifact].get(EXPANDED, False))
-        logging.debug("--> Expanding Artifact: %s", artifact)
+        logging.trace("--> Expanding Artifact: %s", artifact)
         to_expand = set()
 
-        logging.debug("-- Instantiating Artifact relevant tasks")
+        logging.trace("-- Instantiating Artifact relevant tasks")
         for name in self.artifacts[artifact]:
             instance = self._instantiate_spec(name)
             # Don't connect it to the network, it'll be expanded later
@@ -512,18 +516,18 @@ class _Expansion_m:
 
         match artifact.is_concrete():
             case True:
-                logging.debug("-- Connecting concrete artifact to parent abstracts")
+                logging.detail("-- Connecting concrete artifact to parent abstracts")
                 for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_e.abstract in x]:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
-                logging.debug("-- Connecting abstract task to child concrete artifacts")
+                logging.detail("-- Connecting abstract task to child concrete artifacts")
                 for conc in [x for x in self._concrete_artifacts if x in artifact]:
                     assert(conc in artifact)
                     self.connect(conc, artifact)
                     to_expand.add(conc)
 
-        logging.debug("<-- Artifact Expansion Complete: %s", artifact)
+        logging.trace("<-- Artifact Expansion Complete: %s", artifact)
         self.network.nodes[artifact][EXPANDED] = True
         return to_expand
 
@@ -553,14 +557,14 @@ class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
                 return
             case TaskArtifact():
                 # Add node with metadata
-                logging.debug("Inserting Artifact into network: %s", name)
+                logging.trace("Inserting Artifact into network: %s", name)
                 self.network.add_node(name)
                 self.network.nodes[name][EXPANDED]     = False
                 self.network.nodes[name][REACTIVE_ADD] = False
                 self.network_is_valid = False
             case TaskName():
                 # Add node with metadata
-                logging.debug("Inserting Concrete[Ident] into network: %s", name)
+                logging.trace("Inserting Task into network: %s", name)
                 self.network.add_node(name)
                 self.network.nodes[name][EXPANDED]     = False
                 self.network.nodes[name][REACTIVE_ADD] = False
@@ -619,7 +623,7 @@ class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
             # nothing to do
             return
 
-        logging.debug("Connecting: %s -> %s", left, right)
+        logging.detail("Connecting: %s -> %s", left, right)
         # Add the edge, with metadata
         match left, right:
             case x, y if x == y:
@@ -641,7 +645,7 @@ class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
         """ Finalise and ensure consistence of the task network.
         run tests to check the dependency graph is acceptable
         """
-        logging.debug("Validating Task Network")
+        logging.trace("Validating Task Network")
         if not nx.is_directed_acyclic_graph(self.network):
             raise doot.errors.TrackingError("Network isn't a DAG")
 
@@ -650,17 +654,17 @@ class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
                     if strict:
                         raise doot.errors.TrackingError("Network isn't fully expanded", node)
-                    logging.warning("Network Node isn't expanded: %s", node)
+                    logging.user("Network Node isn't expanded: %s", node)
                 case TaskName() if not node.is_uniq() and node != ROOT:
                     if strict:
                         raise doot.errors.TrackingError("Abstract Concrete[Ident] in network", node)
-                    logging.warning("Abstract Concrete[Ident] in network: %s", node)
+                    logging.user("Abstract Concrete[Ident] in network: %s", node)
                 case TaskArtifact() if LocationMeta_e.abstract in node:
                     bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
                     if strict and bool(bad_nodes):
                         raise doot.errors.TrackingError("Glob Artifact Concrete[Ident] is a successor to a task", node, bad_nodes)
                     elif bool(bad_nodes):
-                        logging.warning("Glob Artifact Concrete[Ident] is a successor to a task: %s (%s)", node, bad_nodes)
+                        logging.user("Glob Artifact Concrete[Ident] is a successor to a task: %s (%s)", node, bad_nodes)
 
     def incomplete_dependencies(self, focus:Concrete[Ident]) -> list[Concrete[Ident]]:
         """ Get all predecessors of a node that don't evaluate as complete """
@@ -685,7 +689,7 @@ class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
 
         # TODO network could be built in total, or on demand
         """
-        logging.debug("-> Building Task Network")
+        logging.trace("-> Building Task Network")
         match sources:
             case None:
                 queue = list(self.network.pred[self._root_node].keys())
@@ -694,29 +698,29 @@ class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
             case [*xs]:
                 queue = list(sources)
         processed = { self._root_node }
-        logging.info("Initial Network Queue: %s", queue)
+        logging.detail("Initial Network Queue: %s", queue)
         while bool(queue): # expand tasks
-            logging.debug("- Processing: %s", queue[-1])
+            logging.trace("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
                 case x if x in processed or self.network.nodes[x].get(EXPANDED, False):
-                    logging.debug("- Processed already")
+                    logging.detail("- Processed already")
                     processed.add(x)
                 case TaskName() as x if x in self.network.nodes:
                     additions = self._expand_task_node(x)
-                    logging.debug("- Task Expansion produced: %s", additions)
+                    logging.detail("- Task Expansion produced: %s", additions)
                     queue    += additions
                     processed.add(x)
                 case TaskArtifact() as x if x in self.network.nodes:
                     additions = self._expand_artifact(x)
-                    logging.debug("- Artifact Expansion produced: %s", additions)
+                    logging.detail("- Artifact Expansion produced: %s", additions)
                     queue += additions
                     processed.add(x)
                 case _:
                     raise doot.errors.TrackingError("Unknown value in network")
 
         else:
-            logging.debug("- Final Network Nodes: %s", self.network.nodes)
-            logging.debug("<- Final Network Edges: %s", self.network.edges)
+            logging.trace("- Final Network Nodes: %s", self.network.nodes)
+            logging.trace("<- Final Network Edges: %s", self.network.edges)
             self.network_is_valid = True
             pass
 
@@ -771,11 +775,11 @@ class _TrackerQueue_boltons:
 
         match self._queue.pop():
             case TaskName() as focus if self.tasks[focus].priority < self._min_priority:
-                logging.warning("Task halted due to reaching minimum priority while tracking: %s", focus)
+                logging.user("Task halted due to reaching minimum priority while tracking: %s", focus)
                 self.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self.tasks[focus].priority -= 1
-                logging.debug("Task %s: Priority Decrement to: %s", focus, self.tasks[focus].priority)
+                logging.detail("Task %s: Priority Decrement to: %s", focus, self.tasks[focus].priority)
             case TaskArtifact() as focus:
                 focus.priority -= 1
 
@@ -866,7 +870,7 @@ class _TrackerQueue_boltons:
                 self.set_status(final_name, status)
             case None:
                 status = self.get_status(final_name)
-        logging.debug("Queued Entry at priority: %s, status: %s: %s", target_priority, status, final_name)
+        logging.detail("Queued Entry at priority: %s, status: %s: %s", target_priority, status, final_name)
         return final_name
 
     def clear_queue(self) -> None:
