@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -67,16 +66,13 @@ loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 
-class BaseRunner(TaskRunner_i):
-    """ An incomplete implementation for runners to extend """
+class _RunnerCtx_m:
 
-    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_p):
-        self.tracker                                          = tracker
-        self.reporter                                         = reporter
-        self.step                                             = 0
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._enter_msg = loop_entry_msg
+        self._exit_msg  = loop_exit_msg
         self._signal_failure : Maybe[doot.errors.DootError]   = None
-        self._enter_msg                                       = loop_entry_msg
-        self._exit_msg                                        = loop_exit_msg
 
     def __enter__(self) -> Self:
         setup_l.info("Building Task Network...")
@@ -113,6 +109,8 @@ class BaseRunner(TaskRunner_i):
                 return
             case doot.errors.DootError():
                 raise self._signal_failure
+
+class _RunnerHandlers_m:
 
     def _handle_task_success(self, task:Maybe[Task_i|TaskArtifact]):
         """ The basic success handler. just informs the tracker of the success """
@@ -160,6 +158,14 @@ class BaseRunner(TaskRunner_i):
                 self.tracker.set_status(task, TaskStatus_e.FAILED)
                 raise err
 
+    def _notify_artifact(self, art:TaskArtifact) -> None:
+        """ A No-op for when the tracker gives an artifact """
+        artifact_l.info("---- Artifact: %s", art)
+        self.reporter.add_trace(art, flags=Report_f.ARTIFACT)
+        raise doot.errors.StateError("Artifact resolutely does not exist", art)
+
+class _RunnerSleep_m:
+    """ An incomplete implementation for runners to extend """
 
     def _sleep(self, task):
         """
@@ -174,9 +180,3 @@ class BaseRunner(TaskRunner_i):
         sleep_len = task.spec.extra.on_fail(default_SLEEP_LENGTH, int|float).sleep()
         sleep_l.debug("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
         time.sleep(sleep_len)
-
-    def _notify_artifact(self, art:TaskArtifact) -> None:
-        """ A No-op for when the tracker gives an artifact """
-        artifact_l.info("---- Artifact: %s", art)
-        self.reporter.add_trace(art, flags=Report_f.ARTIFACT)
-        raise doot.errors.StateError("Artifact resolutely does not exist", art)

@@ -18,6 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
+from types import MethodType
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -40,173 +41,119 @@ from doot.control.runner import DootRunner
 from doot.control.naive_tracker import DootTracker
 from doot.enums import TaskStatus_e
 from doot.structs import ActionSpec, TaskSpec, DKey, TaskName
+from doot.control.naive_tracker import DootTracker
+from doot.reporters.base_reporter import BaseReporter
+from doot.task import DootTask, DootJob
 
 # ##-- end 1st party imports
 
 logging = logmod.root
 
-class _Mockers_m:
+class _MockObjs_m:
+
     @pytest.fixture(scope="function")
-    def setup(self, mocker):
+    def setup_config(self, mocker):
+        """ Setup config values so theres no sleep wait """
         min_sleep   = 0.0
         config_dict = {"settings": {"tasks": {"sleep": {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}}
         doot.config = ChainGuard(config_dict)
 
     @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def runner(self, ctor, mocker, tracker_mock, reporter_mock):
-        runner = ctor(tracker=tracker_mock, reporter=reporter_mock)
+    def runner(self, ctor, mocker):
+        tracker  = DootTracker()
+        reporter = BaseReporter()
+        runner   = ctor(tracker=tracker, reporter=reporter)
         return runner
 
-    @pytest.fixture(scope="function")
-    def tracker_mock(self, mocker):
-        tracker = mocker.MagicMock(spec=TaskTracker_i)
-        tracker.clear_queue = mocker.Mock(return_value=None)
-        tracker._tasks = []
-        tracker._popped_tasks = []
-
-        def simple_pop():
-            if bool(tracker._tasks):
-                tracker._popped_tasks.append(tracker._tasks.pop())
-                return tracker._popped_tasks[-1]
-
-            return None
-
-        tracker.next_for = simple_pop
-        setattr(type(tracker), "__bool__", lambda _: bool(tracker._tasks))
-
-        return tracker
-
-    @pytest.fixture(scope="function")
-    def reporter_mock(self, mocker):
-        reporter = mocker.MagicMock(spec=Reporter_p)
-        return reporter
-
-    @pytest.fixture(scope="function")
-    def task_mock(self, mocker):
-        return self.make_task_mock(mocker, "agroup::atask")
-
-    def make_task_mock(self, mocker, name):
-        task                    = mocker.MagicMock(spec=Task_i, state={})
-        task.name               = TaskName(name)
-        task.spec               = TaskSpec.build({"name": name})
-        task.spec.sleep         = 0.0
-        task.spec.actions       = [
-            ActionSpec.build({"do":None, "fun": lambda *xs: None})
-            ]
-        return task
-
-    def make_job_mock(self, mocker, name):
-        task                    = mocker.MagicMock(spec=Job_i, state={})
-        task.name               = TaskName(name)
-        task.spec               = TaskSpec.build({"name": name})
-        task.spec.sleep         = 0.1
-        return task
-
-
 @pytest.mark.parametrize("ctor", [DootRunner])
-class TestRunner(_Mockers_m):
+class TestRunner(_MockObjs_m):
 
-    def test_initial(self, ctor, mocker, setup):
-        ## setup
-        tracker_m  = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m = mocker.MagicMock(spec=ReportLine_p)
-        runner     = ctor(tracker=tracker_m, reporter=reporter_m)
+    def test_sanity(self, ctor):
+        assert(True is not False) # noqa: PLR0133
 
+    def test_initial(self, ctor, mocker, setup_config, runner):
         # Check:
         assert(isinstance(runner, TaskRunner_i))
 
-    @pytest.mark.xfail
-    def test_tasks_execute(self, ctor, mocker, setup, runner):
-        runner._execute_action = lambda *xs: None
-        tracker_mock = runner.tracker
+    def test_expand_job(self, ctor, mocker, setup_config, runner):
+        announce_entry_spy    = mocker.spy(runner, "_announce_entry")
+        test_cond_spy         = mocker.spy(runner, "_test_conditions")
+        add_trace_spy         = mocker.spy(runner.reporter, "add_trace")
+        exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
-        tracker_mock._tasks += [
-            self.make_task_mock(mocker, "agroup::first"),
-            self.make_task_mock(mocker, "agroup::second"),
-            self.make_task_mock(mocker, "agroup::third"),
-            ]
+        spec                  = TaskSpec.build("basic::job")
+        job                   = DootJob(spec)
+        runner._expand_job(job)
 
-        names = [x.name for x in tracker_mock._tasks]
+        announce_entry_spy.assert_called_once()
+        test_cond_spy.assert_called_once()
+        assert(test_cond_spy.spy_return == True)
+        add_trace_spy.assert_called()
+        exec_action_group_spy.assert_called()
 
-        expand_job                       = mocker.spy(runner, "_expand_job")
-        execute_task                     = mocker.spy(runner, "_execute_task")
-        execute_action                   = mocker.spy(runner, "_execute_action")
+    def test_expand_job_with_a_task_errors(self, ctor, mocker, setup_config, runner):
+        spec                  = TaskSpec.build("basic::job")
+        task                  = DootTask(spec)
+        with pytest.raises(AssertionError):
+            runner._expand_job(task)
 
-        tracker_mock.set_status.assert_not_called()
 
-        # Run
-        runner(handler=False)
+    def test_expand_job_fails_conditions(self, ctor, mocker, setup_config, runner):
+        announce_entry_spy      = mocker.spy(runner, "_announce_entry")
+        add_trace_spy           = mocker.spy(runner.reporter, "add_trace")
+        exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
 
-        ## check result
-        tracker_mock.set_status.assert_called()
-        assert(tracker_mock.set_status.call_count == 3)
-        for call in tracker_mock.set_status.call_args_list:
-            assert(call.args[0].name in names)
-            assert(call.args[1] is TaskStatus_e.SUCCESS)
+        orig_method = runner._test_conditions
 
-        expand_job.assert_not_called()
-        assert(execute_action.call_count == 3)
+        def override_tests(self, job):
+            orig_method(job)
+            return False
 
-        execute_task.assert_called()
-        assert(execute_task.call_count == 3)
-        for call in execute_task.call_args_list:
-            assert(str(call.args[0].name) in names)
+        runner._test_conditions = MethodType(override_tests, runner)
 
-    @pytest.mark.xfail
-    def test_jobs_expand(self, ctor, mocker, setup, runner):
-        tracker_mock = runner.tracker
-        tracker_mock._tasks = [
-            self.make_job_mock(mocker, "agroup::first"),
-            self.make_job_mock(mocker, "agroup::second"),
-            self.make_job_mock(mocker, "agroup::third"),
-        ]
+        spec                  = TaskSpec.build("basic::job")
+        job                   = DootJob(spec)
+        runner._expand_job(job)
+        exec_action_group_spy.assert_called_with(job, group="depends_on")
 
-        expand_job                                    = mocker.spy(runner, "_expand_job")
-        execute_task                                  = mocker.spy(runner, "_execute_task")
-        execute_action                                = mocker.spy(runner, "_execute_action")
+    def test_execute_task(self, ctor, mocker, setup_config, runner):
+        announce_entry_spy    = mocker.spy(runner, "_announce_entry")
+        test_cond_spy         = mocker.spy(runner, "_test_conditions")
+        add_trace_spy         = mocker.spy(runner.reporter, "add_trace")
+        exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
-        ## pre-check
-        tracker_mock.set_status.assert_not_called()
+        spec                  = TaskSpec.build("basic::job")
+        task                  = DootTask(spec)
+        runner._execute_task(task)
 
-        # Run
-        runner(handler=False)
+        announce_entry_spy.assert_called_once()
+        test_cond_spy.assert_called_once()
+        assert(test_cond_spy.spy_return == True)
+        add_trace_spy.assert_called()
+        exec_action_group_spy.assert_called()
 
-        ## check
-        tracker_mock.set_status.assert_called()
-        assert(tracker_mock.set_status.call_count == 3)
 
-        expand_job.assert_called()
-        assert(expand_job.call_count == 3)
+    def test_execute_task_with_a_job_errors(self, ctor, mocker, setup_config, runner):
+        spec                  = TaskSpec.build("basic::job")
+        job                   = DootJob(spec)
+        with pytest.raises(AssertionError):
+            runner._execute_task(job)
 
-        execute_task.assert_not_called()
 
-    @pytest.mark.xfail
-    def test_tasks_execute_actions(self, ctor, mocker, setup, runner):
-        tracker_mock = runner.tracker
+    def test_execute_task_fails_conditions(self, ctor, mocker, setup_config, runner):
+        announce_entry_spy      = mocker.spy(runner, "_announce_entry")
+        add_trace_spy           = mocker.spy(runner.reporter, "add_trace")
+        exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
 
-        tracker_mock._tasks += [
-            self.make_task_mock(mocker, "agroup::first"),
-            self.make_task_mock(mocker, "agroup::second"),
-            self.make_task_mock(mocker, "agroup::third"),
-            ]
+        orig_method = runner._test_conditions
 
-        names          = [x.name for x in tracker_mock._tasks]
+        def override_tests(self, job):
+            orig_method(job)
+            return False
 
-        expand_job     = mocker.spy(runner, "_expand_job")
-        execute_task   = mocker.spy(runner, "_execute_task")
-        execute_action = mocker.spy(runner, "_execute_action")
+        runner._test_conditions = MethodType(override_tests, runner)
 
-        runner(handler=False)
-
-        tracker_mock.queue_entry.assert_not_called()
-        expand_job.assert_not_called()
-
-        tracker_mock.set_status.assert_called()
-        assert(tracker_mock.set_status.call_count == 3)
-
-        execute_task.assert_called()
-        execute_action.assert_called()
+        spec = TaskSpec.build("basic::job")
+        task = DootTask(spec)
+        runner._execute_task(task)
+        exec_action_group_spy.assert_called_with(task, group="depends_on")

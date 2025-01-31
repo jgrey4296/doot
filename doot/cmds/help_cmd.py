@@ -179,6 +179,9 @@ class _HelpTask_m:
         return result
 
     def _task_param_assignments(self, spec:TaskSpec) -> list:
+        if not bool(spec.param_specs):
+            return []
+
         result = []
         result.append(None)
         result.append("%s Parameters:" % GROUP_INDENT)
@@ -217,9 +220,9 @@ class HelpCmd(_HelpDoot_m, _HelpCmd_m, _HelpTask_m, BaseCommand):
 
     @property
     def param_specs(self) -> list:
-        return super().param_specs + [
-            self.build_param(prefix=1, name="target", type=str, default="", desc="The target to get help about. A command or task.")
-            ]
+        return [*super().param_specs,
+                self.build_param(prefix=1, name="target", type=str, default="", desc="The target to get help about. A command or task.")
+                ]
 
     def __call__(self, tasks, plugins):
         """List task generators"""
