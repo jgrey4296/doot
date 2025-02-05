@@ -142,7 +142,7 @@ class InjectSpec(BaseModel):
             case dict() if literal:
                 return {DKey(k, implicit=True):v for k,v in keys.items()}
             case dict():
-                return {DKey(k, implicit=True):DKey(v, implicit=True, fallback=v) for k,v in keys.items()}
+                return {DKey(k, implicit=True):DKey(v, fallback=v) for k,v in keys.items()}
             case _:
                 raise doot.errors.InjectionError("unknown keys type", keys)
 

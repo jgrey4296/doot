@@ -348,7 +348,7 @@ class TestTrackerNetworkBuildConstraints:
     def test_build_dep_match_with_injection(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"test_key"}}}],
+                                             "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"{test_key}"}}}],
                                              "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "must_inject":["inj_key"]})
         obj._registry.register_spec(spec, spec2)
@@ -369,7 +369,7 @@ class TestTrackerNetworkBuildConstraints:
     def test_build_dep_match_with_injection_fail(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"bad_key"}}}],
+                                             "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"{bad_key}"}}}],
                                              "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj._registry.register_spec(spec, spec2)
