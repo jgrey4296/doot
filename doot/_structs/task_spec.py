@@ -37,7 +37,7 @@ from jgdv.cli import ParamSpec
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.strang.location import Location
+from jgdv.structs.locator import Location
 from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler,
                       WrapValidator, field_validator, model_validator)

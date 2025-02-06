@@ -32,9 +32,8 @@ import os
 import re
 
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.strang.location import Location
-from jgdv.structs.strang.locations import JGDVLocations
+from jgdv.structs.locator.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.locator import JGDVLocator, Location
 from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 
@@ -44,7 +43,7 @@ from doot.structs import TaskArtifact
 KEY_PAT                    = doot.constants.patterns.KEY_PATTERN
 MAX_EXPANSIONS             = doot.constants.patterns.MAX_KEY_EXPANSIONS
 
-DootLocations              = JGDVLocations
+DootLocator                = JGDVLocator
 DootDirAbsent              = DirAbsent
 DootLocationExpansionError = LocationExpansionError
 DootLocationError          = LocationError

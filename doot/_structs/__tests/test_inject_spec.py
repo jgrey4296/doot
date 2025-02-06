@@ -20,6 +20,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 
 # ##-- 3rd party imports
 import pytest
+from jgdv.structs.dkey import DKey
 
 # ##-- end 3rd party imports
 
@@ -134,7 +135,7 @@ class TestInjectSpec:
     def test_expansion_delay_list(self):
         source = {"a": "{blah}", "blah": "bloo"}
         match InjectSpec.build({"delay":["a"]}, sources=[source]).as_dict():
-            case {"a":"{blah}"}:
+            case {"a": DKey() as x} if x == "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -143,7 +144,7 @@ class TestInjectSpec:
     def test_expansion_delay_dict(self):
         source = {"a": "{blah}", "blah": "bloo", "b": "{aweg}", "aweg": "qqqq"}
         match InjectSpec.build({"delay":{"a": "{b}"}}, sources=[source]).as_dict():
-            case {"a":"{aweg}"}:
+            case {"a": DKey() as x} if x == "aweg":
                 assert(True)
             case x:
                 assert(False), x
@@ -152,7 +153,7 @@ class TestInjectSpec:
     def test_insert(self):
         source = {"a": "{blah}", "blah": "bloo"}
         match InjectSpec.build({"insert":["a"]}, sources=[source], insertion="aweg").as_dict():
-            case {"a":"aweg"}:
+            case {"a": str() as x} if x == "aweg":
                 assert(True)
             case x:
                 assert(False), x

@@ -37,7 +37,7 @@ from pydantic import (BaseModel, Field, InstanceOf, field_validator,
 from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.strang.location import Location
+from jgdv.structs.locator import Location
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

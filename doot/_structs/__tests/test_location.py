@@ -12,7 +12,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
-from jgdv.structs.strang.location import Location
+from jgdv.structs.locator import Location
 import doot
 doot._test_setup()
 

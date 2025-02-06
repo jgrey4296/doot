@@ -169,7 +169,7 @@ class InjectSpec(BaseModel):
         if sources is None:
             return
         self.now   = {k:v(*sources, fallback=v) for k,v in self.now.items()}
-        self.delay = {k:v(*sources, fallback=v, limit=1) for k,v in self.delay.items()}
+        self.delay = {k:v(*sources, fallback=v, limit=0) for k,v in self.delay.items()}
 
     def set_insertion(self, insertion:Any) -> None:
         if insertion is None:

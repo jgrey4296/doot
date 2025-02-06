@@ -30,7 +30,7 @@ from uuid import UUID, uuid1
 from jgdv import check_protocol, Maybe, VerStr
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.logging import JGDVLogConfig
-from jgdv.structs.strang.locations import JGDVLocations as DootLocations
+from jgdv.structs.locator import JGDVLocator as DootLocator
 from jgdv import JGDVError
 from packaging.specifiers import SpecifierSet
 # ##-- end 3rd party imports
@@ -62,7 +62,7 @@ config               : ChainGuard         = ChainGuard()
 constants            : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
 aliases              : ChainGuard         = ChainGuard()
 cmd_aliases          : ChainGuard         = ChainGuard()
-locs                 : DootLocations      = None # DootLocations(pl.Path()) # registered locations
+locs                 : DootLocator      = None # DootLocator(pl.Path()) # registered locations
 args                 : ChainGuard         = ChainGuard() # parsed arg access
 log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
 
@@ -78,7 +78,7 @@ def subprinter(name=None) -> logmod.Logger:
     except ValueError as err:
         raise doot.errors.ConfigError("Invalid Subprinter", name) from err
 
-def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX) -> tuple[ChainGuard, DootLocations]:
+def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX) -> tuple[ChainGuard, DootLocator]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
@@ -221,13 +221,13 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
             aliases = ChainGuard(base)
 
 def _load_locations() -> None:
-    """ Load and update the DootLocations db
+    """ Load and update the DootLocator db
     Modifies the global `doot.locs`
     """
     global locs
     setup_l = subprinter("setup")
     setup_l.trace("Loading Locations")
-    locs   = DootLocations(pl.Path.cwd())
+    locs   = DootLocator(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
         try:

@@ -34,7 +34,7 @@ from uuid import UUID, uuid1
 from jgdv import Maybe, TimeDelta
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey
-from jgdv.structs.strang.location import Location
+from jgdv.structs.locator import Location
 
 # ##-- end 3rd party imports
 

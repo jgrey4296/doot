@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.structs.strang.errors import LocationError, StrangError
+from jgdv.structs.locator.errors import LocationError, StrangError
 from pydantic import ValidationError
 # ##-- end 3rd party imports
 

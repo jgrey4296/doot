@@ -18,7 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 
 from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
 from jgdv.structs.dkey import DKeyMark_e
-from jgdv.structs.strang.location import LocationMeta_e
+from jgdv.structs.locator.location import LocationMeta_e
 
 # ##-- 1st party imports
 from doot._abstract.control import ExecutionPolicy_e, QueueMeta_e, EdgeType_e

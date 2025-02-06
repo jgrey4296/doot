@@ -27,7 +27,7 @@ import pytest
 
 # ##-- end 3rd party imports
 
-from jgdv.structs.strang.location import Location
+from jgdv.structs.locator import Location
 import doot
 doot._test_setup()
 import doot.errors
