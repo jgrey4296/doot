@@ -270,6 +270,8 @@ class DootTaskLoader(TaskLoader_p):
             try:
                 doot.locs.Current.update(group, strict=False)
             except KeyError as err:
-                printer.warning("Locations Already Defined: %s : %s", err.args[1], source)
+                printer.warning("Locations Already Defined: %s : %s", err.args, source)
             except TypeError as err:
-                printer.warning("Location failed to validate: %s : %s", err.args[1], source)
+                printer.warning("Location failed to validate: %s : %s", err.args, source)
+            except LocationError as err:
+                printer.warning("%s : %s", str(err), source)
