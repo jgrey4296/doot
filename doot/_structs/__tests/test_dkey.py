@@ -16,7 +16,7 @@ import warnings
 import pytest
 
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.dkey import DKeyFormatter, ImportDKey, DKey
+from jgdv.structs.dkey import DKeyFormatter, ImportDKey, DKey, DKeyed
 from jgdv.structs.locator import JGDVLocator as DootLocator
 
 import doot
@@ -485,3 +485,15 @@ class TestDKeyCwd:
             assert(isinstance(obj, dkey.DKey))
             assert(isinstance(obj, dkey.PathSingleDKey))
             assert(obj.expand() == pl.Path("~").expanduser())
+
+
+class TestDKeyedExtension:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_dkey_extended(self):
+        assert(dkey.DootKeyed in DKeyed._extensions)
+
+    def test_dkey_getattr_extended(self):
+        assert(hasattr(DKeyed, "taskname"))
