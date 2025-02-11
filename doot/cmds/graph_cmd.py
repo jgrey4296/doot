@@ -105,7 +105,7 @@ class GraphCmd(BaseCommand):
                 self._draw_pyplot(graph)
             case {"as-dot": True, "dot-file": loc_key} if bool(loc_key):
                 cmd_l.info("Expanding Location: %s", loc_key)
-                loc_key = DKey(loc_key, mark=DKey.mark.PATH)
+                loc_key = DKey(loc_key, mark=DKey.Mark.PATH)
                 loc = loc_key.expand()
                 cmd_l.info("Target Location Expanded: %s", loc)
                 self._write_dot_image(graph, loc)

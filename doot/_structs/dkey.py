@@ -28,6 +28,7 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed as DKeyed_Base
+from jgdv.structs.dkey._expander import ExpInst
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -73,6 +74,72 @@ STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK
 
 CWD_MARKER      : Final[Ident]                = "__cwd"
 
+class TaskNameDKey(SingleDKey['taskname'],   conv="t"):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._expansion_type  = TaskName
+        self._typecheck       = TaskName
+
+class PathSingleDKey(DKey[DKeyMark_e.PATH]):
+    """ for paths that are just a single key of a larger string
+    eg: `temp`
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._expansion_type  = pl.Path
+        self._typecheck       = pl.Path
+        self._relative        = kwargs.get('relative', False)
+
+    def exp_extra_sources(self) -> list:
+        return [doot.locs.Current]
+
+    def exp_final_hook(self, val, opts):
+        relative = opts.get("relative", False)
+        match val:
+            case DKey.ExpInst(val=pl.Path() as x) if relative and x.is_absolute():
+                raise ValueError("Produced an absolute path when it is marked as relative", x)
+            case DKey.ExpInst(val=pl.Path() as x) if relative:
+                x.literal = True
+                return x
+            case DKey.ExpInst(val=pl.Path() as x):
+                logging.debug("Normalizing Single Path Key: %s", x)
+                val.val = doot.locs.Current.normalize(x)
+                val.literal = True
+                return val
+            case x:
+                raise TypeError("Path Expansion did not produce a path", x)
+
+class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
+    """
+    A MultiKey that always expands as a path,
+    eg: `{temp}/{name}.log`
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._expansion_type  = pl.Path
+        self._typecheck       = pl.Path
+        self._relative        = kwargs.get('relative', False)
+
+    def exp_extra_sources(self) -> list:
+        return [doot.locs.Current]
+
+    def exp_final_hook(self, val, opts) -> Maybe[pl.Path]:
+        relative = opts.get("relative", False)
+        match val:
+            case DKey.ExpInst(val=pl.Path() as x) if relative and x.is_absolute():
+                raise ValueError("Produced an absolute path when it is marked as relative", x)
+            case DKey.ExpInst(val=pl.Path() as x)  if relative:
+                return x
+            case DKey.ExpInst(val=pl.Path() as x):
+                logging.debug("Normalizing Single Path Key: %s", x)
+                return doot.locs.Current.normalize(x)
+            case x:
+                raise TypeError("Path Expansion did not produce a path", x)
+
+
 class DootDKeyExpander(DKeyExpansionDecorator):
     """ a doot specific expander that also injects the global task state"""
 
@@ -108,68 +175,6 @@ class DootDKeyExpander(DKeyExpansionDecorator):
         # -
         return fn_action_expansions
 
-class TaskNameDKey(SingleDKey,   mark=DKeyMark_e.TASK, conv="t"):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = TaskName
-        self._typecheck       = TaskName
-
-class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
-    """ for paths that are just a single key of a larger string
-    eg: `temp`
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
-        self._relative        = kwargs.get('relative', False)
-
-    def exp_extra_sources(self) -> list:
-        return [doot.locs.Current]
-
-    def exp_final_hook(self, val, opts):
-        relative = opts.get("relative", False)
-        match val:
-            case pl.Path() as x if relative and x.is_absolute():
-                raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case pl.Path() as x if relative:
-                return x
-            case pl.Path() as x:
-                logging.debug("Normalizing Single Path Key: %s", x)
-                return doot.locs.Current.normalize(x)
-            case x:
-                raise TypeError("Path Expansion did not produce a path", x)
-
-class PathMultiDKey(MultiDKey,   mark=DKeyMark_e.PATH, conv="p", multi=True):
-    """
-    A MultiKey that always expands as a path,
-    eg: `{temp}/{name}.log`
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
-        self._relative        = kwargs.get('relative', False)
-
-    def exp_extra_sources(self) -> list:
-        return [doot.locs.Current]
-
-    def exp_final_hook(self, val, opts) -> Maybe[pl.Path]:
-        relative = opts.get("relative", False)
-        match val:
-            case pl.Path() as x if relative and x.is_absolute():
-                raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case pl.Path() as x  if relative:
-                return x
-            case pl.Path() as x:
-                logging.debug("Normalizing Single Path Key: %s", value)
-                return doot.locs.Current.normalize(x)
-            case x:
-                raise TypeError("Path Expansion did not produce a path", x)
-
 class DootKeyed(DKeyed_Base):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
     specific for doot
@@ -179,5 +184,5 @@ class DootKeyed(DKeyed_Base):
 
     @classmethod
     def taskname(cls, fn) -> Decorator:
-        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark=DKey.mark.TASK)]
+        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark=DKey.Mark.TASK)]
         return cls._build_decorator(keys)(fn)
