@@ -58,6 +58,7 @@ class CheckLocsTask(DootTask):
             case []:
                 actions = []
             case [*_]:
+                locations = [DKey(x, implicit=True) for x in doot.locs]
                 actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
 
         spec      = TaskSpec.build({
