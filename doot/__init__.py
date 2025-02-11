@@ -233,7 +233,7 @@ def _load_locations() -> None:
         try:
             for name in loc.keys():
                 setup_l.trace("+ %s", name)
-            locs.update(loc, strict=False)
+                locs.update(loc, strict=False)
         except (JGDVError, ValueError) as err:
             setup_l.error("Location Loading Failed: %s (%s)", loc, err)
 
@@ -246,9 +246,12 @@ def _update_import_path() -> None:
     task_sources = config.on_fail([locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [locs[y] for y in x])
     task_code    = config.on_fail([locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [locs[y] for y in x])
     for source in set(task_sources + task_code):
-        if source.exists() and source.is_dir():
-            setup_l.trace("+ %s", source)
-            sys.path.append(str(source))
+        match source:
+            case None:
+                pass
+            case x if x.exists() and x.is_dir():
+                setup_l.trace("+ %s", source)
+                sys.path.append(str(source))
 
 def _set_command_aliases() -> None:
     """ Read settings.commands.* and register aliases """

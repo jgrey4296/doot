@@ -59,9 +59,6 @@ logging = logmod.getLogger(__name__)
 @runtime_checkable
 class Loader_p[T](Protocol):
 
-    def get_loaded(self, group:str, name:str) -> Maybe[str]:
-        pass
-
     def setup(self, data:ChainGuard) -> Self:
         pass
 
