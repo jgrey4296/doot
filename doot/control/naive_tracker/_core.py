@@ -288,6 +288,8 @@ class _Instantiation_m:
                     extra     : dict       = x.as_dict(constraint=target_spec)
         except doot.errors.InjectionError as err:
             raise doot.errors.TrackingError(*err.args, control, rel) from None
+        except TypeError as err:
+            raise doot.errors.TrackingError(*err.args, control, rel) from None
 
         # Get and test existing concrete specs to see if they can be reused
         match self.concrete.get(rel.target, None):

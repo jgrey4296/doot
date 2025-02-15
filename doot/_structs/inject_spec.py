@@ -142,7 +142,7 @@ class InjectSpec(BaseModel):
             case dict() if literal:
                 return {DKey(k, implicit=True):v for k,v in keys.items()}
             case dict():
-                return {DKey(k, implicit=True):DKey(v, fallback=v) for k,v in keys.items()}
+                return {DKey(k, implicit=True):DKey(v, insist=True, fallback=v) for k,v in keys.items()}
             case _:
                 raise doot.errors.InjectionError("unknown keys type", keys)
 
@@ -169,7 +169,7 @@ class InjectSpec(BaseModel):
         if sources is None:
             return
         self.now   = {k:v(*sources, fallback=v) for k,v in self.now.items()}
-        self.delay = {k:DKey(v(*sources, fallback=v, limit=1)) for k,v in self.delay.items()}
+        self.delay = {k:DKey(v(*sources, insist=True, fallback=v, limit=1)) for k,v in self.delay.items()}
 
     def set_insertion(self, insertion:Any) -> None:
         if insertion is None:
