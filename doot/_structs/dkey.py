@@ -81,6 +81,7 @@ class PathSingleDKey(DKey[DKeyMark_e.PATH]):
     """ for paths that are just a single key of a larger string
     eg: `temp`
     """
+    _extra_kwargs : ClassVar[set[str]] = set(["relative"])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -112,6 +113,7 @@ class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`
     """
+    _extra_kwargs : ClassVar[set[str]] = set(["relative"])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
