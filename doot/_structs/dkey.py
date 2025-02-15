@@ -91,19 +91,19 @@ class PathSingleDKey(DKey[DKeyMark_e.PATH]):
     def exp_extra_sources(self) -> list:
         return [doot.locs.Current]
 
-    def exp_final_hook(self, val, opts):
+    def exp_final_hook(self, val, opts) -> Maybe[DKey.ExpInst]:
         relative = opts.get("relative", False)
         match val:
             case DKey.ExpInst(val=pl.Path() as x) if relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case DKey.ExpInst(val=pl.Path() as x) if relative:
+            case DKey.ExpInst(val=pl.Path()) as x if relative:
                 x.literal = True
                 return x
-            case DKey.ExpInst(val=pl.Path() as x):
+            case DKey.ExpInst(val=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
-                val.val = doot.locs.Current.normalize(x)
-                val.literal = True
-                return val
+                v.val = doot.locs.Current.normalize(x)
+                v.literal = True
+                return v
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
@@ -122,16 +122,17 @@ class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
     def exp_extra_sources(self) -> list:
         return [doot.locs.Current]
 
-    def exp_final_hook(self, val, opts) -> Maybe[pl.Path]:
+    def exp_final_hook(self, val, opts) -> Maybe[DKey.ExpInst]:
         relative = opts.get("relative", False)
         match val:
             case DKey.ExpInst(val=pl.Path() as x) if relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case DKey.ExpInst(val=pl.Path() as x)  if relative:
+            case DKey.ExpInst(val=pl.Path()) as x if relative:
                 return x
-            case DKey.ExpInst(val=pl.Path() as x):
+            case DKey.ExpInst(val=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
-                return doot.locs.Current.normalize(x)
+                v.val = doot.locs.Current.normalize(x)
+                return v
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
@@ -178,5 +179,5 @@ class DootKeyed(DKeyed_Base):
 
     @classmethod
     def taskname(cls, fn) -> Decorator:
-        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark=DKey.Mark.TASK)]
+        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark="taskname")]
         return cls._build_decorator(keys)(fn)
