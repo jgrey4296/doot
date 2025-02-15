@@ -451,42 +451,6 @@ class TestDKeyPathKeys:
             case x:
                  assert(False), x
 
-@pytest.mark.xfail
-class TestDKeyCwd:
-    def test_cwd_build(self):
-        obj = dkey.DKey("__cwd",
-                        implicit=True,
-                        mark=DKey.Mark.PATH,
-                        fallback=".")
-        assert(isinstance(obj, DKey))
-        assert(obj.expand() == pl.Path.cwd())
-
-    def test_cwd_build_with_param(self):
-        obj = dkey.DKey("__cwd!p", implicit=True)
-        assert(isinstance(obj, dkey.DKey))
-        assert(isinstance(obj, dkey.PathSingleDKey))
-        assert(obj.expand() == pl.Path.cwd())
-
-    def test_explicit_cwd_with_param(self):
-        obj = dkey.DKey("{__cwd!p}", implicit=False, mark=dkey.DKey.Mark.MULTI)
-        assert(isinstance(obj, dkey.DKey))
-        # assert(isinstance(obj, dkey.PathSingleDKey))
-        assert(obj.expand() == pl.Path.cwd())
-
-    def test_cwd_without_fallback(self):
-        obj = dkey.DKey("__cwd", mark=dkey.DKey.Mark.PATH)
-        assert(isinstance(obj, dkey.DKey))
-        assert(isinstance(obj, dkey.PathSingleDKey))
-        assert(obj.expand() == pl.Path.cwd())
-
-    def test_cwd_in_different_location(self):
-        with doot.locs(pl.Path("~")) as locs:
-            obj = dkey.DKey("__cwd", mark=dkey.DKey.Mark.PATH)
-            assert(isinstance(obj, dkey.DKey))
-            assert(isinstance(obj, dkey.PathSingleDKey))
-            assert(obj.expand() == pl.Path("~").expanduser())
-
-
 class TestDKeyedExtension:
 
     def test_sanity(self):

@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.decorators import MetaDecorator
+from jgdv.decorators import MetaDecorator, DecoratorBase
 
 # ##-- end 3rd party imports
 
@@ -46,7 +46,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 RUN_DRY_SWITCH                               = doot.constants.decorations.RUN_DRY_SWITCH
-RUN_DRY                                      = doot.constants.decorations.RUN_DRY
 GEN_TASKS                                    = doot.constants.decorations.GEN_TASKS
 IO_ACT                                       = doot.constants.decorations.IO_ACT
 CONTROL_FLOW                                 = doot.constants.decorations.CONTROL_FLOW
@@ -56,7 +55,16 @@ ANNOUNCER                                    = doot.constants.decorations.ANNOUN
 
 dry_run_active                               = doot.args.on_fail(False).cmd.args.dry_run()
 
-class DryRunSwitch(MetaDecorator):
+class _BaseMetaAction(DecoratorBase):
+
+    def _wrap_fn(self, fn):
+        return self._wrap_method(fn)
+
+    def _wrap_class(self, cls):
+        cls.__call__ = self._wrap_method(cls.__call__)
+        return cls
+
+class DryRunSwitch(_BaseMetaAction):
     """ Mark an action callable/class as to be skipped in dry runs """
 
     def __init__(self, *, override:bool=False):
@@ -73,10 +81,8 @@ class DryRunSwitch(MetaDecorator):
 
         return _can_disable
 
-    def _wrap_fn(self, fn):
-        return self._wrap_method(fn)
 
-class GeneratesTasks(MetaDecorator):
+class GeneratesTasks(_BaseMetaAction):
     """ Mark an action callable/class as a task generator """
 
     def __init__(self):
@@ -95,7 +101,7 @@ class GeneratesTasks(MetaDecorator):
 
         return _gen_task_wrapper
 
-class IOWriter(MetaDecorator):
+class IOWriter(_BaseMetaAction):
     """ mark an action callable/class as an io action,
       checks the path it'll write to isn't write protected
     """
@@ -112,7 +118,7 @@ class IOWriter(MetaDecorator):
 
         return _io_writer_wrapper
 
-class ControlFlow(MetaDecorator):
+class ControlFlow(_BaseMetaAction):
     """ mark an action callable/class as a control flow action
       implies it runs dry
       """
@@ -120,7 +126,7 @@ class ControlFlow(MetaDecorator):
     def __init__(self):
         super().__init__(CONTROL_FLOW, mark="_control_flow_mark")
 
-class External(MetaDecorator):
+class External(_BaseMetaAction):
     """ mark an action callable/class as calling an external program.
       implies rundryswitch
       """
@@ -128,7 +134,7 @@ class External(MetaDecorator):
     def __init__(self):
         super().__init__(EXTERNAL, mark="_external_mark")
 
-class StateManipulator(MetaDecorator):
+class StateManipulator(_BaseMetaAction):
     """ mark an action callable/class as a state modifier
       checks the DootKey `returns` are in the return dict
     """
@@ -136,7 +142,7 @@ class StateManipulator(MetaDecorator):
     def __init__(self):
         super().__init__(STATE_MOD, mark="_state_mod_mark")
 
-class Announcer(MetaDecorator):
+class Announcer(_BaseMetaAction):
     """ mark an action callable/class as reporting in a particular way
       implies run_dry, and skips on cli arg `silent`
       """

@@ -77,7 +77,6 @@ version_template        = "Doot Version: %s"
 
 [doot.constants.decorations]
 RUN_DRY_SWITCH = "__DOOT_RUN_DRY_SWITCH"
-RUN_DRY        = "__DOOT_RUN_DRY"
 GEN_TASKS      = "__DOOT_GEN_TASKS"
 IO_ACT         = "__DOOT_IO_ACT"
 CONTROL_FLOW   = "__DOOT_CONTROL_FLOW"

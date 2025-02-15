@@ -68,11 +68,7 @@ logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
 ##-- end logging
 
-KEY_PATTERN                                 = doot.constants.patterns.KEY_PATTERN
-MAX_KEY_EXPANSIONS                          = doot.constants.patterns.MAX_KEY_EXPANSIONS
 STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK_NAME_K
-
-CWD_MARKER      : Final[Ident]                = "__cwd"
 
 class TaskNameDKey(SingleDKey['taskname'],   conv="t"):
 
@@ -139,7 +135,6 @@ class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
-
 class DootDKeyExpander(DKeyExpansionDecorator):
     """ a doot specific expander that also injects the global task state"""
 
@@ -178,7 +173,6 @@ class DootDKeyExpander(DKeyExpansionDecorator):
 class DootKeyed(DKeyed_Base):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
     specific for doot
-    # TODO use subclass registration to extend DKeyed
     """
     _decoration_builder : ClassVar[type] = DootDKeyExpander
 

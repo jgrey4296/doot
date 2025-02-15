@@ -22,7 +22,6 @@ from doot.utils import action_decorators as decs
 
 logging = logmod.root
 
-@pytest.mark.skip
 class TestDryRunSwitch:
 
     def test_sanity(self):
@@ -50,7 +49,7 @@ class TestDryRunSwitch:
         assert(dec._is_marked(simple))
         assert(simple({}, {}) is None)
 
-    def test_wrap_method(self):
+    def test_wrap_class(self):
 
         @decs.DryRunSwitch()
         class SimpleClass:
@@ -64,11 +63,11 @@ class TestDryRunSwitch:
         # Instance is annotated
         assert(SimpleClass()({}, {}) == "blah")
 
-    def test_wrap_method_override_dry(self):
+    def test_wrap_class_override_dry(self):
 
+        @decs.DryRunSwitch(override=True)
         class SimpleClass:
 
-            @decs.DryRunSwitch(override=True)
             def __call__(self, spec, state):
                 return "blah"
 
@@ -76,39 +75,8 @@ class TestDryRunSwitch:
         # class is annotated
         assert(dec._is_marked(SimpleClass))
         # Instance is annotated
-        assert(SimpleClass()({}, {}) is None)
-
-    def test_annotate_fn(self):
-
-        @decs.RunsDry()
-        def simple(spec:dict, state:dict) -> str:
-            return "blah"
-
-        assert(decs.RunsDry()._is_marked(simple))
-
-    def test_annotate_method(self):
-
-        class SimpleClass:
-
-            @decs.RunsDry()
-            def __call__(self, spec:dict, state:dict) -> str:
-                return "blah"
-
-        assert(decs.RunsDry()._is_marked(SimpleClass))
-
-    def test_annotation_survives_subclassing(self):
-
-        class SimpleSuper:
-
-            @decs.RunsDry()
-            def __call__():
-                pass
-
-        class SimpleChild(SimpleSuper):
-            pass
-
-        assert(decs.RunsDry()._is_marked(SimpleSuper))
-        assert(decs.RunsDry()._is_marked(SimpleChild))
+        inst = SimpleClass()
+        assert(inst({}, {}) is None)
 
     def test_wrapper_survives_key_decoration(self):
 
@@ -124,9 +92,9 @@ class TestDryRunSwitch:
 
     def test_wrapper_survives_method_key_decoration(self):
 
+        @decs.DryRunSwitch(override=True)
         class SimpleAction:
 
-            @decs.DryRunSwitch(override=True)
             @DKeyed.expands("blah")
             def __call__(self, spec:dict, state:dict, blah:str) -> str:
                 """ a simple test func """
@@ -137,23 +105,22 @@ class TestDryRunSwitch:
 
     def test_setting_dryswitch_on_method(self):
 
+        @decs.DryRunSwitch(override=True)
         class SimpleAction:
 
-            @decs.DryRunSwitch(override=True)
             @DKeyed.expands("blah")
             def __call__(self, spec:dict, state:dict, blah:str) -> str:
                 """ a simple test func """
                 return blah
 
-        assert(decs.DryRunSwitch()._is_marked(SimpleAction.__call__))
         assert(decs.DryRunSwitch()._is_marked(SimpleAction))
         assert(SimpleAction()({}, {"blah": "bloo"}) is None)
 
     def test_wrapping_overriden_by_subclassing(self):
 
+        @decs.DryRunSwitch(override=True)
         class SimpleSuper:
 
-            @decs.DryRunSwitch(override=True)
             def __call__(self, spec, state):
                 return "blah"
 
@@ -167,7 +134,6 @@ class TestDryRunSwitch:
         assert(SimpleSuper()({}, {}) is None)
         assert(SimpleChild()({}, {}) == "blah")
 
-@pytest.mark.skip
 class TestGenerateTasksDec:
 
     def test_sanity(self):
@@ -193,13 +159,12 @@ class TestGenerateTasksDec:
             simple({},{})
 
 
-@pytest.mark.skip
+@pytest.mark.xfail
 class TestIOWriterMark:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
     def test_io_writer_check(self, wrap_locs):
         """ check IOWriter guards locations """
         doot.locs.update({"blah" : dict(loc="blah", protected=True) })
@@ -214,7 +179,6 @@ class TestIOWriterMark:
         with pytest.raises(doot.errors.TaskError):
             simple(None, {"to": "{blah}"})
 
-    @pytest.mark.xfail
     def test_io_writer_pass(self, wrap_locs):
         doot.locs.update({"blah" : dict(path="blah", protected=False) })
 
@@ -226,23 +190,3 @@ class TestIOWriterMark:
 
         # assert(DU.has_annotations(simple, decs.IO_ACT))
         assert(simple(None, {"to": "{blah}"}) == "blah")
-
-
-@pytest.mark.skip
-class TestRunsDry:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    @pytest.mark.xfail
-    def test_key_decoration_survives_annotation(self):
-        # currently the meta decorator is unwrapping too deep and removing the dkey decorator
-
-        @decs.RunsDry()
-        @DKeyed.formats("blah")
-        def simple(spec, state, blah):
-            return blah
-
-        assert(decs.RunsDry()._is_marked(simple))
-        assert(DKeyed.formats()._is_marked(simple))
-        assert(simple(None, {"blah":"bloo"}) == "bloo")
