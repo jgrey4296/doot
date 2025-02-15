@@ -37,8 +37,6 @@ basic    =   "jgdv.cli.arg_parser:CLIParser"
 [[doot.aliases.action]] # basic actions
 # Map {alias} -> CodeRef String
 basic    =       "doot.actions.base_action:DootBaseAction"
-shell    =       "doot.actions.shell:DootShellAction"
-interact =       "doot.actions.shell:DootInteractiveAction"
 user     =       "doot.actions.io:UserInput"
 read     =       "doot.actions.io:ReadAction"
 copy     =       "doot.actions.io:CopyAction"
