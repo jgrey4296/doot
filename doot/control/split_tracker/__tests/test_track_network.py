@@ -158,12 +158,12 @@ class TestTrackerNetwork:
         obj   = network
         spec  = doot.structs.TaskSpec.build({
             "name":"basic::task",
-            "depends_on":[{"task":"basic::dep", "inject":{"now": {"test_key":"test_key"}}}],
+            "depends_on":[{"task":"basic::dep", "inject":{"now": {"test_key":"{test_key}"}}}],
             "required_for": ["basic::chained"],
             "test_key": "bloo"
                                             })
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep",
-                                             "depends_on": [{"task":"basic::chained", "inject":{"now":{"test_key":"test_key"}}}],
+                                             "depends_on": [{"task":"basic::chained", "inject":{"now":{"test_key":"{test_key}"}}}],
                                              "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "must_inject":["test_key"]})
         obj._registry.register_spec(spec, spec2, spec3)
