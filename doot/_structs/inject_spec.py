@@ -226,6 +226,11 @@ class InjectSpec(BaseModel):
         if not bool(inject_keys):
             return None
 
+        # promote indirect keys to direct when checking
+        indirect_keys = {x for x in inject_keys if x.endswith("_")}
+        inject_keys -= indirect_keys
+        inject_keys |= {x[:-1] for x in indirect_keys}
+
         spec_keys           = {str(x) for x in constraint_defaults.keys()}
         cli_keys            = {str(cli.name) for cli in constraint.get(CLI_K, [])}
         required_keys       = {str(x) for x in constraint.get(MUST_INJECT_K, [])}
