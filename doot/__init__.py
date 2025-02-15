@@ -29,6 +29,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from jgdv import check_protocol, Maybe, VerStr
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.dkey import DKeyed
 from jgdv.logging import JGDVLogConfig
 from jgdv.structs.locator import JGDVLocator as DootLocator
 from jgdv import JGDVError
@@ -129,6 +130,8 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
     _set_command_aliases()
     for x in config.on_fail([])['global'].state():
         update_global_task_state(x, source="doot.toml")
+    else:
+        DKeyed.add_sources(_global_task_state)
 
     _configs_loaded_from   = existing_targets
     return config, locs

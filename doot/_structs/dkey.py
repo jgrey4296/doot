@@ -136,46 +136,11 @@ class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
-class DootDKeyExpander(DKeyExpansionDecorator):
-    """ a doot specific expander that also injects the global task state"""
-
-    def _wrap_method(self, fn:Method) -> Method:
-        data_key = self._data_key
-
-        def method_action_expansions(_self, spec, state, *call_args, **kwargs) -> Method:
-            try:
-                expansions = [x(spec, state, doot._global_task_state) for x in getattr(fn, data_key)]
-            except KeyError as err:
-                logging.warning("Action State Expansion Failure: %s", err)
-                return False
-            else:
-                all_args = (*call_args, *expansions)
-                return fn(_self, spec, state, *all_args, **kwargs)
-
-        # -
-        return method_action_expansions
-
-    def _wrap_fn(self, fn:Func) -> Func:
-        data_key = self._data_key
-
-        def fn_action_expansions(spec, state, *call_args, **kwargs) -> Func:
-            try:
-                expansions = [x(spec, state, doot._global_task_state) for x in getattr(fn, data_key)]
-            except KeyError as err:
-                logging.warning("Action State Expansion Failure: %s", err)
-                return False
-            else:
-                all_args = (*call_args, *expansions)
-                return fn(spec, state, *all_args, **kwargs)
-
-        # -
-        return fn_action_expansions
-
 class DootKeyed(DKeyed_Base):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
     specific for doot
     """
-    _decoration_builder : ClassVar[type] = DootDKeyExpander
+    _decoration_builder : ClassVar[type] = DKeyExpansionDecorator
 
     @classmethod
     def taskname(cls, fn) -> Decorator:
