@@ -2,9 +2,7 @@
 ##-- imports
 from __future__ import annotations
 
-# import abc
 import datetime
-# import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -52,7 +50,7 @@ class AppendAction(PathManip_m):
         if self._is_write_protected(loc):
             raise LocationError("Tried to write a protected location", loc)
 
-        with open(loc, 'a') as f:
+        with loc.open('a') as f:
             for arg in exp_args:
                 if not arg:
                     continue
@@ -71,10 +69,15 @@ class WriteAction(PathManip_m):
     @DKeyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         data = _from
-        loc  = to
-
-        if self._is_write_protected(loc):
-            raise LocationError("Tried to write a protected location", loc)
+        match to:
+            case None:
+                raise LocationError("Can't write to a null location")
+            case pl.Path() as x if self._is_write_protected(x):
+                raise LocationError("Tried to write a protected location", x)
+            case pl.Path() as x:
+                loc = x
+            case x:
+                raise TypeError("Didn't get an appropriate type for a location", x)
 
         match data:
             case None:
@@ -112,10 +115,10 @@ class ReadAction(PathManip_m):
         read_lines  = _type
         printer.info("Reading from %s into %s", loc, _update)
         if read_binary:
-            with open(loc, "rb") as f:
+            with loc.open("rb") as f:
                 return { _update : f.read() }
 
-        with open(loc, "r") as f:
+        with loc.open("r") as f:
             match read_lines:
                 case "read":
                     return { _update : f.read() }
@@ -180,7 +183,7 @@ class MoveAction(PathManip_m):
     """
 
     @DKeyed.paths("from", "to")
-    @DKeyed.types("force", check=bool, default=False)
+    @DKeyed.types("force", check=bool, fallback=False)
     def __call__(self, spec, state, _from, to, force) -> dict|bool|None:
         source     = _from
         dest_loc   = to
@@ -238,10 +241,10 @@ class BackupAction(PathManip_m):
 
         # ExFat FS has lower resolution timestamps
         # So guard by having a tolerance:
-        source_ns       = source.stat().st_mtime_ns
-        match dest.exists():
+        source_ns       = source_loc.stat().st_mtime_ns
+        match dest_loc.exists():
             case True:
-                dest_ns  = dest.stat().st_mtime_ns
+                dest_ns  = dest_loc.stat().st_mtime_ns
             case False:
                 dest_ns = 1
         source_newer    = source_ns > dest_ns
