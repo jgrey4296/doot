@@ -38,11 +38,9 @@ from doot._abstract.protocols import CLIParamProvider_p
 
 ##-- end imports
 
-
-
 class Command_i(CLIParamProvider_p):
     """
-    holds command information and performs it
+    Holds command information and performs it
     """
 
     _name : Maybe[str]       = None # if not specified uses the class name

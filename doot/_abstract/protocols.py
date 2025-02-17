@@ -1,32 +1,12 @@
 #!/usr/bin/env python3
 """
-
+The main access point for protocols.
+Most are imported from jgdv._abstract.protocols
 
 """
 
 # Imports:
 from __future__ import annotations
-
-# ##-- stdlib imports
-import abc
-import datetime
-import enum
-import functools as ftz
-import itertools as itz
-import logging as logmod
-import pathlib as pl
-import re
-import time
-import types
-import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
-from uuid import UUID, uuid1
-
-# ##-- end stdlib imports
 
 # ##-- 3rd party imports
 from jgdv._abstract.protocols import (ActionGrouper_p, ArtifactStruct_p,
@@ -49,7 +29,3 @@ import doot
 import doot.errors
 
 # ##-- end 1st party imports
-
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging

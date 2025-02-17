@@ -1,49 +1,145 @@
 .. ..  index.rst -*- mode: ReST -*-
 
+
 .. _index:
 
 ================================
 Doot: The Documentation
 ================================
 
-Doot is a TOML based Task Runner similar to `doit`_.
-
 .. contents:: Contents
+   :local:
+
+Doot is a TOML based Task Runner similar to `doit`_.
+Probably use that instead of ``doot`` for the moment.
+
 
 .. _intro:
 
 Introduction
 ------------
 
-Testing one  two three.
-Lorem ipsum dolor sit amet, consectetuer adipiscing elit.  Donec hendrerit tempor tellus.  Donec pretium posuere tellus.  Proin quam nisl, tincidunt et, mattis eget, convallis nec, purus.  Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.  Nulla posuere.  Donec vitae dolor.  Nullam tristique diam non turpis.  Cras placerat accumsan nulla.  Nullam rutrum.  Nam vestibulum accumsan nisl.
+Doot grew out of a desire for:
+
+#. a task runner with less esoteric cantations than ``make``.
+#. a CLI that would respond to ``--help`` at all stages of trying to remember what I was doing.
+#. a `toml`_ based task specification format.
+#. straightfoward use of ``Python`` functions when custom actions are needed.
 
 
 Overview
 --------
 
-.. doctest::
+See the tasks available:
 
-   >>> sum(2, 2)
-   4
+.. code:: bash
 
-.. doctest::
+   doot list
 
-   >>> "blah"
-   "expected"
+Resulting in:
 
-.. testcode::
+.. code:: bash
 
-   print(4)
+   ----------------------------------------------
+   -------------------- Doot --------------------
+   ----------------------------------------------
+   Defined Task Generators by Group:
+   *   docs::
+            build               :: build sphinx project documentation                           :: <Source: /media/john/data/github/python/doot/.tasks/docs.toml>
+            test                :: run sphinx doctest                                           :: <Source: /media/john/data/github/python/doot/.tasks/docs.toml>
+   *   precommit::
+            validate            :: Validate a commit message.                                   :: <Source: /media/john/data/github/_templates/doot/repo_chores/precommit.toml>
+   *   test::
+            pytest              :: run project tests                                            :: <Source: /media/john/data/github/_templates/doot/repo_chores/test.toml>
+   *   version::
+            major               ::                                                              :: <Source: /media/john/data/github/_templates/doot/repo_chores/version.toml>
+            minor               ::                                                              :: <Source: /media/john/data/github/_templates/doot/repo_chores/version.toml>
+            bump                ::                                                              :: <Source: /media/john/data/github/_templates/doot/repo_chores/version.toml>
+            changelog           :: Generates a changelog using git cliff                        :: <Source: /media/john/data/github/_templates/doot/repo_chores/version.toml>
+   *   requirements::
+            pip                 :: Generate a requirements.txt                                  :: <Source: /media/john/data/github/_templates/doot/repo_chores/version.toml>
 
-.. testoutput::
+   Full Task Name: {group}::{task}
 
-   5
+Then run one of the tasks:
 
+.. code:: bash
 
+   doot docs::build
 
-Tutorial
---------
+Config Files
+------------
+
+There are two main config file types.
+
+- :term:`doot.toml` for configuring doot, and
+
+- :term:`task.toml` files for describing tasks and their relations.
+
+doot.toml
+#########
+
+.. code:: toml
+
+    # -*- mode:conf-toml; -*-
+
+    [settings.general]
+    loaders                  = { commands="default", task="default", parser="default"}
+    location_check           = { make_missing = true }
+
+    [settings.tasks]
+    sources = [".tasks", "~/.config/.templates/doot/repo_chores"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
+    code    = []                                       # Directories where task specific code can be imported from, expanded according to [[locations]] keys
+    sleep   = { tasks=0.2, subtask=1, batch=1 }
+
+    [settings.commands]
+    # Settings for commands, like telling the 'run' command what backends to use
+    run  = { tracker="default", runner="default", reporter= "default", report-line=[] }
+    list = { hide=[] }
+
+    [plugins]
+    # Allows for defining aliases
+    command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
+
+    [logging]
+    # Standard loggers. See LoggerSpec.
+    stream  = { level="WARNING", filter=[],                 target="stdout", format="{levelname:<8} : {message}"  }
+    file    = { level="DEBUG",   filter=["tomlguard"],      target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
+    printer = { level="NOTSET",  colour=true,                target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
+
+    [logging.subprinters]
+    default       = {level="WARNING"}
+    shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
+    cmd           = {level="INFO"}
+    task          = {level="INFO" }
+    header        = {level="INFO" }
+    task_header   = {level="INFO"}
+
+    [logging.extra]
+
+    [[locations]]
+    tasks        = ".tasks"
+    temp         = {loc=".temp", cleanable=true}
+    src          = {loc="doot", protected=true}
+    logs         = "{temp}/logs"
+
+Task Toml
+#########
+
+.. code:: toml
+
+   [[tasks.simple]]
+   name = "basic"
+   actions = [
+          {do="log", msg="This is a really simple task"},
+   ]
+
+   [[tasks.better]]
+   name = "chained"
+   depends_on = [ "simple::basic" ]
+   actions = [
+          {do="log", msg="This runs after simple::basic has run"},
+   ]
 
 
 .. _repo:
@@ -51,21 +147,15 @@ Tutorial
 Repo and Issues
 ---------------
 
+.. jgdir::
+
+
+
 The repo for doot can be found `here <https://github.com/jgrey4296/doot>`_.
 
-If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github.com/jgrey4296/doot/issues>`_.
+When you find a bug, bother me, unsurprisingly, on the `issue tracker <https://github.com/jgrey4296/doot/issues>`_.
 
 
-
-.. _indices:
-
-Indices and Tables
-------------------
-
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 
 .. toctree::
    :maxdepth: 3
@@ -79,8 +169,12 @@ Indices and Tables
    reference/reference
    misc/overview
    FAQ <faq>
-   api
-
+   genindex
+   modindex
+   license
+   glossary
+   rst_tests
 
 .. .. Links
 .. _doit: https://pydoit.org/contents.html
+.. _toml: https://toml.io/en/

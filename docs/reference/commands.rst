@@ -1,11 +1,12 @@
 .. -*- mode: ReST -*-
 .. _commandRef:
 
-==========
+==================
 Commands Reference
-==========
+==================
 
 .. contents:: Contents
+   :local:
 
 .. _runcmd:
 
