@@ -1,0 +1,59 @@
+## version.toml -*- mode: toml -*-
+doot-version = "0.13"
+
+[[locations]]
+changelog    = "file::>CHANGELOG.md"
+requirements = "file::>requirements.txt"
+
+[[tasks.version]]
+name       = "major"
+raise      = "major"
+depends_on = [ {task="version::bump", inject={now=["raise"]}} ]
+
+[[tasks.version]]
+name       = "minor"
+raise      = "minor"
+depends_on = [{task="version::bump", inject={now=["raise"]}},]
+
+[[tasks.version]]
+name     = "bump"
+version  = "0.1"
+cli = [
+    { name="raise", type="str", prefix="--", default="minor", desc="", constraints=["major", "minor", "patch"]},
+    { name="dry",  type="bool", prefix="-", default=false, desc="" },
+]
+env_name = "distributor"
+setup = [
+    { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
+    { do="installed?", args=["bumpver"], env_="env" },
+]
+actions  = [
+    { do="dootle.actions.shell:ShellAction", args=["bumpver", "update", "--no-fetch", "--{raise}"], env_="env"},
+]
+cleanup = [
+    "version::changelog",
+    {do="dootle.python.mamba:MambaEnv", env="distributor", update_="env"},
+    {do="dootle.actions.shell:ShellAction", args=["bumpver", "show", "--no-fetch"], env_="env", update_="bump_ver"},
+    {do="fn::dootle.python.get_version:get_version", from_="bump_ver", update_="curr_ver"},
+    {do="dootle.actions.shell:ShellAction", args=["git", "tag", "{curr_ver}"]}
+]
+
+[[tasks.version]]
+name       = "changelog"
+doc        = ["Generates a changelog using git cliff"]
+version    = "0.1"
+ctor       = "task"
+env_name = "distributor"
+depends_on = [
+    {do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
+    {do="installed?", args=["git-cliff"]},
+    {do="dootle.actions.shell:ShellAction", args=["git", "--no-pager", "log", "--oneline", "HEAD~1..HEAD"], update_="log_text" , env_="env"},
+    # TODO regex test log_text for /[bump: version \d+.\d+.\d+ -> \d+.\d+.\d+/
+]
+actions    = [
+    {do="dootle.actions.shell:ShellAction", args=["bumpver", "show", "--no-fetch"], env_="env", update_="bump_ver"},
+    {do="fn::dootle.python.get_version:get_version", from_="bump_ver", update_="curr_ver"},
+    {do="dootle.actions.shell:ShellAction", args=["git", "cliff", "--tag",  "{curr_ver}", "--output={changelog!p}"]},
+    {do="dootle.actions.shell:ShellAction", args=["git", "add", "{changelog!p}"]},
+    {do="dootle.actions.shell:ShellAction", args=["git", "commit", "--amend", "--no-edit"]},
+]

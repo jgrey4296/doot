@@ -1,3 +1,6 @@
+
+.. _{{obj.name}}
+
 {% if obj.display %}
    {% if is_own_page %}
 {{ obj.id }}
