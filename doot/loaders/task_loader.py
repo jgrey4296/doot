@@ -192,7 +192,7 @@ class DootTaskLoader(TaskLoader_p):
                 if "startup" not in data:
                     self.failures[task_file].append("Version mismatch")
             else:
-                for update in data.on_fail([]).state():
+                for update in data.on_fail({}).state():
                     doot.update_global_task_state(update, source=task_file)
 
                 raw_specs = []
