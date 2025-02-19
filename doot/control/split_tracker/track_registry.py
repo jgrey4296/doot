@@ -186,6 +186,7 @@ class _Instantiation_m:
 
         chain.reverse()
         return chain
+
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|Concrete[TaskName]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name not in self.specs:
@@ -275,7 +276,6 @@ class _Instantiation_m:
         except doot.errors.InjectionError as err:
             raise doot.errors.TrackingError(*err.args, control, rel) from None
 
-
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
@@ -309,7 +309,7 @@ class _Instantiation_m:
                 logging.detail("Reusing latest Instance: %s", instance)
                 return instance
 
-    def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_i=None) -> Concrete[TaskName]:
+    def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_p=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 
@@ -326,8 +326,8 @@ class _Instantiation_m:
         match task_obj:
             case None:
                 spec = self.specs[name]
-                task : Task_i = spec.make()
-            case Task_i():
+                task : Task_p = spec.make()
+            case Task_p():
                 task = task_obj
             case _:
                 raise doot.errors.TrackingError("Supplied task object isn't a task_i", task_obj)
@@ -336,14 +336,16 @@ class _Instantiation_m:
         self.tasks[name] = task
         return name
 
-class TrackRegistry(_Registration_m, _Instantiation_m, TaskMatcher_m):
+##--|
+@Mixin(_Registration_m, _Instantiation_m, TaskMatcher_m)
+class TrackRegistry:
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
         self.specs                : dict[TaskName, TaskSpec]  = {}
         self.concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]                 = defaultdict(lambda: [])
         # Invariant for tasks: every key in tasks has a matching key in specs.
-        self.tasks                : dict[Concrete[TaskName], Task_i]                                   = {}
+        self.tasks                : dict[Concrete[TaskName], Task_p]                                   = {}
         self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
         self._artifact_status     : dict[TaskArtifact, TaskStatus_e]                                   = defaultdict(lambda: ArtifactStatus_e.DECLARED)
         # Artifact sets
@@ -359,23 +361,19 @@ class TrackRegistry(_Registration_m, _Instantiation_m, TaskMatcher_m):
                 return self._artifact_status[task]
             case TaskName() if task in self.tasks:
                return self.tasks[task].status
-            # case TaskName() if task in self.network:
-            #     return TaskStatus_e.DEFINED
             case TaskName() if task in self.specs:
                 return TaskStatus_e.DECLARED
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_p, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
         """
         logging.trace("Updating State: %s -> %s", task, status)
         match task, status:
-            # case TaskName(), _ if task == self._root_node:
-            #     return False
-            case Task_i(), TaskStatus_e() if task.name in self.tasks:
+            case Task_p(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
             case TaskArtifact(), ArtifactStatus_e():
                 self._artifact_status[task] = status

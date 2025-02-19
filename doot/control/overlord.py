@@ -99,16 +99,17 @@ empty_call_cmd                         = doot.config.on_fail("list").startup.emp
 implicit_task_cmd                      = doot.config.on_fail("run").startup.implicit_task_cmd()
 
 DEFAULT_FILENAMES : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
-
-@doot.check_protocol
-class DootOverlord(ParamSpecMaker_m, Overlord_p):
+##--|
+@Proto(Overlord_p)
+@Mixin(ParamSpecMaker_m)
+class DootOverlord:
     """
     Main control point for doot.
     prefers passed in loaders, then plugins it finds.
 
     default cmds are provided by the cmd loader
     """
-    _help = ["A Toml Specified Task Runner"]
+    _help : ClassVar[tuple[str]] = tuple(["A Toml Specified Task Runner"])
 
     @staticmethod
     def print_version() -> None:
@@ -130,7 +131,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         self.plugins      : Maybe[ChainGuard]         = None
         self.cmds         : Maybe[ChainGuard]         = None
         self.tasks        : Maybe[ChainGuard]         = None
-        self.current_cmd  : Command_i                 = None
+        self.current_cmd  : Command_p                 = None
 
         self._errored     : Maybe[DootError]          = None
         self._current_cmd : Maybe[str]                = None
@@ -277,7 +278,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             cmd(self.tasks, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
-            raise err
+            raise
         else:
             overlord_l.trace("---- Overlord Cmd Call Complete")
             return 0
@@ -325,7 +326,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 overlord_l.detail("Falling Back to implicit: %s", implicit_task_cmd)
                 self.current_cmd = self.cmds.get(implicit_task_cmd, None)
             case None if target.startswith("_") and target.endswith("_"):
-                overlord_l.detail("Falling back to empty: %s", empy_call_cmd)
+                overlord_l.detail("Falling back to empty: %s", empty_call_cmd)
                 self.current_cmd = self.cmds.get(empty_call_cmd, None)
             case x:
                 self.current_cmd = x
@@ -358,7 +359,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         shutdown_l.user("---- Dooted ----")
 
-    def _announce_exit(self, message:str):
+    def _announce_exit(self, message:str) -> None:
         if not doot.config.on_fail(False).shutdown.notify.say_on_exit():
             return
 
@@ -370,7 +371,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             case "darwin":
                 sh.say("-v", "Moira", "-r", "50", message)
 
-    def _record_defaulted_config_values(self):
+    def _record_defaulted_config_values(self) -> None:
         if not doot.config.on_fail(False).shutdown.write_defaulted_values():
             return
 

@@ -220,7 +220,7 @@ class _StubTask_m:
         for cls in reversed(task_mro):
             try:
                 cls.stub_class(stub)
-                if issubclass(cls, Task_i):
+                if issubclass(cls, Task_p):
                     stub['doot_version'].default         = doot.__version__
                     stub['doc'].default             = []
             except NotImplementedError:
@@ -272,7 +272,11 @@ class _StubPrinter_m:
         ]
         return result
 
-class StubCmd(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinter_m, BaseCommand):
+##--|
+
+@Proto(Command_p)
+@Mixin(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinter_m)
+class StubCmd(BaseCommand):
     """ Called to interactively create a stub task definition
       with a `target`, outputs to that file, else to stdout for piping
     """

@@ -116,12 +116,14 @@ def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler,
     results = _dicts_to_specs(group, relation=relation_type)
     return handler(results)
 
+##--|
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
+##--|
 
 class TaskMeta_e(enum.StrEnum):
     """
       Flags describing properties of a task,
-      stored in the Task_i instance itself.
+      stored in the Task_p instance itself.
     """
 
     TASK         = enum.auto()
@@ -145,6 +147,8 @@ class TaskMeta_e(enum.StrEnum):
     VERSIONED    = enum.auto()
 
     default      = TASK
+
+##--|
 
 class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
@@ -408,7 +412,11 @@ class _SpecUtils_m:
         else:
             return result
 
-    def make(self, ensure:type=Any) -> Task_i:
+    @property
+    def params(self) -> dict:
+        return self.model_extra
+
+    def make(self, ensure:type=Any) -> Task_p:
         """ Create actual task instance """
         match self.ctor(check=ensure):
             case ImportError() as err:
@@ -436,7 +444,14 @@ class _SpecUtils_m:
         cli_spec = self.specialize_from(spec_extra)
         return cli_spec
 
-class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
+##--|
+
+@Proto(SpecStruct_p, Buildable_p, check=True)
+@Mixin(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m)
+class _TaskSpecBase:
+    pass
+
+class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the chainguard
 
@@ -447,8 +462,10 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
       sources = [root, ... grandparent, parent]. 'None' indicates halt on climbing source chain
 
     """
+
+    ##--|
     name                              : TaskName
-    doc                               : list[str]                                                                        = []
+    doc                               : Maybe[list[str]]                                                                 = []
     sources                           : list[Maybe[TaskName|pl.Path]]                                                    = []
 
     # Action Groups:
@@ -468,12 +485,12 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     _transform                        : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]]                          = None
     # task specific extras to use in state
     _default_ctor                     : ClassVar[str]                                                                    = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
-    _allowed_print_locs               : ClassVar[list[str]]                                                              = doot.constants.printer.PRINT_LOCATIONS
+    _allowed_print_locs               : ClassVar[tuple[str]]                                                             = tuple(doot.constants.printer.PRINT_LOCATIONS)
     _action_group_wipe                : ClassVar[dict]                                                                   = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
     # Action Groups that are depended on, rather than are dependencies of, this task:
-    _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
+    _blocking_groups                  : ClassVar[tuple[str]]                                                              = tuple(["required_for", "on_fail"])
 
-    mark_e                            : ClassVar[enum.Enum]                                                              = TaskMeta_e
+    mark_e                            : ClassVar[enum.Enum]                                                               = TaskMeta_e
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
@@ -497,11 +514,11 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
                 self.meta.add(TaskMeta_e.DISABLED)
                 self.ctor = None
-            case x if TaskMeta_e.JOB in self.meta and not isinstance(x, Job_i):
+            case x if TaskMeta_e.JOB in self.meta and not isinstance(x, Job_p):
                 self.ctor = CodeReference(doot.aliases.task[DEFAULT_JOB])
             case None:
                 pass
-            case x if issubclass(x, Task_i):
+            case x if issubclass(x, Task_p):
                 self.meta.add(x._default_flags)
 
         if TaskMeta_e.TRANSFORMER not in self.meta:
@@ -517,9 +534,10 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
             case str():
                 try:
                     name = TaskName(val)
-                    return name
                 except StrangErrs.StrangError as err:
                     raise ValueError(*err.args) from err
+                else:
+                    return name
             case _:
                 raise TypeError("A TaskSpec Name should be a str or TaskName", val)
 
@@ -596,10 +614,6 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return hash(str(self.name))
 
     @property
-    def params(self) -> dict:
-        return self.model_extra
-
-    @property
     def extra(self) -> ChainGuard:
         return ChainGuard(self.model_extra)
 
@@ -614,5 +628,4 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         queue = [self.depends_on, self.setup, self.actions, self.required_for]
 
         for group in queue:
-            for elem in group:
-                yield elem
+            yield from group

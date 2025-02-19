@@ -91,7 +91,7 @@ class CheckLocsTask(DootTask):
         super().__init__(spec)
 
     @DKeyed.args
-    def checklocs(self, spec, state, args):
+    def checklocs(self, spec:ActionSpec, state:dict, args:list) -> None:
         errors = []
         for loc in args:
             try:

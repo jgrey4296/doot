@@ -183,8 +183,8 @@ class _Instructions_m:
                 case abstract.Job_i():
                     printer.info("%20s : %s", "Job Args", arg.args)
 
-
 class _Stepper_m:
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conf_types     = []
@@ -241,8 +241,6 @@ class _Stepper_m:
 
         return result
 
-
-
     def _set_print_level(self, level=None):
         if level:
             super()._set_print_level(self._override_level)
@@ -260,22 +258,24 @@ class _Stepper_m:
                 self._conf_types = [structs.ActionSpec]
             case "all":
                 self._conf_types = [True]
-@doot.check_protocol
-class DootStepRunner(_Instructions_m, DootRunner):
+
+@Proto(TaskRunner_i)
+@Mixin(_Instructions_m, _Stepper_m)
+class DootStepRunner(DootRunner):
     """ extends the default runner with step control """
-    _conf_prompt  = "::- Command? (? for help): "
-    _cmd_prefix   = "_do_"
-    _aliases      = { ""  : "continue",
-                     "c"  : "continue",
-                     "n"  : "skip",
-                     "b"  : "break",
-                     "l"  : "list",
-                     "d"  : "down",
-                     "u"  : "up",
-                     "q"  : "quit",
-                     "?"  : "help",
-                     "I"  : "print_info",
-                     "W"  : "print_warn",
-                     "D"  : "print_debug",
-                     "s"  : "print_state",
-                     }
+    _conf_prompt                              = "::- Command? (? for help): "
+    _cmd_prefix                               = "_do_"
+    _aliases              : ClassVar[dict]    = { ""  : "continue",
+                                                  "c"  : "continue",
+                                                  "n"  : "skip",
+                                                  "b"  : "break",
+                                                  "l"  : "list",
+                                                  "d"  : "down",
+                                                  "u"  : "up",
+                                                  "q"  : "quit",
+                                                  "?"  : "help",
+                                                  "I"  : "print_info",
+                                                  "W"  : "print_warn",
+                                                  "D"  : "print_debug",
+                                                  "s"  : "print_state",
+                                                 }

@@ -87,15 +87,15 @@ class DootCommandLoader:
 
         return self
 
-    def load(self) -> ChainGuard[Command_i]:
+    def load(self) -> ChainGuard[Command_p]:
         logging.debug("---- Loading Commands")
         for cmd_point in self.cmd_plugins:
             try:
                 logging.debug("Loading Cmd: %s", cmd_point.name)
                 # load the plugins
                 cmd = cmd_point.load()
-                if not issubclass(cmd, Command_i):
-                    raise TypeError("Not a Command_i", cmd)
+                if not issubclass(cmd, Command_p):
+                    raise TypeError("Not a Command_p", cmd)
 
                 self.cmds[cmd_point.name] = cmd()
                 self.cmds[cmd_point.name]._name = cmd_point.name

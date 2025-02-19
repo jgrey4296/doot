@@ -39,7 +39,8 @@ from doot.errors import TaskError, TaskFailed
 printer = doot.subprinter()
 ##-- end logging
 
-class DootBaseAction(Action_p):
+@Proto(Action_p)
+class DootBaseAction:
     """
     The basic action, which just prints that the action was called
     Subclass this and override __call__ for your own actions.

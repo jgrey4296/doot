@@ -95,7 +95,7 @@ class TestTrackerNext:
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
-            case Task_i():
+            case Task_p():
                 assert(True)
             case _:
                 assert(False)
@@ -112,7 +112,7 @@ class TestTrackerNext:
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(dep.name < result.name)
                 assert(True)
             case _:
@@ -132,7 +132,7 @@ class TestTrackerNext:
         assert(dep.name < dep_inst.name)
         obj.set_status(dep_inst.name, TaskStatus_e.SUCCESS)
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
@@ -152,7 +152,7 @@ class TestTrackerNext:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
@@ -172,7 +172,7 @@ class TestTrackerNext:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
         cleanup = obj.next_for()
-        assert(isinstance(cleanup, Task_i))
+        assert(isinstance(cleanup, Task_p))
         assert("$cleanup$" in cleanup.name)
         for x in obj.tasks.values():
             if "$cleanup$" in x.name:
@@ -210,28 +210,28 @@ class TestTrackerNext:
         assert(bool(obj.active_set))
         assert(obj.network_is_valid)
         match obj.next_for():
-            case Task_i() as task if job_spec.name < task.name:
+            case Task_p() as task if job_spec.name < task.name:
                 obj.set_status(task, TaskStatus_e.SUCCESS)
                 assert(obj.network_is_valid)
             case x:
                 assert(False), x.name
 
         match obj.next_for():
-            case Task_i() as task if job_spec.name.with_head() < task.name:
+            case Task_p() as task if job_spec.name.with_head() < task.name:
                 obj.set_status(task.name, TaskStatus_e.SUCCESS)
                 assert(obj.network_is_valid)
             case x:
                 assert(False), x.name
 
         match obj.next_for():
-            case Task_i() as task if task_spec.name < task.name:
+            case Task_p() as task if task_spec.name < task.name:
                 obj.set_status(task.name, TaskStatus_e.SUCCESS)
                 assert(obj.network_is_valid)
             case x:
                 assert(False), x.name
 
         match obj.next_for():
-            case Task_i() as task if job_spec.name.with_head().with_cleanup() < task.name:
+            case Task_p() as task if job_spec.name.with_head().with_cleanup() < task.name:
                 obj.set_status(task.name, TaskStatus_e.SUCCESS)
                 assert(obj.network_is_valid)
             case x:

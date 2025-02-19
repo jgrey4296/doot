@@ -117,30 +117,14 @@ class DootJob(DootTask):
         assert(task_name is not None)
         return TaskSpec(name=task_name, extra=ChainGuard(extra))
 
-    def is_stale(self, task:Task_i) -> bool:
+    def is_stale(self, task:Task_p) -> bool:
         return False
 
-    def specialize_task(self, task:Task_i) -> Task_i:
+    def specialize_task(self, task:Task_p) -> Task_p:
         return task
 
-    @classmethod
-    def stub_class(cls, stub) -> TaskStub:
-        # Come first
-        stub['active_when'].priority    = -90
-        stub['required_for'].priority   = -90
-        stub['depends_on'].priority     = -100
-
-        stub['head_task'].set(type="taskname", default="", prefix="# ", priority=100)
-        stub['queue_behaviour'].default = "default"
-        stub['queue_behaviour'].comment = "default | auto | reactive"
-        return stub
-
-    def stub_instance(self, stub) -> TaskStub:
-        stub                      = self.__class__.stub_class(stub)
-        stub['name'].default      = self.shortname
-        if bool(self.doc):
-            stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
-        return stub
+    def expand_job(self) -> list:
+        return []
 
     @classmethod
     def class_help(cls) -> list[str]:

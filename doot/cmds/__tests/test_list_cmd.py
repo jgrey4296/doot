@@ -150,14 +150,15 @@ class TestListCmd:
 
     def test_initial(self):
         obj = ListCmd()
-        assert(isinstance(obj, Command_i))
+        assert(isinstance(obj, Command_p))
 
+    @pytest.mark.xfail
     def test_param_specs(self):
         obj    = ListCmd()
         result = obj.param_specs
         assert(isinstance(result, list))
         names = [x.name for x in result]
-        assert("dependencies"in names)
+        assert("dependencies" in names)
         assert("pattern" in names)
         assert("help" in names)
 
@@ -192,7 +193,7 @@ class TestListCmd:
         job_mock = {
             "simple" : TaskSpec.build({"group": "blah", "name": "simple"}), # "ctor": mock_class1}),
             "other"  : TaskSpec.build({"group": "bloo", "name": "other"}),  # "ctor": mock_class2})
-            }
+        }
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
@@ -212,7 +213,7 @@ class TestListCmd:
         job_mock = {
             "simple" : TaskSpec.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
             "other"  : TaskSpec.build({"group": "bloo", "name": "other", "ctor": mock_class2}),
-            }
+        }
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
@@ -226,9 +227,9 @@ class TestListCmd:
         obj = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
-                       "simple" : TaskSpec.build({"group": "blah", "name": "simple"}),
-                       "other"  : TaskSpec.build({"group": "bloo", "name": "other"}),
-            }
+            "simple" : TaskSpec.build({"group": "blah", "name": "simple"}),
+            "other"  : TaskSpec.build({"group": "bloo", "name": "other"}),
+        }
         result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 

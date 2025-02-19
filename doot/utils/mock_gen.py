@@ -129,12 +129,12 @@ def mock_entry_point(name="basic", value=None):
     m.load = MagicMock(return_value=value)
     return m
 
-def mock_task_ctor(name="APretendClass", module="pretend", params=None):
+def mock_task_ctor(name="APretendClass", module="pretend", params=None, mocker=None):
 
-    class MockedSubClass(Task_i):
+    class MockedSubClass(Task_p):
 
         def __new__(cls, *args, **kwargs):
-            m = mock.Mock(spec=cls)
+            m = mocker.Mock(spec=cls)
             _add_prop(mock_ctor, "name", name)
             _add_prop(mock_ctor, "param_specs", params or [])
             return m
@@ -160,7 +160,7 @@ def mock_param_spec(name, val, type=Any):
     return m
 
 def mock_tracker(tasks):
-    tracker_m        = MagicMock(spec=TaskTracker_i)
+    tracker_m        = MagicMock(spec=TaskTracker_p)
     local_tasks      = tasks[:]
 
     def simple_pop():

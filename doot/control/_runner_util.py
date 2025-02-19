@@ -79,7 +79,7 @@ fail_prefix          : Final[str]            = doot.constants.printer.fail_prefi
 loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
-default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
+default_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 
 class _RunnerCtx_m:
 
@@ -127,7 +127,7 @@ class _RunnerCtx_m:
 
 class _RunnerHandlers_m:
 
-    def _handle_task_success(self, task:Maybe[Task_i|TaskArtifact]):
+    def _handle_task_success(self, task:Maybe[Task_p|TaskArtifact]):
         """ The basic success handler. just informs the tracker of the success """
         success_l.debug("(Task): %s", task)
         match task:
@@ -137,7 +137,7 @@ class _RunnerHandlers_m:
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task:Task_i, failure:Error) -> None:
+    def _handle_failure(self, task:Task_p, failure:Error) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.

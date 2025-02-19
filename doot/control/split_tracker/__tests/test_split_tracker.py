@@ -94,7 +94,7 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
-            case Task_i():
+            case Task_p():
                 assert(True)
             case _:
                 assert(False)
@@ -109,7 +109,7 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(dep.name < result.name)
                 assert(True)
             case _:
@@ -128,7 +128,7 @@ class TestSplitTracker:
         assert(dep.name < dep_inst.name)
         obj.set_status(dep_inst.name, TaskStatus_e.SUCCESS)
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
@@ -147,7 +147,7 @@ class TestSplitTracker:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
@@ -166,7 +166,7 @@ class TestSplitTracker:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
         match obj.next_for():
-            case Task_i() as task:
+            case Task_p() as task:
                 assert(task.name.is_cleanup())
             case x:
                 assert(False), x
@@ -188,7 +188,7 @@ class TestSplitTracker:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
         match obj.next_for():
-            case Task_i() as task:
+            case Task_p() as task:
                 assert(task.name.is_cleanup())
             case x:
                 assert(False), x
@@ -211,7 +211,7 @@ class TestSplitTracker:
         assert(obj._network.is_valid)
         # head is in network
         match obj.next_for():
-            case Task_i() as task:
+            case Task_p() as task:
                 assert(job_spec.name < task.name)
                 obj.set_status(task.name, TaskStatus_e.SUCCESS)
                 assert(obj._network.is_valid)
@@ -219,7 +219,7 @@ class TestSplitTracker:
                 assert(False), x
 
         match obj.next_for():
-            case Task_i() as task:
+            case Task_p() as task:
                 assert(job_spec.name.with_head() < task.name)
                 assert(task.name.is_head())
                 obj.set_status(task.name, TaskStatus_e.SUCCESS)
@@ -230,7 +230,7 @@ class TestSplitTracker:
                 assert(False), x
 
         match obj.next_for():
-            case Task_i():
+            case Task_p():
                 pass
             case x:
                 assert(False), x

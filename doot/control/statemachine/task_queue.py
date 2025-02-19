@@ -91,7 +91,7 @@ class TaskQueue:
     def __bool__(self):
         return self._queue.peek(default=None) is not None
 
-    def _maybe_implicit_queue(self, task:Task_i) -> None:
+    def _maybe_implicit_queue(self, task:Task_p) -> None:
         """ tasks can be activated for running by a number of different conditions.
           this handles that logic
           """
@@ -140,9 +140,9 @@ class TaskQueue:
 
         return focus
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_i, *, from_user:bool=False, status:TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
+    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
         """
-          Queue a task by name|spec|Task_i.
+          Queue a task by name|spec|Task_p.
           registers and instantiates the relevant spec, inserts it into the _network
           Does *not* rebuild the _network
 
@@ -157,7 +157,7 @@ class TaskQueue:
             case TaskSpec() as spec:
                 self._registry.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
-            case Task_i() as task if task.name not in self._registry.tasks:
+            case Task_p() as task if task.name not in self._registry.tasks:
                 self._registry.register_spec(task.spec)
                 instance = self._instantiate_spec(task.name, add_cli=from_user)
                 # update the task with its concrete spec

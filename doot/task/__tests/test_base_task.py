@@ -27,34 +27,56 @@ basic_action = lambda x: ftz.partial(lambda val, state: logging.info("Got: %s : 
 class TestBaseTask:
 
     def test_initial(self):
-        task = DootTask(TaskSpec(name="basic::example"), job=None)
-        assert(isinstance(task, doot._abstract.Task_i))
+        spec = TaskSpec(name="basic::example")
+        match DootTask(spec, job=None):
+            case doot._abstract.Task_p():
+                assert(True)
+            case x:
+                 assert(False), x
 
     def test_lambda_action(self):
-        task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action}), job=None)
-        assert(isinstance(task, doot._abstract.Task_i))
+        spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action})
+        match DootTask(spec, job=None):
+            case doot._abstract.Task_p():
+                assert(True)
+            case x:
+                 assert(False), x
 
     def test_expand_lambda_action(self):
-        task                = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
-        actions             = list(task.get_action_group("actions"))
-        assert(len(actions) == 1)
+        spec = TaskSpec.build({"name":"basic::example",
+                               "action_ctor":basic_action,
+                               "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]})
+        match DootTask(spec, job=None):
+            case doot._abstract.Task_p() as task:
+                actions = list(task.get_action_group("actions"))
+                assert(len(actions) == 1)
+            case x:
+                 assert(False), x
 
     def test_run_lambda_action(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
-        task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
-        actions      = list(task.get_action_group("actions"))
-        result       = actions[0]({"example": "state"})
-        assert(result == {"count": 1})
-        assert("Base Action Called: 0" in caplog.messages)
-        assert("blah" in caplog.messages)
+        spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]})
+        match DootTask(spec, job=None):
+            case doot._abstract.Task_p() as task:
+                actions = list(task.get_action_group("actions"))
+                result = actions[0]({"example": "state"})
+                assert(result == {"count": 1})
+                assert("Base Action Called: 0" in caplog.messages)
+                assert("blah" in caplog.messages)
+            case x:
+                 assert(False), x
 
     def test_expand_action_str(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
-        task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
-        actions      = task.get_action_group("actions")
-        result       = actions[0]({"example": "state"})
-        assert(result == {"count" : 1})
-        assert("Base Action Called: 0" in caplog.messages)
+        spec = TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]})
+        match DootTask(spec, job=None):
+            case doot._abstract.Task_p() as task:
+                actions      = task.get_action_group("actions")
+                result       = actions[0]({"example": "state"})
+                assert(result == {"count" : 1})
+                assert("Base Action Called: 0" in caplog.messages)
+            case x:
+                 assert(False), x
 
     def test_toml_class_stub(self):
         """ build the simplest stub from the class itself """
@@ -73,7 +95,8 @@ class TestBaseTask:
     def test_toml_instance_stub_rebuild(self):
         """ take a stub and turn it into a task spec  """
         stub_obj         = TaskStub(ctor=DootTask)
-        task             = DootTask(TaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
+        task             = DootTask(TaskSpec.build({"name" : "basic::example",
+                                                    "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
         stub             = task.stub_instance(stub_obj)
         as_str           = stub.to_toml()
         loaded           = ChainGuard.read(as_str)

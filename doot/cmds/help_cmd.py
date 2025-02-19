@@ -214,7 +214,10 @@ class _HelpTask_m:
             return result
 
 
-class HelpCmd(_HelpDoot_m, _HelpCmd_m, _HelpTask_m, BaseCommand):
+##--|
+@Proto(Command_p)
+@Mixin(_HelpDoot_m, _HelpCmd_m, _HelpTask_m)
+class HelpCmd(BaseCommand):
     _name      = "help"
     _help      = ["Print info about the specified cmd or task",
                   "Can also be triggered by passing --help to any command or task"

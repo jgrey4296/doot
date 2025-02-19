@@ -90,7 +90,9 @@ DECLARE_PRIORITY               : Final[int]                  = 10
 MIN_PRIORITY                   : Final[int]                  = -10
 INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
+##--|
 class _Registration_m:
+
     def register_spec(self, *specs:TaskSpec) -> None:
         """ Register task specs, abstract or concrete.
         """
@@ -159,7 +161,6 @@ class _Registration_m:
                     self._indirect_deps[target].append(rel)
                 case _: # Ignore action specs
                     pass
-
 
 class _Instantiation_m:
 
@@ -325,7 +326,7 @@ class _Instantiation_m:
                 logging.detail("Reusing latest Instance: %s", instance)
                 return instance
 
-    def _make_task(self, name:Concrete[Ident], *, task_obj:Maybe[Task_i]=None) -> Concrete[Ident]:
+    def _make_task(self, name:Concrete[Ident], *, task_obj:Maybe[Task_p]=None) -> Concrete[Ident]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 
@@ -345,10 +346,10 @@ class _Instantiation_m:
             case None:
                 spec = self.specs[name]
                 try:
-                    task : Task_i = spec.make()
+                    task : Task_p = spec.make()
                 except (ImportError, doot.errors.DootError) as err:
                     raise doot.errors.TrackingError("Failed To Make Task", name, *err.args) from err
-            case Task_i():
+            case Task_p():
                 task = task_obj
             case _:
                 raise doot.errors.TrackingError("Supplied task object isn't a task_i", task_obj)
@@ -357,7 +358,8 @@ class _Instantiation_m:
         self.tasks[name] = task
         return name
 
-class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
+@Mixin(_Registration_m, _Instantiation_m, TaskMatcher_m)
+class _TrackerStore:
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -368,7 +370,7 @@ class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
         # TODO: Check first entry is always uncustomised
         self.concrete             : dict[Abstract[Ident], list[Concrete[Ident]]]            = defaultdict(lambda: [])
         # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
-        self.tasks                : dict[Concrete[Ident], Task_i]                      = {}
+        self.tasks                : dict[Concrete[Ident], Task_p]                      = {}
         # Artifact -> list[TaskName] of related tasks
         self.artifacts            : dict[TaskArtifact, list[Abstract[Ident]]]          = defaultdict(set)
         self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
@@ -392,7 +394,7 @@ class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:Concrete[Ident]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+    def set_status(self, task:Concrete[Ident]|Task_p, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
@@ -401,7 +403,7 @@ class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
         match task, status:
             case TaskName(), _ if task == self._root_node:
                 return False
-            case Task_i(), TaskStatus_e() if task.name in self.tasks:
+            case Task_p(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
             case TaskArtifact(), ArtifactStatus_e():
                 self._artifact_status[task] = status
@@ -416,6 +418,7 @@ class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
         return True
 
 class _Expansion_m:
+
     def _expand_task_node(self, name:Concrete[Ident]) -> set[Concrete[Ident]]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,
         *without* expanding those new nodes.
@@ -535,7 +538,8 @@ class _Expansion_m:
         self.network.nodes[artifact][EXPANDED] = True
         return to_expand
 
-class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
+@Mixin(_Expansion_m, TaskMatcher_m)
+class _TrackerNetwork:
     """ the network of concrete tasks and their dependencies """
 
     def __init__(self):
@@ -740,7 +744,7 @@ class _TrackerQueue_boltons:
     def __bool__(self):
         return self._queue.peek(default=None) is not None
 
-    def _maybe_implicit_queue(self, task:Task_i) -> None:
+    def _maybe_implicit_queue(self, task:Task_p) -> None:
         """ tasks can be activated for running by a number of different conditions
           this handles that
           """
@@ -789,9 +793,9 @@ class _TrackerQueue_boltons:
 
         return focus
 
-    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_i, *, from_user:bool=False, status:TaskStatus_e|ArtifactStatus_e=None) -> None|Concrete[Ident]:
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_p, *, from_user:bool=False, status:TaskStatus_e|ArtifactStatus_e=None) -> None|Concrete[Ident]:
         """
-          Queue a task by name|spec|Task_i.
+          Queue a task by name|spec|Task_p.
           registers and instantiates the relevant spec, inserts it into the network
           Does *not* rebuild the network
 
@@ -806,7 +810,7 @@ class _TrackerQueue_boltons:
             case TaskSpec() as spec:
                 self.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
-            case Task_i() as task if task.name not in self.tasks:
+            case Task_p() as task if task.name not in self.tasks:
                 self.register_spec(task.spec)
                 instance = self._instantiate_spec(task.name, add_cli=from_user)
                 # update the task with its concrete spec
@@ -885,6 +889,9 @@ class _TrackerQueue_boltons:
         self.active_set =  set()
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
 
-class BaseTracker(_TrackerStore, _TrackerNetwork, _TrackerQueue_boltons, TaskTracker_i):
+##--|
+@Proto(TaskTracker_p, check=False)
+@Mixin(_TrackerStore, _TrackerNetwork, _TrackerQueue_boltons)
+class BaseTracker:
     """ The public part of the standard tracker implementation """
     pass

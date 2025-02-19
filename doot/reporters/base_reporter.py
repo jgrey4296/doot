@@ -87,7 +87,7 @@ class BaseReporter(Reporter_p):
                 msg = str(msg)
             case TaskSpec():
                 msg = msg.name.readable
-            case Task_i():
+            case Task_p():
                 msg = msg.shortname
 
         self._full_trace.append(TraceRecord(message=msg, flags=flags, args=args))

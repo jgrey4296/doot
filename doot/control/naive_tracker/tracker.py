@@ -76,15 +76,15 @@ artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
 MAX_LOOP  : Final[int]     = 100
-
+##--|
 class TrackerPersistence_m:
     """ Mixin for persisting the tracker """
 
-    def write(self, target:pl.Path):
+    def write(self, target:pl.Path) -> None:
         """ Write the task network out as jsonl  """
         raise NotImplementedError()
 
-    def read(self, target:pl.Path):
+    def read(self, target:pl.Path) -> None:
         raise NotImplementedError()
 
 class TrackerPlanGen_m:
@@ -179,8 +179,11 @@ class TrackerPlanGen_m:
             case _:
                 raise doot.errors.TrackingError("Unknown plan generation form", policy)
 
-@doot.check_protocol
-class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTracker_i):
+##--|
+
+@Proto(TaskTracker_p)
+@Mixin(TrackerPersistence_m, TrackerPlanGen_m)
+class DootTracker(BaseTracker):
     """
     track dependencies in a networkx digraph,
     predecessors of a node are its dependencies.
@@ -196,7 +199,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
         super().__init__()
         self.shadowing = False
 
-    def propagate_state_and_cleanup(self, name:TaskName):
+    def propagate_state_and_cleanup(self, name:TaskName) -> None:
         """ Propagate a task's state on to its cleanup task"""
         logging.trace("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
         cleanups = [x for x in self.network.succ[name] if self.network.edges[name, x].get("cleanup", False)]
@@ -210,7 +213,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
             case _:
                 task.state.clear()
 
-    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_i|TaskArtifact]:
+    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:
         """ ask for the next task that can be performed
 
           Returns a Task or Artifact that needs to be executed or created

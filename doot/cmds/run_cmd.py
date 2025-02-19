@@ -69,14 +69,14 @@ runner_target            = doot.config.on_fail("default", str).settings.commands
 reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
 report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
 interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
-
-@doot.check_protocol
+##--|
+@Proto(Command_p)
 class RunCmd(BaseCommand):
-    _name      = "run"
-    _help      = ["Will perform the tasks/jobs targeted.",
-                  "Can be parameterized in a commands.run block with:",
-                  "tracker(str), runner(str), reporter(str), report_lines(str)",
-                  ]
+    _name                        = "run"
+    _help : ClassVar[tuple[str]] = tuple(["Will perform the tasks/jobs targeted.",
+                                          "Can be parameterized in a commands.run block with:",
+                                          "tracker(str), runner(str), reporter(str), report_lines(str)",
+                                          ])
 
     @property
     def param_specs(self) -> list:

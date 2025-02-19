@@ -80,11 +80,11 @@ state_l           = doot.subprinter("task_state")
 
 skip_msg                : Final[str] = doot.constants.printer.skip_by_condition_msg
 max_steps               : Final[str] = doot.config.on_fail(100_000).settings.tasks.max_steps()
-
+##--|
 class _ActionExecution_m:
     """ Covers the nuts and bolts of executing an action group """
 
-    def _execute_action_group(self, task:Task_i, *, allow_queue:bool=False, group:Maybe[str]=None) -> Maybe[tuple[int, ActRE]]:
+    def _execute_action_group(self, task:Task_p, *, allow_queue:bool=False, group:Maybe[str]=None) -> Maybe[tuple[int, ActRE]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
@@ -163,7 +163,7 @@ class _ActionExecution_m:
 
         return None
 
-    def _execute_action(self, count:int, action:Action_p, task:Task_i) -> ActRE|list:
+    def _execute_action(self, count:int, action:Action_p, task:Task_p) -> ActRE|list:
         """ Run the given action of a specific task.
 
           returns either a list of specs to (potentially) queue,
@@ -202,12 +202,14 @@ class _ActionExecution_m:
         self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
         return result
 
-@doot.check_protocol
-class DootRunner(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._RunnerSleep_m, TaskRunner_i):
+##--|
+@Proto(TaskRunner_p, check=False)
+@Mixin(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._RunnerSleep_m)
+class DootRunner:
     """ The simplest single threaded task runner """
 
-    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_p):
-        super().__init__(tracker=tracker, reporter=reporter)
+    def __init__(self:Self, *, tracker:TaskTracker_p, reporter:Reporter_p):
+        super().__init__()
         self.step                                             = 0
         self.tracker       = tracker
         self.reporter      = reporter
@@ -248,9 +250,9 @@ class DootRunner(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._
                     pass
                 case TaskArtifact():
                     self._notify_artifact(task)
-                case Job_i():
+                case Job_p():
                     self._expand_job(task)
-                case Task_i():
+                case Task_p():
                     self._execute_task(task)
                 case x:
                     in_task_header_l.error("Unknown Value provided to runner: %s", x)
@@ -266,10 +268,10 @@ class DootRunner(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._
             self._sleep(task)
             self.step += 1
 
-    def _expand_job(self, job:Job_i) -> None:
+    def _expand_job(self, job:Job_p) -> None:
         """ turn a job into all of its tasks, including teardowns """
         logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
-        assert(isinstance(job, Job_i))
+        assert(isinstance(job, Job_p))
         try:
             self._announce_entry(job)
             if not self._test_conditions(job):
@@ -288,10 +290,10 @@ class DootRunner(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
             out_task_header_l.trace("Job %s: %s", self.step, job.shortname)
 
-    def _execute_task(self, task:Task_i) -> None:
+    def _execute_task(self, task:Task_p) -> None:
         """ execute a single task's actions """
         logmod.debug("-- Expanding Task %s: %s", self.step, task.shortname)
-        assert(not isinstance(task, Job_i))
+        assert(not isinstance(task, Job_p))
         skip_task = False
         try:
             self._announce_entry(task)
@@ -315,7 +317,7 @@ class DootRunner(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._
             else:
                 out_task_header_l.trace("(%s) Task : %s", self.step, task.shortname, extra={"colour":"cyan"})
 
-    def _test_conditions(self, task:Task_i) -> bool:
+    def _test_conditions(self, task:Task_p) -> bool:
         """ run a task's depends_on group, coercing to a bool
         returns False if the runner should skip the rest of the task
         """
@@ -328,23 +330,23 @@ class DootRunner(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._
             case _, _:
                 return True
 
-    def _announce_entry(self, task:Task_i) -> None:
+    def _announce_entry(self, task:Task_p) -> None:
         match task:
-            case Task_i() if task.name.is_cleanup():
+            case Task_p() if task.name.is_cleanup():
                 in_task_header_l.prefix(">> ").user("(%s) Cleanup : %s",
                                                     self.step,
                                                     task.shortname,
                                                     extra={"colour":"blue"})
-            case Task_i() if task.name.is_head():
+            case Task_p() if task.name.is_head():
                 in_task_header_l.prefix(">> ").user("(%s) Head : %s",
                                                     self.step,
                                                     task.shortname,
                                                     extra={"colour":"blue"})
-            case Job_i():
+            case Job_p():
                 in_task_header_l.prefix("> ").user("(%s) Job : %s",
                                                    self.step,
                                                    task.shortname)
-            case Task_i():
+            case Task_p():
                 in_task_header_l.prefix("> ").user("(%s) Task : %s",
                                                    self.step,
                                                    task.shortname)

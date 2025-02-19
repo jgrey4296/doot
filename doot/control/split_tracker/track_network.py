@@ -391,7 +391,9 @@ class _Validation_m:
 
         return incomplete
 
-class TrackNetwork(_Expansion_m, _Validation_m, TaskMatcher_m):
+##--|
+@Mixin(_Expansion_m, _Validation_m, TaskMatcher_m)
+class TrackNetwork:
     """ The _graph of concrete tasks and their dependencies """
 
     def __init__(self, registry:TrackRegistry):

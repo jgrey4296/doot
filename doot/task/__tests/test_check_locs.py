@@ -48,4 +48,4 @@ class TestCheckLocsTask:
 
     def test_initial(self, wrap_locs):
         obj = CheckLocsTask()
-        assert(isinstance(obj, doot._abstract.Task_i))
+        assert(isinstance(obj, doot._abstract.Task_p))

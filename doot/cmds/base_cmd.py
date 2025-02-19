@@ -65,7 +65,9 @@ logging = logmod.getLogger(__name__)
 cmd_l = doot.subprinter("cmd")
 ##-- end logging
 
-class BaseCommand(ParamSpecMaker_m, Command_i):
+@Proto(Command_p, check=False)
+@Mixin(ParamSpecMaker_m)
+class BaseCommand(Command_d):
     """ Generic implementations of command methods """
 
     def __init__(self, name=None):
@@ -123,3 +125,7 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
                     cmd_l.user(s, extra=d)
                 case None:
                     cmd_l.user("")
+
+
+    def shutdown(self):
+        pass

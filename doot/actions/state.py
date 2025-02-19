@@ -82,7 +82,8 @@ class AddStateAction:
             result[k] = val
         return result
 
-class AddStateFn(Action_p):
+@Proto(Action_p)
+class AddStateFn:
     """ for each toml kwarg, import its value and set the state[kwarg] = val
       with expansion
     """
@@ -98,29 +99,39 @@ class AddStateFn(Action_p):
 
         return result
 
-class PushState(Action_p):
+@Proto(Action_p)
+class PushState:
     """
       state[update_] += [state[x] for x in spec.args]
     """
 
     @DKeyed.args
+    @DKeyed.types("update_", check=set|list, fallback=list)
     @DKeyed.redirects("update_")
-    def __call__(self, spec, state, args, _update) -> dict|bool|None:
-        data     = data_key.expand(spec, state, check=list|set|None, fallback=[])
+    def __call__(self, spec, state, args, data, _update) -> dict|bool|None:
+        target_data = data.copy()
+        to_add = []
+        for x in args:
+            match DKey(x).expand(spec, state):
+                case None:
+                    pass
+                case list()|set() as xs:
+                    to_add += xs
+                case x:
+                    to_add.append(x)
 
-        arg_keys = (DKey(arg).expand(spec, state) for arg in args)
-        to_add   = map(lambda x: x if isinstance(x, list) else [x],
-                       filter(lambda x: x is not None, arg_keys))
-
-        match data:
+        match target_data:
             case set():
-                list(map(lambda x: data.update(x), to_add))
+                target_data.update(to_add)
             case list():
-                list(map(lambda x: data.extend(x), to_add))
+                target_data.extend(to_add)
+            case _:
+                raise TypeError("Unknown state target to push to", type(target_data), _update)
 
-        return { _update : data }
+        return { _update : target_data }
 
-class AddNow(Action_p):
+@Proto(Action_p)
+class AddNow:
     """
       Add the current date, as a string, to the state
     """
@@ -131,7 +142,8 @@ class AddNow(Action_p):
         now      = datetime.datetime.now()
         return { _update : now.strftime(format) }
 
-class PathParts(PathManip_m):
+@Proto(Action_p)
+class PathParts:
     """ take a path and add fstem, fpar, fname to state """
 
     @DKeyed.paths("from")
@@ -141,7 +153,8 @@ class PathParts(PathManip_m):
         root_paths = self._build_roots(spec, state, roots)
         return self._calc_path_parts(_from, root_paths)
 
-class ShadowPath(PathManip_m):
+@Proto(Action_p)
+class ShadowPath:
 
     @DKeyed.paths("shadow_root")
     @DKeyed.types("base", check=pl.Path)

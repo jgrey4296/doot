@@ -85,7 +85,8 @@ artifact_l = doot.subprinter("artifact")
 
 MAX_LOOP  : Final[int]     = 100
 
-class StateTracker(TaskTracker_i):
+@Proto(TaskTracker_p)
+class StateTracker:
     """ The public part of the standard tracker implementation
     Has three components:
     _registry : db for specs and tasks
@@ -102,10 +103,10 @@ class StateTracker(TaskTracker_i):
     def register_spec(self, *specs:TaskSpec)-> None:
         self._registry.register_spec(*specs)
 
-    def queue_entry(self, name:str|Concrete[TaskName]|TaskSpec|TaskArtifact|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
+    def queue_entry(self, name:str|Concrete[TaskName]|TaskSpec|TaskArtifact|Task_p, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
         # Register or retrieve
         match name:
-            case Task_i():
+            case Task_p():
                 pass
             case TaskSpec():
                 pass
@@ -123,7 +124,7 @@ class StateTracker(TaskTracker_i):
     def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
         return self._registry.get_status(task)
 
-    def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_i, state:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
         self._registry.set_status(task, state)
 
     def build_network(self) -> None:
@@ -143,7 +144,7 @@ class StateTracker(TaskTracker_i):
             case _:
                 task.state.clear()
 
-    def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
+    def next_for(self, target:None|str|TaskName=None) -> None|Task_p|TaskArtifact:
         """ ask for the next task that can be performed
 
           Returns a Task or Artifact that needs to be executed or created
@@ -261,3 +262,7 @@ class StateTracker(TaskTracker_i):
         else:
             logging.trace("---- Determined Next Task To Be: %s", result)
             return result
+
+
+    def generate_plan(self, *args):
+        raise NotImplementedError()

@@ -60,6 +60,7 @@ printer = doot.subprinter()
 
 clean_locs = doot.config.on_fail([], list).settings.commands.clean.locs()
 
+@Proto(Command_p)
 class CleanCmd(BaseCommand):
     """
       Runs either a general clean command, or a specific task clean command
@@ -75,9 +76,10 @@ class CleanCmd(BaseCommand):
 
     @property
     def param_specs(self) -> list:
-        return super().param_specs + [
+        return [
+            *super().param_specs,
             self.build_param(name="target", type=str, default=None),
-            self.build_param(name="recursive", type=bool, default=False)
+            self.build_param(name="recursive", type=bool, default=False),
         ]
 
     def __call__(self, tasks:dict, plugins:dict):
@@ -95,6 +97,6 @@ class CleanCmd(BaseCommand):
             pass
         self._print_text([f"- Cleaning: {loc}"])
         if loc.is_dir():
-            shutil.rmtree(x)
+            shutil.rmtree(loc)
         else:
             loc.unlink(missing_ok=True)

@@ -92,7 +92,7 @@ class TestRunner(_MockObjs_m):
 
     def test_initial(self, ctor, mocker, setup_config, runner):
         # Check:
-        assert(isinstance(runner, TaskRunner_i))
+        assert(isinstance(runner, TaskRunner_p))
 
     def test_expand_job(self, ctor, mocker, setup_config, runner):
         announce_entry_spy    = mocker.spy(runner, "_announce_entry")
@@ -111,8 +111,8 @@ class TestRunner(_MockObjs_m):
         exec_action_group_spy.assert_called()
 
     def test_expand_job_with_a_task_errors(self, ctor, mocker, setup_config, runner):
-        spec                  = TaskSpec.build("basic::job")
-        task                  = DootTask(spec)
+        spec = TaskSpec.build("basic::job")
+        task = DootTask(spec)
         with pytest.raises(AssertionError):
             runner._expand_job(task)
 

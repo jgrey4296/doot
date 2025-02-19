@@ -76,8 +76,8 @@ def build_entry_point (x:str, y:str, z:str) -> EntryPoint:
         raise doot.errors.PluginError("Plugin Type Not Found: %s : %s", z, (x, y))
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, z))
 
-@doot.check_protocol
-class DootPluginLoader(PluginLoader_p):
+@Proto(PluginLoader_p)
+class DootPluginLoader:
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
     """
@@ -137,7 +137,7 @@ class DootPluginLoader(PluginLoader_p):
         DootPluginLoader.loaded = ChainGuard(self.plugins)
         return DootPluginLoader.loaded
 
-    def _load_system_plugins(self):
+    def _load_system_plugins(self) -> None:
         if skip_plugin_search:
             return
 
@@ -151,7 +151,7 @@ class DootPluginLoader(PluginLoader_p):
             except Exception as err:
                 raise doot.errors.PluginError("Plugin Failed to Load: %s : %s : %s", plugin_group, entry_point, err) from err
 
-    def _load_from_toml(self):
+    def _load_from_toml(self) -> None:
         logging.info("-- Loading Plugins from Toml")
         # load config entry points
         for cmd_group, vals in env_plugins.items():
@@ -159,7 +159,7 @@ class DootPluginLoader(PluginLoader_p):
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue
 
-            if not isinstance(vals, (ChainGuard, dict)):
+            if not isinstance(vals, ChainGuard|dict):
                 logging.warning("Toml specified plugins need to be a dict of (cmdName : class): %s ", cmd_group)
                 continue
 
@@ -168,7 +168,7 @@ class DootPluginLoader(PluginLoader_p):
                 ep = build_entry_point(name, cls, cmd_group)
                 self.plugins[cmd_group].append(ep)
 
-    def _load_extra_plugins(self):
+    def _load_extra_plugins(self) -> None:
         extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
         if not bool(extra_eps):
             return
@@ -183,7 +183,7 @@ class DootPluginLoader(PluginLoader_p):
             logging.debug("Adding Plugin: %s", ep)
             self.plugins[k].append(ep)
 
-    def _append_defaults(self):
+    def _append_defaults(self) -> None:
         if skip_default_plugins:
             return
 

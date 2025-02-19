@@ -69,7 +69,8 @@ runner_target            = doot.config.on_fail("step", str).settings.commands.st
 tracker_target           = doot.config.on_fail("default", str).settings.commands.step.tracker()
 reporter_target          = doot.config.on_fail("default", str).settings.commands.step.reporter()
 report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
-
+##--|
+@Proto(Command_p)
 class StepCmd(BaseCommand):
     """
     Standard doit run command, but step through tasks

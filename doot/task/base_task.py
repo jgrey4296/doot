@@ -79,7 +79,8 @@ TASK_ALISES                    = doot.aliases.task
 PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
-class _TaskProperties_m(ParamSpecMaker_m):
+@Mixin(ParamSpecMaker_m)
+class _TaskProperties_m:
 
     @classmethod
     @property
@@ -88,7 +89,7 @@ class _TaskProperties_m(ParamSpecMaker_m):
         return [
             cls.build_param(name="help",    default=False,       implicit=True, prefix="--"),
             cls.build_param(name="debug",   default=False,       implicit=True, prefix="--"),
-            cls.build_param(name="verbose", default=0, type=int, implicit=True, prefix="--")
+            cls.build_param(name="verbose", default=0, type=int, implicit=True, prefix="--"),
            ]
 
     @property
@@ -113,7 +114,7 @@ class _TaskProperties_m(ParamSpecMaker_m):
         return self.spec.doc or self._help
 
     @property
-    def is_stale(self):
+    def is_stale(self) -> bool:
         return False
 
 class _TaskStubbing_m:
@@ -141,6 +142,8 @@ class _TaskStubbing_m:
         stub['name'].default      = self.shortname
         if bool(self.doc):
             stub['doc'].default   = self.doc[:]
+        else:
+            stub['doc'].default   = []
         stub['flags'].default     = self.spec.flags
 
         return stub
@@ -158,8 +161,10 @@ class _TaskHelp_m:
 
         return help_lines
 
-@doot.check_protocol
-class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
+##--|
+@Proto(Task_p, check=False)
+@Mixin(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
+class DootTask(Task_d):
     """
       The simplest task, which can import action classes.
       eg:
@@ -169,7 +174,7 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
     """
     action_ctor                                   = DootBaseAction
     _default_flags                                = TaskMeta_e.TASK
-    _help                                         = ["The Simplest Task"]
+    _help            : ClassVar[tuple[str]]       = tuple(["The Simplest Task"])
     COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS}
     INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
 
@@ -197,20 +202,20 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
     def __hash__(self):
         return hash(self.name)
 
-    def __lt__(self, other:TaskName|Task_i) -> bool:
+    def __lt__(self, other:TaskName|Task_p) -> bool:
         """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
         return any(other.name in x.target for x in self.spec.depends_on)
 
-    def __eq__(self, other:str|TaskName|Task_i):
+    def __eq__(self, other:str|TaskName|Task_p):
         match other:
             case str() | TaskName():
                 return self.name == other
-            case Task_i():
+            case Task_p():
                 return self.name == other.name
             case _:
                 return False
 
-    def prepare_actions(self):
+    def prepare_actions(self) -> None:
         """ if the task/action spec requires particular action ctors, load them.
           if the action spec doesn't have a ctor, use the task's action_ctor
 
@@ -240,7 +245,7 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
                 case [*xs]:
                     raise doot.errors.TaskError("Action Spec preparation failures", xs)
 
-    def add_execution_record(self, arg):
+    def add_execution_record(self, arg) -> None:
         """ Record some execution record information for display or debugging """
         self._records.append(arg)
 
@@ -253,9 +258,9 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
         match msg:
             case str():
                 lines.append(msg)
-            case types.LambdaType():
+            case LambdaType():
                 lines.append(msg())
-            case [types.LambdaType()]:
+            case [LambdaType()]:
                 lines += msg[0]()
             case list():
                 lines += msg

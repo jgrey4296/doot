@@ -77,10 +77,10 @@ logging.disabled = False
 
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
-
+##--|
 class _Reactive_m:
 
-    def _maybe_implicit_queue(self, task:Task_i) -> None:
+    def _maybe_implicit_queue(self, task:Task_p) -> None:
         """ tasks can be activated for running by a number of different conditions.
           this handles that logic
           """
@@ -110,6 +110,7 @@ class _Reactive_m:
           """
         raise NotImplementedError()
 
+##--|
 class TrackQueue:
     """ The queue of active tasks. """
 
@@ -142,9 +143,9 @@ class TrackQueue:
 
         return focus
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_i, *, from_user:bool=False, status:TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
+    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
         """
-          Queue a task by name|spec|Task_i.
+          Queue a task by name|spec|Task_p.
           registers and instantiates the relevant spec, inserts it into the _network
           Does *not* rebuild the _network
 
@@ -159,7 +160,7 @@ class TrackQueue:
             case TaskSpec() as spec:
                 self._registry.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
-            case Task_i() as task if task.name not in self._registry.tasks:
+            case Task_p() as task if task.name not in self._registry.tasks:
                 self._registry.register_spec(task.spec)
                 instance = self._instantiate_spec(task.name, add_cli=from_user)
                 # update the task with its concrete spec

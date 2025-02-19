@@ -91,7 +91,7 @@ class TestStateTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
-            case Task_i():
+            case Task_p():
                 assert(True)
             case _:
                 assert(False)
@@ -106,7 +106,7 @@ class TestStateTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(dep.name < result.name)
                 assert(True)
             case _:
@@ -125,7 +125,7 @@ class TestStateTracker:
         assert(dep.name < dep_inst.name)
         obj.set_status(dep_inst.name, TaskStatus_e.SUCCESS)
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
@@ -144,7 +144,7 @@ class TestStateTracker:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
         match obj.next_for():
-            case Task_i() as result:
+            case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
@@ -163,7 +163,7 @@ class TestStateTracker:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
         cleanup = obj.next_for()
-        assert(isinstance(cleanup, Task_i))
+        assert(isinstance(cleanup, Task_p))
         assert("$cleanup$" in cleanup.name)
         for x in obj._registry.tasks.values():
             if "$cleanup$" in x.name:

@@ -145,7 +145,7 @@ class TestRegistry:
         instance = obj._instantiate_spec(name)
         result = obj._make_task(instance)
         retrieved = obj.tasks[result]
-        assert(isinstance(retrieved, Task_i))
+        assert(isinstance(retrieved, Task_p))
 
     def test_task_get_default_status(self):
         obj = TrackRegistry()
