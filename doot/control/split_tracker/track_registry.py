@@ -18,39 +18,53 @@ import time
 import types
 import weakref
 from collections import defaultdict
-from itertools import chain, cycle
-
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NewType,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from jgdv import Mixin, Proto
+
+# ##-- end 3rd party imports
+
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_e, TaskStatus_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec, InjectSpec)
-from doot.task.base_task import DootTask
+from doot.enums import ArtifactStatus_e, TaskMeta_e, TaskStatus_e
 from doot.mixins.matching import TaskMatcher_m
+from doot.structs import (ActionSpec, InjectSpec, TaskArtifact, TaskName, TaskSpec)
+from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
-if TYPE_CHECKING:
-   from jgdv import Maybe
-   from jgdv.structs.chainguard import ChainGuard
-   type Abstract[T] = T
-   type Concrete[T] = T
-   type ActionElem  = ActionSpec|RelationSpec
-   type ActionGroup = list[ActionElem]
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
 
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv.structs.chainguard import ChainGuard
+    type Abstract[T] = T
+    type Concrete[T] = T
+    type ActionElem  = ActionSpec|RelationSpec
+    type ActionGroup = list[ActionElem]
+##--|
+from doot._abstract import Task_p
 # isort: on
 # ##-- end types
 
@@ -65,7 +79,7 @@ ROOT                            : Final[str]                    = "root::_.$gen$
 EXPANDED                        : Final[str]                    = "expanded"  # Node attribute name
 REACTIVE_ADD                    : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
-
+##--|
 class _Registration_m:
 
     def register_spec(self, *specs:TaskSpec) -> None:

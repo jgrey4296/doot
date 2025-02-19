@@ -35,7 +35,6 @@ import doot
 doot._test_setup()
 import doot.errors
 import doot.structs
-from doot._abstract import Task_i
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 
@@ -44,6 +43,32 @@ from doot.control.split_tracker.track_queue import TrackQueue
 from doot.control.split_tracker.track_registry import TrackRegistry
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
 logging = logmod.root
 
 @pytest.fixture(scope="function")
@@ -51,6 +76,8 @@ def queue():
     registry = TrackRegistry()
     network  = TrackNetwork(registry)
     return TrackQueue(registry, network)
+
+##--|
 
 class TestTrackerQueue:
 

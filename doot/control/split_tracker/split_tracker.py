@@ -24,38 +24,54 @@ import types
 import weakref
 from collections import defaultdict
 from itertools import chain, cycle
-
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Self,
-                    MutableMapping, Protocol, Sequence, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NewType,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from jgdv import Proto
+
+# ##-- end 3rd party imports
+
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskStatus_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName, TaskSpec)
-from doot.task.base_task import DootTask
-
-from doot.control.split_tracker.track_registry import TrackRegistry
 from doot.control.split_tracker.track_network import TrackNetwork
 from doot.control.split_tracker.track_queue import TrackQueue
+from doot.control.split_tracker.track_registry import TrackRegistry
+from doot.enums import ArtifactStatus_e, TaskStatus_e
+from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
+from doot.task.base_task import DootTask
+
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
-if TYPE_CHECKING:
-   from jgdv import Maybe
-   type Abstract[T] = T
-   type Concrete[T] = T
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    type Abstract[T] = T
+    type Concrete[T] = T
+
+##--|
+from doot._abstract import Task_p, TaskTracker_p
 # isort: on
 # ##-- end types
 

@@ -28,10 +28,14 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from jgdv import Proto
+
+# ##-- end 3rd party imports
+
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.control.statemachine.task_network import TaskNetwork
 from doot.control.statemachine.task_queue import TaskQueue
@@ -64,6 +68,8 @@ if TYPE_CHECKING:
    type Abstract[T] = T
    type Concrete[T] = T
 
+##--|
+from doot._abstract import Task_p, TaskTracker_p
 # isort: on
 # ##-- end types
 

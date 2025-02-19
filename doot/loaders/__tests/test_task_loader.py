@@ -22,7 +22,6 @@ from doot.enums import TaskMeta_e
 doot._test_setup()
 
 from doot.structs import TaskSpec
-from doot._abstract.task import Task_i
 from doot.utils.mock_gen import mock_entry_point, mock_task_ctor
 
 doot.config = ChainGuard({})

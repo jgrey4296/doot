@@ -32,7 +32,6 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskStatus_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
@@ -65,6 +64,8 @@ if TYPE_CHECKING:
 
    type ActionElem  = ActionSpec|RelationSpec
    type ActionGroup = list[ActionElem]
+
+##--|
 
 # isort: on
 # ##-- end types

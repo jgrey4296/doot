@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
+A Utility implementation of most of what a task needs
 """
+# ruff: noqa: C409
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -14,28 +15,20 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe, Lambda
+from jgdv import Proto, Mixin
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Action_p, Job_i, PluginLoader_p, Task_i
 from doot.actions.base_action import DootBaseAction
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e
 from doot.errors import TaskError, StructLoadError
@@ -44,8 +37,38 @@ from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.task_name import TaskName
 from doot._structs.relation_spec import RelationSpec
+from doot._abstract import Task_d
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+from types import LambdaType
+
+from doot._abstract import Action_p, Job_p, PluginLoader_p, Task_p, Task_p
+
+if TYPE_CHECKING:
+    from jgdv import Maybe, Lambda
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from doot.structs import ParamSpec, TaskStub
+    from doot._abstract import SpecStruct_p
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)

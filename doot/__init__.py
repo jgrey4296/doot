@@ -17,17 +17,12 @@ import pathlib as pl
 import sys
 from collections import defaultdict
 from importlib.resources import files
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, assert_type, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import check_protocol, Maybe, VerStr
+from jgdv import Maybe, VerStr
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey
 from jgdv.logging import JGDVLogConfig
@@ -40,6 +35,29 @@ from packaging.specifiers import SpecifierSet
 import doot.errors
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- data
 data_path      = files("doot.__data")
@@ -111,7 +129,7 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
 
     try:
         config = ChainGuard.load(*existing_targets)
-    except (IOError, OSError) as err:
+    except OSError as err:
         raise doot.errors.InvalidConfigError(existing_targets, *err.args) from err
 
     if existing_targets == [pl.Path("pyproject.toml")] and "doot" not in config:
@@ -156,7 +174,7 @@ def update_global_task_state(data:dict|ChainGuard, *, source=None) -> None:
     assert(source is not None)
     setup_l = subprinter("setup")
     setup_l.trace("Updating Global State from: %s", source)
-    if not isinstance(data, (dict, ChainGuard)):
+    if not isinstance(data, dict|ChainGuard):
         raise doot.errors.GlobalStateMismatch("Not a dict", data)
 
     for x,y in data.items():

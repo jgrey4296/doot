@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, ANN001
+# ruff: noqa: ANN201, ANN001, B011, E402
 # Imports:
 from __future__ import annotations
 
@@ -18,17 +18,13 @@ import pathlib as pl
 import sys
 import unittest
 import warnings
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from unittest import mock
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 import pytest
 from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
@@ -42,11 +38,34 @@ doot._test_setup()
 
 # ##-- 1st party imports
 import doot.errors
-from doot._abstract import Command_i
+from doot._abstract import Command_p
 from doot.cmds.list_cmd import ListCmd
 from doot.structs import TaskSpec
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 logging = logmod.root
 

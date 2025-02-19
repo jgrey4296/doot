@@ -3,15 +3,11 @@
 
 """
 # Imports:
-##-- imports
 from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
 import enum
-# import abc
-# import datetime
-# import enum
 import functools as ftz
 import importlib
 import itertools as itz
@@ -21,43 +17,57 @@ import re
 import time
 import types
 from importlib.metadata import entry_points
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe
+from jgdv import Proto
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-from doot._abstract import Command_i, CommandLoader_p
 
 # ##-- end 1st party imports
 
-# from uuid import UUID, uuid1
-# from weakref import ref
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
-##-- end imports
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from doot._abstract import Command_p, CommandLoader_p
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@doot.check_protocol
-class DootCommandLoader(CommandLoader_p):
+@Proto(CommandLoader_p)
+class DootCommandLoader:
     """
       Default Command loaded. using the loaded plugins,
-      selects "command", calls load on each entry point, and if the obj returned is a subclass of Command_i,
+      selects "command", calls load on each entry point, and if the obj returned is a subclass of Command_p,
       instantiates it
     """
 

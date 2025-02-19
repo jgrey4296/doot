@@ -14,50 +14,69 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe
+from jgdv import Proto
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i
 from doot.enums import TaskMeta_e
-from doot.structs import TaskName, TaskSpec
+from doot.structs import TaskName
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from doot.structs import TaskStub, TaskSpec
+
+##--|
+from doot._abstract import Job_i, Task_i
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@doot.check_protocol
+@Proto(Task_i)
 class DootTransformer(DootTask):
     """
       Transformers have an abstract artifact dependency and product,
       and will auto-add to the task graph to transform that artifact
     """
-    _help = ["A Basic Task Constructor"]
+    _help : ClassVar[tuple[str]] = tuple(["A Basic Task Constructor"])
     _default_flags = TaskMeta_e.TRANSFORMER
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"
-        super(DootJob, self).__init__(spec)
+        super().__init__(spec)
 
     @classmethod
-    def stub_class(cls, stub) -> TaskStub:
+    def stub_class(cls, stub:TaskStub) -> TaskStub:
         # Come first
         stub['active_when'].priority    = -90
         stub['required_for'].priority   = -90
@@ -65,7 +84,7 @@ class DootTransformer(DootTask):
 
         return stub
 
-    def stub_instance(self, stub) -> TaskStub:
+    def stub_instance(self, stub:TaskStub) -> TaskStub:
         stub                      = self.__class__.stub_class(stub)
         stub['name'].default      = self.shortname
         if bool(self.doc):

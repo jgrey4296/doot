@@ -29,6 +29,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 import boltons.queueutils
 import networkx as nx
 from jgdv.structs.chainguard import ChainGuard
@@ -38,7 +39,6 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec, InjectSpec)
@@ -70,6 +70,8 @@ if TYPE_CHECKING:
    type ActionElem  = ActionSpec|RelationSpec
    type ActionGroup = list[ActionElem]
 
+##--|
+from doot._abstract import Task_p, TaskTracker_p
 # isort: on
 # ##-- end types
 

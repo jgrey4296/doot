@@ -18,16 +18,12 @@ import time
 import types
 import typing
 from collections import ChainMap, defaultdict
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match, Self, Literal,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
@@ -38,20 +34,35 @@ from pydantic import ValidationError
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i, TaskLoader_p
 from doot.structs import TaskName, TaskSpec
 
 # ##-- end 1st party imports
 
-# ##-- typecheck imports
+# ##-- types
 # isort: off
-if typing.TYPE_CHECKING:
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
     import pathlib as pl
     from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-
+##--|
+from doot._abstract import Job_p, Task_p, TaskLoader_p
 # isort: on
-# ##-- end typecheck imports
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)

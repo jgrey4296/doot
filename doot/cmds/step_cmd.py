@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -16,24 +15,14 @@ import pathlib as pl
 import re
 import time
 import types
+from collections import defaultdict
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
-
-# ##-- end stdlib imports
-
-# ##-- stdlib imports
-from collections import defaultdict
-
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.chainguard import ChainGuard
+from jgdv import Proto
 
 # ##-- end 3rd party imports
 
@@ -44,6 +33,32 @@ from doot.task.check_locs import CheckLocsTask
 from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from jgdv.structs.chainguard import ChainGuard
+
+##--|
+from doot._abstract import Command_p
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)

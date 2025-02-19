@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: N812
 # Imports:
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 import networkx as nx
 from jgdv.debugging import SignalHandler
 # ##-- end 3rd party imports
@@ -29,8 +31,6 @@ from jgdv.debugging import SignalHandler
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Action_p, Job_i, Reporter_p, Task_i,
-                            TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import ActionResponse_e as ActRE
 from doot.enums import Report_f
@@ -44,21 +44,24 @@ from . import _runner_util as RU
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-   from jgdv import Maybe
-   from typing import Final
-   from typing import ClassVar, Any, LiteralString
-   from typing import Never, Self, Literal
-   from typing import TypeGuard
-   from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+##--|
+from doot._abstract import (Action_p, Job_p, Reporter_p, Task_p, TaskRunner_p, TaskTracker_p)
 # isort: on
 # ##-- end types
 

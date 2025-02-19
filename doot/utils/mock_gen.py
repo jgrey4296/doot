@@ -8,7 +8,6 @@ Some utility functions to more easily setup mocks
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -20,13 +19,6 @@ import time
 import types
 import weakref
 from importlib.metadata import EntryPoint
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from unittest.mock import MagicMock, PropertyMock, create_autospec
 from uuid import UUID, uuid1
 
@@ -39,11 +31,34 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- 1st party imports
 from doot import structs
-from doot._abstract import (Command_i, Job_i, Task_i, TaskRunner_i,
-                            TaskTracker_i)
 from doot.enums import QueueMeta_e
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Any
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from doot._abstract import (Job_p, Task_p, TaskTracker_p)
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -61,7 +76,7 @@ def task_network(tasks:dict):
     return built
 
 def mock_task(name, spec=None, actions:int=1, **kwargs):
-    task_m = MagicMock(spec=Task_i,
+    task_m = MagicMock(spec=Task_p,
                        name=name,
                        state={},
                        **kwargs)
@@ -71,7 +86,7 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
     return task_m
 
 def mock_job(name, pre=None, post=None, spec=None, **kwargs):
-    task_m = MagicMock(spec=Job_i,
+    task_m = MagicMock(spec=Job_p,
                        name=name,
                        state={},
                        **kwargs)

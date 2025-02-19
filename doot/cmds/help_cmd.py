@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 from jgdv.structs.strang import CodeReference
 from jgdv.cli.param_spec import ParamSpec
 from jgdv.cli.arg_parser import NON_DEFAULT_KEY
@@ -36,6 +37,7 @@ from jgdv.cli.arg_parser import NON_DEFAULT_KEY
 # ##-- 1st party imports
 import doot
 from doot.cmds.base_cmd import BaseCommand
+from doot._abstract import Command_p
 
 # ##-- end 1st party imports
 

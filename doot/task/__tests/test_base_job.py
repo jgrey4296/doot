@@ -25,9 +25,13 @@ import doot._abstract
 class TestBaseJob:
 
     def test_initial(self):
-        job = DootJob(TaskSpec.build({"name": "basic::example", "meta": ["JOB"]}))
-        assert(isinstance(job, doot._abstract.Task_i))
-        assert(TaskMeta_e.JOB in job.spec.meta)
+        spec = TaskSpec.build({"name": "basic::example", "meta": ["JOB"]})
+        assert(TaskMeta_e.JOB in spec.meta)
+        match DootJob(spec):
+            case doot._abstract.Job_p():
+                assert(True)
+            case x:
+                 assert(False), x
 
     def test_paramspecs(self):
         job = DootJob(TaskSpec.build({"name": "basic::example"}))

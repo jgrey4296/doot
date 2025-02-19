@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -20,20 +19,14 @@ import time
 import types
 from collections import defaultdict
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
 from importlib.resources import files
-import typing
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
@@ -42,7 +35,6 @@ from jgdv.structs.strang import CodeReference
 import doot
 import doot.enums
 import doot.errors
-from doot._abstract import PluginLoader_p, Task_i
 from doot._structs.dkey import DKey
 from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DKeyed, TaskName, TaskStub
@@ -53,9 +45,27 @@ from doot.task.base_task import DootTask
 
 # ##-- types
 # isort: off
-if typing.TYPE_CHECKING:
-   from jgdv import Maybe, ChainGuard, Lambda
-   type ListVal = str|Lambda|tuple[str,dict]
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe, ChainGuard, Lambda
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    type ListVal = str|Lambda|tuple[str,dict]
+
+##--|
+from doot._abstract import PluginLoader_p, Task_p, Command_p
 # isort: on
 # ##-- end types
 

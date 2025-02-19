@@ -18,17 +18,12 @@ import types
 import weakref
 from collections import defaultdict
 from itertools import chain, cycle
-
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NewType,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 import networkx as nx
 from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
@@ -36,28 +31,43 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskStatus_e, EdgeType_e
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName, TaskSpec)
+from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
-if TYPE_CHECKING:
-   from jgdv import Maybe
-   from .track_registry import TrackRegistry
-   type Abstract[T] = T
-   type Concrete[T] = T
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
 
-   type ActionElem  = ActionSpec|RelationSpec
-   type ActionGroup = list[ActionElem]
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from .track_registry import TrackRegistry
+    type Abstract[T] = T
+    type Concrete[T] = T
+
+    type ActionElem  = ActionSpec|RelationSpec
+    type ActionGroup = list[ActionElem]
+##--|
 
 # isort: on
 # ##-- end types
+
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
@@ -74,7 +84,7 @@ ARTIFACT_EDGES                  : Final[set[EdgeType_e]]      = EdgeType_e.artif
 DECLARE_PRIORITY                : Final[int]                  = 10
 MIN_PRIORITY                    : Final[int]                  = -10
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
-
+##--|
 class _Expansion_m:
 
     def build_network(self, *, sources:None|True|list[Concrete[TaskName]|TaskArtifact]=None) -> None:

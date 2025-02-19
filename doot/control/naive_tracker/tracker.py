@@ -13,18 +13,13 @@ import itertools as itz
 import logging as logmod
 import re
 import time
-import types
 from collections import defaultdict
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Literal, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Proto, Mixin
 import networkx as nx
 from jgdv.structs.strang import CodeReference
 
@@ -33,7 +28,6 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_e, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
@@ -44,12 +38,30 @@ from doot.control.naive_tracker._core import BaseTracker
 
 # ##-- types
 # isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
 if TYPE_CHECKING:
-    import pathlib as pl
     from jgdv import Maybe, Depth
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    import pathlib as pl
     type Node      = TaskName|TaskArtifact
     type PlanEntry = tuple[Depth, Node, str]
 
+##--|
+from doot._abstract import (Task_p, TaskTracker_p)
 # isort: on
 # ##-- end types
 

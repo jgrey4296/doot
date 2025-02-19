@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe
+from jgdv import Maybe, Proto
 
 # ##-- end 3rd party imports
 

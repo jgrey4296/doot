@@ -14,18 +14,12 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe
+from jgdv import Proto, Mixin
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
@@ -33,12 +27,36 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import Job_i, Task_i
+from doot._abstract import Job_p, Task_p
 from doot.enums import TaskMeta_e
 from doot.structs import TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from doot.structs import TaskStub
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -46,20 +64,43 @@ logging = logmod.getLogger(__name__)
 
 SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD
 
-@doot.check_protocol
-class DootJob(Job_i, DootTask):
+class _JobStubbing_m:
+    @classmethod
+    def stub_class(cls, stub:TaskStub) -> TaskStub:
+        # Come first
+        stub['active_when'].priority    = -90
+        stub['required_for'].priority   = -90
+        stub['depends_on'].priority     = -100
+
+        stub['head_task'].set(type="taskname", default="", prefix="# ", priority=100)
+        stub['queue_behaviour'].default = "default"
+        stub['queue_behaviour'].comment = "default | auto | reactive"
+        return stub
+
+    def stub_instance(self, stub:TaskStub) -> TaskStub:
+        stub                      = self.__class__.stub_class(stub)
+        stub['name'].default      = self.shortname
+        if bool(self.doc):
+            stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
+        return stub
+
+
+
+@Proto(Job_p, check=False)
+@Mixin(_JobStubbing_m)
+class DootJob(DootTask):
     """ Util Class for building single tasks
       wraps with setup and teardown tasks,
       manages cleaning,
       and holds state
 
     """
-    _help = ["A Basic Task Constructor"]
+    _help : ClassVar[tuple[str]] = tuple(["A Basic Task Constructor"])
     _default_flags = TaskMeta_e.JOB
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"
-        super(DootJob, self).__init__(spec)
+        super().__init__(spec)
 
     def default_task(self, name:Maybe[str|TaskName], extra:Maybe[dict|ChainGuard]) -> TaskSpec:
         task_name = None

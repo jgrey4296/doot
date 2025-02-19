@@ -227,11 +227,10 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
                 val_str = f'"{flat}"'
             case str():
                 val_str = f'"{self.default}"'
-            case list() if all(isinstance(x, (int, float)) for x in self.default):
-
+            case list() if all(isinstance(x, int|float) for x in self.default):
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
-            case set() | list():
+            case set() | list() | tuple():
                 parts = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{parts}]"
             case dict() | ChainGuard() if not bool(self.default):

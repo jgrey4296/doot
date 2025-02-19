@@ -14,19 +14,7 @@ import logging as logmod
 import pathlib as pl
 import unittest
 import warnings
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
-
-# ##-- end stdlib imports
-
-logging = logmod.root
-
-# ##-- stdlib imports
-from uuid import UUID
 
 # ##-- end stdlib imports
 
@@ -45,12 +33,40 @@ doot._test_setup()
 # ##-- 1st party imports
 import doot.errors
 import doot.structs
-from doot._abstract import Task_i
-from doot.enums import TaskStatus_e, ExecutionPolicy_e
-
 from doot.control.naive_tracker._core import BaseTracker
 from doot.control.naive_tracker.tracker import DootTracker
+from doot.enums import ExecutionPolicy_e, TaskStatus_e
+
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from doot._abstract import Task_p
+# isort: on
+# ##-- end types
+
+logging = logmod.root
 
 class TestTrackerNext:
 

@@ -28,7 +28,6 @@ import boltons.queueutils
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import (EdgeType_e, LocationMeta_e, QueueMeta_e,
                         RelationMeta_e, TaskMeta_e, TaskStatus_e)
@@ -62,6 +61,8 @@ if TYPE_CHECKING:
    type ActionElem  = ActionSpec|RelationSpec
    type ActionGroup = list[ActionElem]
 
+##--|
+from doot._abstract import Task_p
 # isort: on
 # ##-- end types
 
@@ -75,7 +76,7 @@ logging.disabled = False
 ROOT                           : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
-
+##--|
 
 class TaskQueue:
     """ The queue of active tasks. """
