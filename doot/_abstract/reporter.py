@@ -17,27 +17,31 @@ import re
 import time
 import types
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from jgdv import Maybe
-
-# ##-- end 3rd party imports
-
 # ##-- types
 # isort: off
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
 if TYPE_CHECKING:
-   from jgdv import Maybe
-   type TraceRecord = Any
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    type TraceRecord = Any
 # isort: on
 # ##-- end types
 
@@ -64,17 +68,19 @@ class Report_f(enum.Flag):
     ARTIFACT = enum.auto()
 
     OTHER    = enum.auto()
-    #
 
+    ##--|
     default  = enum.auto()
 
-class Reporter_p(abc.ABC):
+##--|
+@runtime_checkable
+class Reporter_p(Protocol):
     """
       Holds ReportLine_i's, and stores TraceRecords
     """
 
     @abc.abstractmethod
-    def __init__(self, reporters:list[ReportLine_p]=None):
+    def __init__(self, reporters:Maybe[list[ReportLine_p]]=None):
         pass
 
     @abc.abstractmethod
@@ -82,10 +88,12 @@ class Reporter_p(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def add_trace(self, msg, *args, flags=None):
+    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         pass
 
-class ReportLine_p(abc.ABC):
+##--|
+@runtime_checkable
+class ReportLine_p(Protocol):
     """
     Reporters, like loggers, are stacked, and each takes the flags and data and maybe runs.
     """

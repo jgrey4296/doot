@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -19,40 +18,48 @@ import types
 from abc import abstractmethod
 from collections import defaultdict, deque
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Literal, Mapping, Match,
-                    MutableMapping, NewType, Protocol, Sequence, Tuple, Self,
-                    TypeAlias, TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe, Ident, Depth
 from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
-from doot._abstract.reporter import Reporter_p
-from doot._abstract.task import Task_i
 
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
 if TYPE_CHECKING:
-   from jgdv import Maybe
-   type Actual      = Any
-   type TaskSpec    = Any
-   type TaskStatus_e = enum.Enum
-   type Abstract[T] = T
-   type Concrete[T] = T
-   type PlanEntry   = tuple[Depth, Concrete[Ident], str]
+    from jgdv import Maybe, Ident, Depth
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
+    from doot._abstract.reporter import Reporter_p
+    from doot._abstract.task import Task_p
+    type Actual      = Any
+    type TaskSpec    = Any
+    type TaskStatus_e = enum.Enum
+    type Abstract[T] = T
+    type Concrete[T] = T
+    type PlanEntry   = tuple[Depth, Concrete[Ident], str]
 
 # isort: on
 # ##-- end types
@@ -105,7 +112,10 @@ class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
 
     default = PRIORITY
 
-class TaskTracker_i:
+##--|
+
+@runtime_checkable
+class TaskTracker_p(Protocol):
     """
     Track tasks that have run, need to run, are running,
     and have failed.
@@ -117,7 +127,7 @@ class TaskTracker_i:
         pass
 
     @abstractmethod
-    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_i, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
         pass
 
     @abstractmethod
@@ -125,7 +135,7 @@ class TaskTracker_i:
         pass
 
     @abstractmethod
-    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[Ident]|Task_p, state:TaskStatus_e) -> bool:
         pass
 
     @abstractmethod
@@ -140,7 +150,8 @@ class TaskTracker_i:
     def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[PlanEntry]:
         pass
 
-class TaskRunner_i:
+@runtime_checkable
+class TaskRunner_p(Protocol):
     """
     Run tasks, actions, and jobs
     """
@@ -154,7 +165,7 @@ class TaskRunner_i:
         pass
 
     @abstractmethod
-    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_p):
+    def __init__(self, *, tracker:TaskTracker_p, reporter:Reporter_p):
         pass
 
     @abstractmethod

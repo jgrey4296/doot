@@ -1,4 +1,5 @@
-"""TASKS ARE THE MAIN ABSTRACTIONS MANAGED BY DOOT
+"""
+Tasks are the main abstractions managed by Doot
 
   - JOBS create tasks
   - TASKS have actions
@@ -7,40 +8,31 @@
 Jobs, as they can control refication order, can add setup and teardown tasks.
 This can allow interleaving, or grouping.
 
-  Communication:
+  Communication paths:
   Job  -> Task   : by creation
   Task -> Action : by creation
   Action -> Task : by return value, updating task state dict
   Task -> Job    : by reference to the job
 
-  Task -> Task     = Task -> Job -> Task
-  Action -> Action = Action -> Task -> Action
+  Task -> Task     = Postboxes
+  Action -> Action = Action -> Task State -> Action
 
 """
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
-import types
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, NewType, Protocol, Sequence, Tuple,
-                    TypeAlias, TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe
-from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
@@ -48,16 +40,32 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
 
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
 if TYPE_CHECKING:
-   from jgdv import Maybe
-   type ActionSpec = Any
-   type TaskName   = str
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    type ActionSpec = Any
+    type TaskName   = str
+    from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
+
 # isort: on
 # ##-- end types
 
@@ -97,17 +105,17 @@ class TaskStatus_e(enum.Enum):
 
     @classmethod
     @property
-    def pre_set(cls):
+    def pre_set(cls) -> set:
         return {cls.NAMED, cls.DECLARED, cls.DEFINED}
 
     @classmethod
     @property
-    def success_set(cls):
+    def success_set(cls) -> set:
         return {cls.SUCCESS, cls.TEARDOWN, cls.DEAD}
 
     @classmethod
     @property
-    def fail_set(cls):
+    def fail_set(cls) -> set:
         return {cls.SKIPPED, cls.HALTED, cls.FAILED}
 
 class ArtifactStatus_e(enum.Enum):
@@ -131,6 +139,8 @@ class ActionResponse_e(enum.Enum):
     # Aliases
     SUCCESS  = SUCCEED
 
+##--|
+
 @runtime_checkable
 class Action_p(Protocol):
     """
@@ -139,55 +149,52 @@ class Action_p(Protocol):
 
     def __call__(self, spec:ActionSpec, task_state:dict) -> Maybe[dict|bool|ActionResponse_e]:
         pass
+##--|
 
-class Task_i:
+class Task_d:
     """ Core Interface for Tasks """
 
     _version         : str       = "0.1"
     _help            : list[str] = []
+    doc              : list[str] = []
 
-    @abc.abstractmethod
+@runtime_checkable
+class Task_p(Protocol):
+
     def __init__(self, spec:SpecStruct_p):
         pass
 
-    @property
-    @abc.abstractmethod
-    def shortname(self) -> str:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def name(self) -> TaskName:
-        pass
-
-    @abc.abstractmethod
     def __hash__(self):
         pass
 
-    @abc.abstractmethod
-    def __lt__(self, other:TaskName|Task_i) -> bool:
+    def __lt__(self, other:TaskName|Task_d) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
         pass
 
-    @abc.abstractmethod
-    def __eq__(self, other):
+    def __eq__(self, other:Task_d) -> bool:
         pass
 
-    @property
-    @abc.abstractmethod
-    def add_execution_record(self, arg):
+    def add_execution_record(self, arg:Any) -> None:
         """ Record some execution record information for display or debugging """
         pass
 
-    @abc.abstractmethod
-    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
+    def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None:
         """
           utility method to log a message, useful as tasks are running
         """
         pass
 
-class Job_i(Task_i):
+    def shortname(self) -> str:
+        pass
+
+    def name(self) -> TaskName:
+        pass
+
+@runtime_checkable
+class Job_p(Task_p, Protocol):
     """
     builds tasks
     """
-    pass
+
+    def expand_job(self) -> list:
+        pass

@@ -2,16 +2,21 @@
 
 """
 from __future__ import annotations
-import pathlib as pl
 from abc import abstractmethod
-from typing import NewType, Any
-
-from jgdv import Maybe
-from jgdv.structs.chainguard import ChainGuard
-from doot._abstract.loader import Loaders_p
+from typing import NewType, Any, Protocol, runtime_checkable
 
 
-class Overlord_p:
+##-- type checking
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from doot._abstract import Loaders_p
+    from jgdv import Maybe
+    from jgdv.structs.chainguard import ChainGuard
+    import pathlib as pl
+##-- end type checking
+
+@runtime_checkable
+class Overlord_p(Protocol):
     """
     Main entrypoint for doot
     """
@@ -26,7 +31,6 @@ class Overlord_p:
                  extra_config:Maybe[dict[str,Any]|ChainGuard]=None,
                  args:Maybe[list[str]]=None):
         raise NotImplementedError()
-
 
     def __call__(self, cmd:Maybe[str]=None) -> int:
         """entry point for all commands

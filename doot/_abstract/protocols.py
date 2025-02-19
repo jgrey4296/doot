@@ -17,7 +17,7 @@ from jgdv._abstract.protocols import (ActionGrouper_p, ArtifactStruct_p,
                                       ParamStruct_p, ProtocolModelMeta,
                                       SpecStruct_p, StubStruct_p,
                                       TomlStubber_p, UpToDate_p,
-                                      Persistent_p, Decorator_p
+                                      Persistent_p, Decorator_p,
                                       )
 from pydantic import BaseModel
 from jgdv.structs.chainguard import ChainGuard
