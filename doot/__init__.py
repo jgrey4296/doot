@@ -73,20 +73,20 @@ logging         = logmod.getLogger(__name__)
 __version__          : Final[VerStr]         = "0.13.0"
 
 # Can't be in doot.constants, because that isn't loaded yet
-CONSTANT_PREFIX      : Final[str]         = "doot.constants"
-ALIAS_PREFIX         : Final[str]         = "doot.aliases"
-TOOL_PREFIX          : Final[str]         = "tool.doot"
+CONSTANT_PREFIX       : Final[str]         = "doot.constants"
+ALIAS_PREFIX          : Final[str]         = "doot.aliases"
+TOOL_PREFIX           : Final[str]         = "tool.doot"
 
-config               : ChainGuard         = ChainGuard()
-constants            : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
-aliases              : ChainGuard         = ChainGuard()
-cmd_aliases          : ChainGuard         = ChainGuard()
-locs                 : DootLocator      = None # DootLocator(pl.Path()) # registered locations
-args                 : ChainGuard         = ChainGuard() # parsed arg access
-log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
+config                : ChainGuard         = ChainGuard()
+constants             : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
+aliases               : ChainGuard         = ChainGuard()
+cmd_aliases           : ChainGuard         = ChainGuard()
+locs                  : DootLocator        = None # DootLocator(pl.Path()) # registered locations
+args                  : ChainGuard         = ChainGuard() # parsed arg access
+log_config            : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
 
 _global_task_state    : ChainGuard         = dict()
-_configs_loaded_from : list[pl.Path]      = []
+_configs_loaded_from  : list[pl.Path]      = []
 
 def subprinter(name=None) -> logmod.Logger:
     """ Get a sub-printer at position `name`.
