@@ -26,7 +26,7 @@ from jgdv.util.time_ctx import TimeCtx
 
 # ##-- 1st party imports
 import doot
-from doot.cmds.base_cmd import BaseCommand, Command_p
+from doot.cmds.base import BaseCommand, Command_p
 from doot.task.check_locs import CheckLocsTask
 from doot.utils.plugin_selector import plugin_selector
 

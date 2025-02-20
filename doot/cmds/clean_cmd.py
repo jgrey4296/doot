@@ -24,7 +24,7 @@ from jgdv import Proto
 # ##-- 1st party imports
 import doot
 from doot._abstract import Command_p
-from doot.cmds.base_cmd import BaseCommand
+from doot.cmds.base import BaseCommand
 
 # ##-- end 1st party imports
 

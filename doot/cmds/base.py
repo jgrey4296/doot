@@ -127,5 +127,6 @@ class BaseCommand(Command_d):
                     cmd_l.user("")
 
 
-    def shutdown(self):
+
+    def shutdown(self, tasks, plugins, errored=None) -> None:
         pass
