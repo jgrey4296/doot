@@ -38,7 +38,7 @@ from jgdv.structs.strang import Strang
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.cmds.base_cmd import BaseCommand
+from doot.cmds.base import BaseCommand
 from doot.enums import TaskMeta_e
 from doot._abstract import Command_p
 
@@ -88,12 +88,13 @@ hide_names   : Final[list[str]] = doot.config.on_fail([]).settings.commands.list
 hide_re      : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)))
 
 ##--|
+
 class _DagLister_m:
 
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="dag",
                              _short="D",
@@ -110,7 +111,7 @@ class _TaskLister_m:
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="tasks",
                              default=True,
@@ -243,7 +244,7 @@ class _LocationLister_m:
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="locs",
                              _short="l",
@@ -268,7 +269,7 @@ class _LoggerLister_m:
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="loggers",
                              type=bool,
@@ -310,7 +311,7 @@ class _FlagLister_m:
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="flags",
                              type=bool,
@@ -332,7 +333,7 @@ class _ActionLister_m:
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="actions",
                              type=bool,
@@ -359,7 +360,7 @@ class _PluginLister_m:
     @property
     def param_specs(self) -> list:
         return [
-            # *super().param_specs,
+            *super().param_specs,
             self.build_param(prefix="--",
                              name="plugins",
                              type=bool,
@@ -387,9 +388,15 @@ class _PluginLister_m:
         return result
 
 ##--|
+from doot.mixins.param_spec import ParamSpecMaker_m
+
+@Mixin(_TaskLister_m, _LocationLister_m, _LoggerLister_m)
+@Mixin(_FlagLister_m, _ActionLister_m, _PluginLister_m)
+class _Listings_m:
+    pass
+
 @Proto(Command_p)
-@Mixin(_TaskLister_m, _LocationLister_m, _LoggerLister_m, _FlagLister_m, _ActionLister_m, _PluginLister_m)
-class ListCmd(BaseCommand):
+class ListCmd(_Listings_m, BaseCommand):
     _name      = "list"
     _help  : ClassVar[tuple[str]]    = tuple([
         "A simple command to list all loaded task heads.",
@@ -425,6 +432,3 @@ class ListCmd(BaseCommand):
                 raise doot.errors.CommandError("Bad args passed in", dict(doot.args))
 
         self._print_text(result)
-
-    def shutdown(self):
-        pass

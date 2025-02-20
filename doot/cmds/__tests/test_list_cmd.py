@@ -39,7 +39,7 @@ doot._test_setup()
 # ##-- 1st party imports
 import doot.errors
 from doot._abstract import Command_p
-from doot.cmds.list_cmd import ListCmd
+from doot.cmds.list_cmd import ListCmd, _Listings_m
 from doot.structs import TaskSpec
 
 # ##-- end 1st party imports
@@ -152,15 +152,15 @@ class TestListCmd:
         obj = ListCmd()
         assert(isinstance(obj, Command_p))
 
-    @pytest.mark.xfail
     def test_param_specs(self):
         obj    = ListCmd()
         result = obj.param_specs
+        expect = ["tasks", "group-by", "dependencies", "internal",
+                  "locs", "loggers", "flags", "actions", "plugins" ]
         assert(isinstance(result, list))
         names = [x.name for x in result]
-        assert("dependencies" in names)
-        assert("pattern" in names)
-        assert("help" in names)
+        for x in expect:
+            assert(x in names)
 
     def test_call_bad_cli_args(self, mocker):
         guard = ChainGuard.read(missing_main_arg)
@@ -257,6 +257,7 @@ class TestListings:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
 
     def test_list_tasks_matches(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")

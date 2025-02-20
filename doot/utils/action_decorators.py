@@ -8,7 +8,6 @@ Action Decorators for metadata.
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -24,7 +23,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.decorators import MetaDecorator, DecoratorBase
+from jgdv.decorators import MetaDec, IdempotentDec
 
 # ##-- end 3rd party imports
 
@@ -55,7 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-
+from jgdv._abstract.protocols import SpecStruct_p
 # isort: on
 # ##-- end types
 
@@ -74,13 +73,13 @@ ANNOUNCER                                    = doot.constants.decorations.ANNOUN
 dry_run_active                               = doot.args.on_fail(False).cmd.args.dry_run()
 ##--|
 
-class _BaseMetaAction(DecoratorBase):
+class _BaseMetaAction(IdempotentDec):
 
-    def _wrap_fn(self, fn):
-        return self._wrap_method(fn)
+    def _wrap_fn_h(self, fn):
+        return self._wrap_method_h(fn)
 
-    def _wrap_class(self, cls):
-        cls.__call__ = self._wrap_method(cls.__call__)
+    def _wrap_class_h(self, cls):
+        cls.__call__ = self._wrap_method_h(cls.__call__)
         return cls
 
 class DryRunSwitch(_BaseMetaAction):
@@ -90,7 +89,7 @@ class DryRunSwitch(_BaseMetaAction):
         super().__init__("dry_run", mark="_dry_run_mark")
         self._override = override or dry_run_active
 
-    def _wrap_method(self, fn):
+    def _wrap_method_h(self, fn):
         override_active = self._override or dry_run_active
 
         def _can_disable(*args, **kwargs):
@@ -106,7 +105,7 @@ class GeneratesTasks(_BaseMetaAction):
     def __init__(self):
         super().__init__(GEN_TASKS, mark="_gen_data_mark")
 
-    def _wrap_fn(self, fn):
+    def _wrap_fn_h(self, fn):
 
         def _gen_task_wrapper(*args, **kwargs):
             match fn(*args, **kwargs):
@@ -124,13 +123,13 @@ class IOWriter(_BaseMetaAction):
       checks the path it'll write to isn't write protected
     """
 
-    def __init__(self):
+    def __init__(self, *, targets=None):
         super().__init__(IO_ACT, mark="_io_mark")
-        self._targets = [x for x in targets or ["to"]]
+        self._targets = targets or ["to"]
 
-    def _wrap_fn(self, fn):
+    def _wrap_fn_h(self, fn):
 
-        def _io_writer_wrapper(*args, **kargs):
+        def _io_writer_wrapper(*args, **kwargs):
             result = fn(*args, **kwargs)
             raise NotImplementedError()
 

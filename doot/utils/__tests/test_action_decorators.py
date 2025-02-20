@@ -35,7 +35,7 @@ class TestDryRunSwitch:
             return "blah"
 
         dec = decs.DryRunSwitch()
-        assert(dec._is_marked(simple))
+        assert(dec.is_marked(simple))
         assert(simple({}, {}) == "blah")
 
     def test_override_dry_run(self):
@@ -46,7 +46,7 @@ class TestDryRunSwitch:
         def simple(spec:dict, state:dict) -> str:
             return "blah"
 
-        assert(dec._is_marked(simple))
+        assert(dec.is_marked(simple))
         assert(simple({}, {}) is None)
 
     def test_wrap_class(self):
@@ -59,7 +59,7 @@ class TestDryRunSwitch:
 
         dec = decs.DryRunSwitch()
         # class is annotated
-        assert(dec._is_marked(SimpleClass))
+        assert(dec.is_marked(SimpleClass))
         # Instance is annotated
         assert(SimpleClass()({}, {}) == "blah")
 
@@ -73,7 +73,7 @@ class TestDryRunSwitch:
 
         dec = decs.DryRunSwitch()
         # class is annotated
-        assert(dec._is_marked(SimpleClass))
+        assert(dec.is_marked(SimpleClass))
         # Instance is annotated
         inst = SimpleClass()
         assert(inst({}, {}) is None)
@@ -87,7 +87,7 @@ class TestDryRunSwitch:
             return blah
 
         dec = decs.DryRunSwitch()
-        assert(dec._is_marked(simple))
+        assert(dec.is_marked(simple))
         assert(simple(None, {"blah": "bloo"}) is None)
 
     def test_wrapper_survives_method_key_decoration(self):
@@ -100,7 +100,7 @@ class TestDryRunSwitch:
                 """ a simple test func """
                 return blah
 
-        assert(decs.DryRunSwitch()._is_marked(SimpleAction))
+        assert(decs.DryRunSwitch().is_marked(SimpleAction))
         assert(SimpleAction()({}, {"blah": "bloo"}) is None)
 
     def test_setting_dryswitch_on_method(self):
@@ -113,7 +113,7 @@ class TestDryRunSwitch:
                 """ a simple test func """
                 return blah
 
-        assert(decs.DryRunSwitch()._is_marked(SimpleAction))
+        assert(decs.DryRunSwitch().is_marked(SimpleAction))
         assert(SimpleAction()({}, {"blah": "bloo"}) is None)
 
     def test_wrapping_overriden_by_subclassing(self):
@@ -129,8 +129,8 @@ class TestDryRunSwitch:
             def __call__(self, spec, state):
                 return "blah"
 
-        assert(decs.DryRunSwitch()._is_marked(SimpleSuper))
-        assert(not decs.DryRunSwitch()._is_marked(SimpleChild))
+        assert(decs.DryRunSwitch().is_marked(SimpleSuper))
+        assert(not decs.DryRunSwitch().is_marked(SimpleChild))
         assert(SimpleSuper()({}, {}) is None)
         assert(SimpleChild()({}, {}) == "blah")
 
@@ -145,7 +145,7 @@ class TestGenerateTasksDec:
         def simple(spec, state):
             return []
 
-        assert(decs.GeneratesTasks()._is_marked(simple))
+        assert(decs.GeneratesTasks().is_marked(simple))
         assert(isinstance(simple({},{}), list))
 
     def test_gens_tasks_raises_error(self):
@@ -154,7 +154,7 @@ class TestGenerateTasksDec:
         def simple(spec, state):
             return "blah"
 
-        assert(decs.GeneratesTasks()._is_marked(simple))
+        assert(decs.GeneratesTasks().is_marked(simple))
         with pytest.raises(doot.errors.ActionCallError):
             simple({},{})
 
@@ -174,7 +174,7 @@ class TestIOWriterMark:
         def simple(spec, state, to):
             return "blah"
 
-        assert(decs.IOWriter()._is_marked(simple))
+        assert(decs.IOWriter().is_marked(simple))
         # assert(DU.has_annotations(simple, decs.IO_ACT))
         with pytest.raises(doot.errors.TaskError):
             simple(None, {"to": "{blah}"})
