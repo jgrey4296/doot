@@ -39,7 +39,8 @@ doot._test_setup()
 # ##-- 1st party imports
 import doot.errors
 from doot._abstract import Command_p
-from doot.cmds.list_cmd import ListCmd, _Listings_m
+from doot.cmds import list_cmd as list_mod
+from doot.cmds.list_cmd import ListCmd
 from doot.structs import TaskSpec
 
 # ##-- end 1st party imports
@@ -160,7 +161,7 @@ class TestListCmd:
         assert(isinstance(result, list))
         names = [x.name for x in result]
         for x in expect:
-            assert(x in names)
+            assert(x in names), names
 
     def test_call_bad_cli_args(self, mocker):
         guard = ChainGuard.read(missing_main_arg)

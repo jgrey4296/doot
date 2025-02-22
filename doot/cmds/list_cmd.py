@@ -95,8 +95,7 @@ class _DagLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--",
-                             name="dag",
+            self.build_param(name="--dag",
                              _short="D",
                              type=bool,
                              default=False,
@@ -110,24 +109,21 @@ class _TaskLister_m:
 
     @property
     def param_specs(self) -> list:
-        return [
-            *super().param_specs,
-            self.build_param(prefix="--",
-                             name="tasks",
+        specs = [
+            self.build_param(name="-tasks",
+                             type=bool,
                              default=True,
                              desc="List all loaded tasks, by group"),
             # Task Listing Parameters
-                self.build_param(name="group-by",
-                                 type=str,
-                                 default="group",
-                                 desc="How to group listed tasks"),
-            self.build_param(prefix="+", name="dependencies",
-                             type=bool, default=False, desc="List task dependencies"),
-            self.build_param(prefix="+", name="internal",  _short="i",
-                             type=bool, default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
-            self.build_param(prefix="+", name="docstr", type=bool, default=False),
-            self.build_param(prefix="+", name="params", type=bool, default=False),
+            self.build_param(name="--group-by=",
+                             default="group",
+                             desc="How to group listed tasks"),
+            self.build_param(name="+dependencies", default=False, desc="List task dependencies"),
+            self.build_param(name="+internal",     default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
+            self.build_param(name="+docstr", default=False),
+            self.build_param(name="+params", default=False),
         ]
+        return [*super().param_specs, *specs]
 
     def _list_tasks(self, tasks) -> list[ListVal]:
         logging.info("---- Listing tasks")
@@ -245,9 +241,7 @@ class _LocationLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--",
-                             name="locs",
-                             _short="l",
+            self.build_param(name="--locs",
                              type=bool,
                              default=False,
                              desc="List all Loaded Locations"),
@@ -270,8 +264,7 @@ class _LoggerLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--",
-                             name="loggers",
+            self.build_param(name="--loggers",
                              type=bool,
                              default=False,
                              desc="List All Print Points"),
@@ -312,8 +305,7 @@ class _FlagLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--",
-                             name="flags",
+            self.build_param(name="--flags",
                              type=bool,
                              default=False,
                              desc="List Task Meta"),
@@ -334,8 +326,7 @@ class _ActionLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--",
-                             name="actions",
+            self.build_param(name="--actions",
                              type=bool,
                              default=False,
                              desc="List All Known Actions"),
@@ -361,8 +352,7 @@ class _PluginLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--",
-                             name="plugins",
+            self.build_param(name="--plugins",
                              type=bool,
                              default=False,
                              desc="List All Known Plugins"),
@@ -388,7 +378,6 @@ class _PluginLister_m:
         return result
 
 ##--|
-from doot.mixins.param_spec import ParamSpecMaker_m
 
 @Mixin(_TaskLister_m, _LocationLister_m, _LoggerLister_m)
 @Mixin(_FlagLister_m, _ActionLister_m, _PluginLister_m)
@@ -396,7 +385,8 @@ class _Listings_m:
     pass
 
 @Proto(Command_p)
-class ListCmd(_Listings_m, BaseCommand):
+@Mixin(_Listings_m, allow_inheritance=True)
+class ListCmd(BaseCommand):
     _name      = "list"
     _help  : ClassVar[tuple[str]]    = tuple([
         "A simple command to list all loaded task heads.",

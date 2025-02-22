@@ -27,6 +27,7 @@ import jgdv.cli
 import sh
 from jgdv import Maybe
 from jgdv.cli.param_spec import LiteralParam, ParamSpec
+from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
@@ -39,7 +40,6 @@ from doot.errors import InvalidConfigError, ParseError
 from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
-from doot.mixins.param_spec import ParamSpecMaker_m
 from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports

@@ -891,7 +891,7 @@ class _TrackerQueue_boltons:
 
 ##--|
 @Proto(TaskTracker_p, check=False)
-@Mixin(_TrackerStore, _TrackerNetwork, _TrackerQueue_boltons)
+@Mixin(_TrackerStore, _TrackerNetwork, _TrackerQueue_boltons, allow_inheritance=True)
 class BaseTracker:
     """ The public part of the standard tracker implementation """
     pass

@@ -24,13 +24,12 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Mixin, Proto
-
+from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 from doot._abstract import Command_p, Command_d
-from doot.mixins.param_spec import ParamSpecMaker_m
 
 # ##-- end 1st party imports
 

@@ -24,6 +24,7 @@ from weakref import ref
 # ##-- 3rd party imports
 from jgdv import Proto, Mixin
 from jgdv.structs.strang import CodeReference
+from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -32,7 +33,6 @@ import doot.errors
 from doot.actions.base_action import DootBaseAction
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e
 from doot.errors import TaskError, StructLoadError
-from doot.mixins.param_spec import ParamSpecMaker_m
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.task_name import TaskName
@@ -53,7 +53,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 from types import LambdaType
 
-from doot._abstract import Action_p, Job_p, PluginLoader_p, Task_p, Task_p
+from doot._abstract import Action_p, Job_p, PluginLoader_p, Task_p
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Lambda
@@ -79,7 +79,6 @@ TASK_ALISES                    = doot.aliases.task
 PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
-@Mixin(ParamSpecMaker_m)
 class _TaskProperties_m:
 
     @classmethod
@@ -163,7 +162,7 @@ class _TaskHelp_m:
 
 ##--|
 @Proto(Task_p, check=False)
-@Mixin(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
+@Mixin(ParamSpecMaker_m, _TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
 class DootTask(Task_d):
     """
       The simplest task, which can import action classes.

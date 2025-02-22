@@ -10,15 +10,18 @@ from __future__ import annotations
 
 # ##-- 3rd party imports
 from jgdv._abstract.protocols import (ActionGrouper_p, ArtifactStruct_p,
-                                      Buildable_p, CLIParamProvider_p,
+                                      Buildable_p,
                                       ExecutableTask, Factory_p,
-                                      InstantiableSpecification_p, Key_p,
-                                      Loader_p, Location_p, Nameable_p,
-                                      ParamStruct_p, ProtocolModelMeta,
+                                      InstantiableSpecification_p,
+                                      Loader_p, Nameable_p,
+                                      ProtocolModelMeta,
                                       SpecStruct_p, StubStruct_p,
                                       TomlStubber_p, UpToDate_p,
                                       Persistent_p,
                                       )
+from jgdv.structs.dkey import Key_p
+from jgdv.structs.locator import Location_p
+from jgdv.cli import CLIParamProvider_p, ParamStruct_p
 from jgdv.decorators import Decorator_p
 from pydantic import BaseModel
 from jgdv.structs.chainguard import ChainGuard
