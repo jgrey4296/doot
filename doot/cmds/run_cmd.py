@@ -86,7 +86,7 @@ class RunCmd(BaseCommand):
             self.build_param(name="interrupt", default=False),
             self.build_param(name="dry-run",   default=False),
             self.build_param(name="confirm",   default=False),
-            self.build_param(prefix=1, name="target", type=list[str], default=[]),
+            self.build_param(name="<1>target", type=list[str], default=[]),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):

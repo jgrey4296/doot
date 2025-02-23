@@ -99,11 +99,11 @@ class GraphCmd(BaseCommand):
     def param_specs(self) -> list[ParamSpec]:
         return [
             *super().param_specs,
-            self.build_param(name="dot",       _short="D",                        default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
-            self.build_param(name="internal",  _short="i",    type=bool,          default=False,                  desc="Include internal tasks (ie: prefixed with an underscore)"),
-            self.build_param(name="as-dot",                   type=bool,          default=True,                   desc="use dot for visualisation"),
-            self.build_param(name="draw", prefix="--",        type=bool,          default=False,                  desc="Draw the Graph in a UI with plt"),
-            self.build_param(name="dot-file", prefix="--",    type=str,           default=None,                   desc="a file name to write the dot to. uses key expansion"),
+            self.build_param(name="--dot",       _short="D", default=False, desc="Output a DOT compatible graph of tasks"),
+            self.build_param(name="--internal",  _short="i", type=bool,     default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
+            self.build_param(name="--as-dot",    type=bool,  default=True,  desc="use dot for visualisation"),
+            self.build_param(name="--draw",      type=bool,  default=False, desc="Draw the Graph in a UI with plt"),
+            self.build_param(name="--dot-file",  type=str,   default=None,  desc="a file name to write the dot to. uses key expansion"),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):

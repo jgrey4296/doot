@@ -87,7 +87,7 @@ class _StubDoot_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(prefix="--", name="config",  type=bool,    default=False,           desc="Stub a doot.toml"),
+                self.build_param(name="--config", type=bool, default=False, desc="Stub a doot.toml"),
                 ]
 
     def _stub_doot_toml(self) -> list[str]:
@@ -111,7 +111,7 @@ class _StubParam_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(prefix="--", name="param",   type=bool,    default=False,           desc="Generate a stub cli arg dict"),
+                self.build_param(name="--param", type=bool, default=False, desc="Generate a stub cli arg dict"),
                 ]
 
     def _stub_cli_param(self) -> list[str]:
@@ -133,7 +133,7 @@ class _StubAction_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(prefix="--", name="action",  type=bool,    default=False,           desc="Help Stub Actions"),
+                self.build_param(name="--action", type=bool, default=False, desc="Help Stub Actions"),
                 ]
 
     def _stub_action(self, plugins) -> list[str]:
@@ -178,11 +178,11 @@ class _StubTask_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(prefix="--", name="task",  type=bool),
-                self.build_param(name="out",  type=str,     default=""),
+                self.build_param(name="--task", type=bool),
+                self.build_param(name="-out",   type=str, default=""),
 
-                self.build_param(prefix=1, name="name", type=str, default=None,    desc="The Name of the new task"),
-                self.build_param(prefix=2, name="ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
+                self.build_param(name="<1>name", type=str, default=None,    desc="The Name of the new task"),
+                self.build_param(name="<2>ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
                 ]
 
     def _stub_task_toml(self, tasks, plugins) -> list[str]:
@@ -260,7 +260,7 @@ class _StubPrinter_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(prefix="--", name="printer", type=bool,    default=False,           desc="Generate a stub printer config"),
+                self.build_param(name="--printer", type=bool, default=False, desc="Generate a stub printer config"),
                 ]
 
     def _stub_printer(self) -> list[str]:
@@ -289,8 +289,8 @@ class StubCmd(BaseCommand):
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(prefix="--", name="strang",  type=bool,    default=False,           desc="Generate a stub strang/location expansion"),
-            self.build_param(name="suppress-header",  default=True, implicit=True),
+            self.build_param(name="--strang", type=bool, default=False, desc="Generate a stub strang/location expansion"),
+            self.build_param(name="--suppress-header",  default=True, implicit=True),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):

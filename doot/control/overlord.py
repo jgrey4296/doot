@@ -144,10 +144,10 @@ class DootOverlord:
     def param_specs(self) -> list[ParamSpec]:
         return [
             LiteralParam(name=self.prog_name),
-            self.build_param(name="version" , prefix="--", type=bool),
-            self.build_param(name="help"    , prefix="--", type=bool),
-            self.build_param(name="verbose" , prefix="--", type=bool),
-            self.build_param(name="debug",    prefix="--", type=bool),
+            self.build_param(name="--version" , type=bool),
+            self.build_param(name="--help"    , type=bool),
+            self.build_param(name="--verbose" , type=bool),
+            self.build_param(name="--debug",    type=bool),
         ]
 
     @property

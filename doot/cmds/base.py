@@ -103,8 +103,8 @@ class BaseCommand(Command_d):
         Provide parameter specs for parsing into doot.args.cmd
         """
         return [
-           self.build_param(name="help", default=False, prefix="--", implicit=True),
-           self.build_param(name="debug", default=False, prefix="--", implicit=True)
+           self.build_param(name="--help", default=False, implicit=True),
+           self.build_param(name="--debug", default=False, implicit=True)
            ]
 
     def _print_text(self, text:list[ListVal]) -> None:

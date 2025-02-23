@@ -397,7 +397,7 @@ class ListCmd(BaseCommand):
     def param_specs(self) -> list[ParamSpec]:
         params = [
             *super().param_specs,
-            self.build_param(prefix=0, name="pattern", type=str,  default="", desc="Filter the listing to only values passing this regex"),
+            self.build_param(name="<0>pattern", type=str,  default="", desc="Filter the listing to only values passing this regex"),
         ]
         return params
 

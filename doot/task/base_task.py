@@ -86,9 +86,9 @@ class _TaskProperties_m:
     def param_specs(cls) -> list[ParamSpec]:
         """  make class parameter specs  """
         return [
-            cls.build_param(name="help",    default=False,       implicit=True, prefix="--"),
-            cls.build_param(name="debug",   default=False,       implicit=True, prefix="--"),
-            cls.build_param(name="verbose", default=0, type=int, implicit=True, prefix="--"),
+            cls.build_param(name="--help",    default=False,       implicit=True),
+            cls.build_param(name="--debug",   default=False,       implicit=True),
+            cls.build_param(name="--verbose", default=0, type=int, implicit=True),
            ]
 
     @property
