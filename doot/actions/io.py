@@ -146,9 +146,9 @@ class CopyAction(PathManip_m):
 
         match _from:
             case str() | pl.Path():
-                expanded = [DKey(_from, fallback=_from, mark=DKey.Mark.PATH).expand(spec, state)]
+                expanded = [DKey(_from, fallback=pl.Path(_from), mark=DKey.Mark.PATH).expand(spec, state)]
             case list():
-                expanded = list(map(lambda x: DKey(x, fallback=x, mark=DKey.Mark.PATH).expand(spec, state), _from))
+                expanded = list(map(lambda x: DKey(x, fallback=pl.Path(x), mark=DKey.Mark.PATH).expand(spec, state), _from))
             case _:
                 raise doot.errors.ActionError("Unrecognized type for copy sources", _from)
 
@@ -166,6 +166,8 @@ class CopyAction(PathManip_m):
                 case pl.Path():
                     self._validate_source(arg)
                     shutil.copy2(arg, dest_loc)
+                case x:
+                    raise TypeError("Unexpected Type attempted to be copied")
 
     def _validate_source(self, source:pl.Path):
         match source:
