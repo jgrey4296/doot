@@ -27,6 +27,8 @@ from doot._structs import dkey
 from doot._abstract.protocols import Key_p
 from doot.structs import TaskName
 
+from doot.utils.testing_fixtures import wrap_locs
+
 # Vars:
 logging = logmod.root
 
@@ -58,18 +60,26 @@ class TestTaskNameDKey:
             case x:
                  assert(False), x
 
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
+
 class TestPathSingleKey:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
     def test_basic(self):
-        match DKey("test", force=dkey.PathSingleDKey):
-            case dkey.PathSingleDKey() as x:
+        match DKey("test", force=dkey.DootPathSingleDKey):
+            case dkey.DootPathSingleDKey() as x:
                 assert(x._mark is DKey.Mark.PATH)
                 assert(True)
             case x:
                  assert(False), x
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
 
 class TestPathMultiKey:
 
@@ -77,12 +87,16 @@ class TestPathMultiKey:
         assert(True is not False) # noqa: PLR0133
 
     def test_basic(self):
-        match DKey("test", force=dkey.PathMultiDKey):
-            case dkey.PathMultiDKey() as x:
+        match DKey("test", force=dkey.DootPathMultiDKey):
+            case dkey.DootPathMultiDKey() as x:
                 assert(x._mark is DKey.Mark.PATH)
                 assert(True)
             case x:
                  assert(False), x
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
 
 class TestDKeyBasicConstruction:
 
@@ -93,13 +107,13 @@ class TestDKeyBasicConstruction:
         """ Implicit keys can be marked with conversion params to guide their key type """
         key = dkey.DKey("simple!p", implicit=True)
         assert(key._mark is dkey.DKey.Mark.PATH)
-        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(isinstance(key, dkey.DootPathSingleDKey))
 
     def test_explicit_path_key(self):
         """ explicit keys can also mark their type """
         key = dkey.DKey("{simple!p}", implicit=False)
         assert(key._mark is dkey.DKey.Mark.PATH)
-        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(isinstance(key, dkey.DootPathSingleDKey))
 
     def test_re_mark_key(self):
         """ explicit keys can also mark their type """
@@ -107,7 +121,7 @@ class TestDKeyBasicConstruction:
         assert(key._mark is dkey.DKey.Mark.MULTI)
         assert(isinstance(key, dkey.MultiDKey))
         re_marked = dkey.DKey(key, mark=dkey.DKey.Mark.PATH)
-        assert(isinstance(re_marked, dkey.PathMultiDKey))
+        assert(isinstance(re_marked, dkey.DootPathMultiDKey))
 
     def test_multi_key_with_path_subkey(self):
         """ typed keys within multikeys are allowed,
@@ -116,8 +130,8 @@ class TestDKeyBasicConstruction:
         key = dkey.DKey("text. {simple!p}. text.")
         key.keys()
         assert(isinstance(key, dkey.MultiDKey))
-        assert(not isinstance(key, dkey.PathMultiDKey))
-        assert(isinstance(key.keys()[0], dkey.PathSingleDKey))
+        assert(not isinstance(key, dkey.DootPathMultiDKey))
+        assert(isinstance(key.keys()[0], dkey.DootPathSingleDKey))
 
     def test_multi_key_of_path_subkey(self):
         """ typed keys within multikeys are allowed,
@@ -125,8 +139,8 @@ class TestDKeyBasicConstruction:
         """
         key = dkey.DKey("-- {test!p}", fallback="{test!p}")
         assert(isinstance(key, dkey.MultiDKey))
-        assert(not isinstance(key, dkey.PathMultiDKey))
-        assert(isinstance(key.keys()[0], dkey.PathSingleDKey))
+        assert(not isinstance(key, dkey.DootPathMultiDKey))
+        assert(isinstance(key.keys()[0], dkey.DootPathSingleDKey))
 
     def test_multi_keys_with_multiple_subkeys(self):
         """ typed keys within multikeys are allowed,
@@ -134,14 +148,14 @@ class TestDKeyBasicConstruction:
         """
         key = dkey.DKey("text. {simple!p}. {text}.", implicit=False)
         assert(isinstance(key, dkey.MultiDKey))
-        assert(not isinstance(key, dkey.PathMultiDKey))
-        assert(isinstance(key.keys()[0], dkey.PathSingleDKey))
+        assert(not isinstance(key, dkey.DootPathMultiDKey))
+        assert(isinstance(key.keys()[0], dkey.DootPathSingleDKey))
         assert(len(key.keys()) == 2)
 
     def test_path_keys_from_mark(self):
         """ path keys can be made from an explicit mark """
         key = dkey.DKey("{simple}", implicit=False, mark=dkey.DKey.Mark.PATH)
-        assert(isinstance(key, dkey.PathMultiDKey))
+        assert(isinstance(key, dkey.DootPathMultiDKey))
         assert(isinstance(key, dkey.MultiDKey))
 
 class TestDKeyWithParameters:
@@ -149,7 +163,7 @@ class TestDKeyWithParameters:
 
     def test_conv_params_path_implicit(self):
         obj = dkey.DKey("aval!p", implicit=True)
-        assert(isinstance(obj, dkey.PathSingleDKey))
+        assert(isinstance(obj, dkey.DootPathSingleDKey))
 
     def test_conv_params_multi_path(self):
         obj = dkey.DKey("{aval!p}/{blah}", mark=dkey.DKey.Mark.PATH)
@@ -172,7 +186,7 @@ class TestDKeyExpansion:
         assert("raise" in wrap_locs)
         key = dkey.DKey("{raise!p}")
         target = wrap_locs.norm(pl.Path("a/b/blah.py"))
-        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(isinstance(key, dkey.DootPathSingleDKey))
         match key.expand():
             case pl.Path() as x if x == target:
                 assert(True)
@@ -245,7 +259,7 @@ class TestDKeyMultikeyExpansion:
         mk          = dkey.DKey("--blah={test!p}/{test}", mark=dkey.DKey.Mark.MULTI)
         transformed = dkey.DKey("--blah={test!p}/{test2}", mark=dkey.DKey.Mark.MULTI)
         assert(isinstance(mk, dkey.MultiDKey))
-        assert(not isinstance(mk, dkey.PathMultiDKey))
+        assert(not isinstance(mk, dkey.DootPathMultiDKey))
         target      = "--blah=%s" % doot.locs["aweg/aweg"]
         assert(mk._anon == "--blah={}/{}")
         result = mk.expand({"test": "aweg"})
@@ -260,7 +274,7 @@ class TestDKeyMultikeyExpansion:
         state    = {name : "test"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
-        assert(not isinstance(key, dkey.PathMultiDKey))
+        assert(not isinstance(key, dkey.DootPathMultiDKey))
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
@@ -272,7 +286,7 @@ class TestDKeyMultikeyExpansion:
         state    = {name : "test"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
-        assert(not isinstance(key, dkey.PathMultiDKey))
+        assert(not isinstance(key, dkey.DootPathMultiDKey))
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
@@ -284,7 +298,7 @@ class TestDKeyMultikeyExpansion:
         state    = {name : "test", "other": "something"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
-        assert(not isinstance(key, dkey.PathMultiDKey))
+        assert(not isinstance(key, dkey.DootPathMultiDKey))
         assert(exp == target)
 
 class TestDKeyPathKeys:
@@ -297,7 +311,7 @@ class TestDKeyPathKeys:
         state = {name :"y"}
         exp   = key.expand(state)
         assert(key == name)
-        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(isinstance(key, dkey.DootPathSingleDKey))
         assert(isinstance(exp, pl.Path))
         assert(exp == doot.locs["y"])
 
@@ -308,7 +322,7 @@ class TestDKeyPathKeys:
         key   = dkey.DKey(path_marked, implicit=False)
         state = {name :"y"}
         exp   = key.expand(state)
-        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(isinstance(key, dkey.DootPathSingleDKey))
         assert(isinstance(exp, pl.Path))
         assert(exp == doot.locs["y"])
 
@@ -319,7 +333,7 @@ class TestDKeyPathKeys:
         path_marked = "{%s!p}" % name
         key   = dkey.DKey(path_marked, implicit=False)
         exp   = key.expand(state)
-        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(isinstance(key, dkey.DootPathSingleDKey))
         assert(isinstance(exp, pl.Path))
         assert(exp == doot.locs["y"])
 
@@ -332,7 +346,7 @@ class TestDKeyPathKeys:
         state = {name :"x!p", "x": "y"}
         match key.expand(state, limit=1):
             case str() as x:
-                # assert(isinstance(x, dkey.PathSingleDKey))
+                # assert(isinstance(x, dkey.DootPathSingleDKey))
                 assert(True)
             case x:
                  assert(False), x
@@ -342,7 +356,6 @@ class TestDKeyPathKeys:
                 assert(x == str(doot.locs["y"]))
             case x:
                  assert(False), x
-
 
     @pytest.mark.parametrize("name", ["a_", "b_"])
     def test_redirect_with_conv_param(self, name):
@@ -422,15 +435,13 @@ class TestDKeyPathKeys:
             case x:
                 assert(False), x
 
-
-
     def test_multi_layer_path_key(self, wrap_locs):
         wrap_locs.update({"data_drive": "dir::>/media/john/data", "pdf_source": "dir::>{data_drive}/library/pdfs"})
         state  = {}
         obj    = dkey.DKey("pdf_source!p", implicit=True)
         target = pl.Path("/media/john/data/library/pdfs")
         assert(isinstance(obj, dkey.DKey))
-        assert(isinstance(obj, dkey.PathSingleDKey))
+        assert(isinstance(obj, dkey.DootPathSingleDKey))
         match obj.expand():
             case pl.Path() as result:
                 assert(result == target)

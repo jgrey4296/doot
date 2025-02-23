@@ -28,7 +28,7 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed as DKeyed_Base
-from jgdv.structs.dkey._expander import ExpInst
+from jgdv.structs.dkey import ExpInst_d
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -77,11 +77,11 @@ class TaskNameDKey(SingleDKey['taskname'],   conv="t"):
         self._expansion_type  = TaskName
         self._typecheck       = TaskName
 
-class PathSingleDKey(DKey[DKeyMark_e.PATH]):
+class DootPathSingleDKey(DKey[DKeyMark_e.PATH]):
     """ for paths that are just a single key of a larger string
     eg: `temp`
     """
-    _extra_kwargs : ClassVar[set[str]] = set(["relative"])
+    _extra_kwargs : ClassVar[set[str]] = {"relative"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -92,15 +92,15 @@ class PathSingleDKey(DKey[DKeyMark_e.PATH]):
     def exp_extra_sources(self) -> list:
         return [doot.locs.Current]
 
-    def exp_final_hook(self, val, opts) -> Maybe[DKey.ExpInst]:
+    def exp_final_hook(self, val, opts) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
         match val:
-            case DKey.ExpInst(val=pl.Path() as x) if relative and x.is_absolute():
+            case ExpInst_d(val=pl.Path() as x) if relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case DKey.ExpInst(val=pl.Path()) as x if relative:
+            case ExpInst_d(val=pl.Path()) as x if relative:
                 x.literal = True
                 return x
-            case DKey.ExpInst(val=pl.Path() as x) as v:
+            case ExpInst_d(val=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
                 v.val = doot.locs.Current.normalize(x)
                 v.literal = True
@@ -108,12 +108,12 @@ class PathSingleDKey(DKey[DKeyMark_e.PATH]):
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
-class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
+class DootPathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
     """
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`
     """
-    _extra_kwargs : ClassVar[set[str]] = set(["relative"])
+    _extra_kwargs : ClassVar[set[str]] = {"relative"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -124,14 +124,14 @@ class PathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
     def exp_extra_sources(self) -> list:
         return [doot.locs.Current]
 
-    def exp_final_hook(self, val, opts) -> Maybe[DKey.ExpInst]:
+    def exp_final_hook(self, val, opts) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
         match val:
-            case DKey.ExpInst(val=pl.Path() as x) if relative and x.is_absolute():
+            case ExpInst_d(val=pl.Path() as x) if relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case DKey.ExpInst(val=pl.Path()) as x if relative:
+            case ExpInst_d(val=pl.Path()) as x if relative:
                 return x
-            case DKey.ExpInst(val=pl.Path() as x) as v:
+            case ExpInst_d(val=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
                 v.val = doot.locs.Current.normalize(x)
                 return v
