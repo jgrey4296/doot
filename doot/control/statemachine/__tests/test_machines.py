@@ -46,3 +46,8 @@ class TestTaskStateMachine:
         assert(model.current_state.value is TaskStatus_e.WAIT)
         model.send("progress")
         assert(model.current_state.value is TaskStatus_e.READY)
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

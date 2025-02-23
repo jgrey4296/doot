@@ -36,3 +36,7 @@ class TestPluginLoader:
 
         for key in (doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES + doot.constants.entrypoints.BACKEND_PLUGIN_TYPES):
             assert(key in loaded), f"{key} missing"
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

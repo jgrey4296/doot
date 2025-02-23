@@ -62,3 +62,8 @@ class TestCmdLoader(unittest.TestCase):
         ]}))
         with pytest.raises(doot.errors.PluginLoadError):
             basic.load()
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

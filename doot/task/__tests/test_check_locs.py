@@ -49,3 +49,8 @@ class TestCheckLocsTask:
     def test_initial(self, wrap_locs):
         obj = CheckLocsTask()
         assert(isinstance(obj, doot._abstract.Task_p))
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

@@ -25,17 +25,6 @@ import doot.structs
 from doot.task.base_task import DootTask
 from doot.actions.base_action import DootBaseAction
 
-##-- pytest reminder
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
-##-- end pytest reminder
 
 class TestBaseAction:
 
@@ -52,3 +41,8 @@ class TestBaseAction:
         result = action(spec, state)
         assert(result['count'] == 1)
         assert("Base Action Called: 0" in caplog.messages)
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

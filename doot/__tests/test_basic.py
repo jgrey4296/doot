@@ -37,3 +37,8 @@ class TestBasicDoot:
     def test_overlord(self, mocker):
         mocker.patch
         from doot.control.overlord import DootOverlord
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

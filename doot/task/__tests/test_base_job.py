@@ -53,3 +53,8 @@ class TestBaseJob:
         stub_obj = TaskStub(ctor=DootJob)
         stub = DootJob.stub_class(stub_obj)
         assert(isinstance(stub, TaskStub))
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

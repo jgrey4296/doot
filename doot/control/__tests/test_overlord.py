@@ -71,3 +71,8 @@ class TestOverlord:
         overlord.setup()
         assert(bool(overlord.tasks))
         assert(len(overlord.tasks) == 2), len(overlord.tasks)
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

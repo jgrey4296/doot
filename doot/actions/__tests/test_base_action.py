@@ -40,3 +40,8 @@ class TestBaseAction:
         result = action(spec, state)
         assert(result['count'] == 1)
         assert("Base Action Called: 0" in caplog.messages)
+
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
