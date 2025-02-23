@@ -83,7 +83,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
             case None:
                 return cls()
             case _:
-                return cls.model_validate(data)
+                return cls(**data)
 
     @model_validator(mode="after")
     def initial_values(self):

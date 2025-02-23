@@ -113,10 +113,10 @@ class InjectSpec(BaseModel):
                 raise doot.errors.InjectionError("Unknown injection base type", data)
 
         try:
-            result             = cls.model_validate(data)
+            result             = cls(**data)
         except ValidationError as err:
             logging.detail("Building Injection Failed: %s : %s", data, err)
-            return None
+            raise
 
         if not bool(result):
             return None

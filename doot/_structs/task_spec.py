@@ -327,7 +327,7 @@ class _SpecUtils_m:
             case ChainGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
             case ChainGuard() | dict():
-                return cls.model_validate(data)
+                return cls(**data)
             case TaskName():
                 return cls(name=data)
             case str():
