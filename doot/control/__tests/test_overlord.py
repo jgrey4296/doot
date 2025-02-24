@@ -2,77 +2,73 @@
 """
 
 """
-##-- imports
+# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202
+
+# Imports
 from __future__ import annotations
 
+# ##-- stdlib imports
 import logging as logmod
-import unittest
-import warnings
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
-##-- end imports
-logging = logmod.root
+import warnings
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
 import pytest
-import sys
-import doot
-doot._test_setup()
+# ##-- end 3rd party imports
 
 from doot.control.overlord import DootOverlord
 
-class TestOverlord:
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
-    def test_initial(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.DootTaskLoader")
-        overlord = DootOverlord()
-        assert(bool(overlord))
-        assert(overlord.args == ["doot"])
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    def test_plugins_loaded(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.DootTaskLoader")
-        overlord = DootOverlord()
-        overlord._load_plugins()
-        assert(bool(overlord.plugins))
-        assert(all(x in overlord.plugins for x in doot.aliases.keys()))
+##--|
 
-    def test_cmds_loaded(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.DootTaskLoader")
-        overlord = DootOverlord()
-        overlord._load_plugins()
-        overlord._load_commands()
-        assert(bool(overlord.cmds))
-        assert(len(overlord.cmds) >= len(doot.aliases.command))
+# isort: on
+# ##-- end types
 
-    def test_tasks_loaded(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.task_sources")
-        overlord = DootOverlord(
-            extra_config={"tasks" : {"basic" : [{"name": "simple"}]}}
-        )
-        overlord._load_plugins()
-        overlord._load_commands()
-        overlord._load_tasks(overlord._extra_config)
-        assert(bool(overlord.tasks))
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
 
-    def test_tasks_multi(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.task_sources")
-        mocker.patch("doot._configs_loaded_from")
-        overlord = DootOverlord(extra_config={
-            "tasks" : {"basic": [
-                {"name": "simple"},
-                {"name": "another"},
-            ]}})
-        overlord.setup()
-        assert(bool(overlord.tasks))
-        assert(len(overlord.tasks) == 2), len(overlord.tasks)
+# Vars:
 
+# Body:
 
-    @pytest.mark.skip
-    def test_todo(self):
-        pass
+class TestInitialiser:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        match DootInitialiser():
+            case DootInitialiser():
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_setup(self):
+        match DootInitialiser():
+            case DootInitialiser():
+                assert(True)
+            case x:
+                 assert(False), x

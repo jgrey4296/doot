@@ -5,7 +5,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import NewType, Any, Protocol, runtime_checkable
 
-
 ##-- type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -13,40 +12,36 @@ if TYPE_CHECKING:
     from jgdv import Maybe
     from jgdv.structs.chainguard import ChainGuard
     import pathlib as pl
+    type Logger = logmod.Logger
 ##-- end type checking
 
 @runtime_checkable
 class Overlord_p(Protocol):
     """
-    Main entrypoint for doot
+    protocol for the doot accesspoint,
+    used for setting up and using Doot programmatically
     """
 
-    @staticmethod
-    def print_version() -> str:
-        raise NotImplementedError()
+    def setup(self, *, targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]) -> None:
+        pass
 
-    @abstractmethod
-    def __init__(self, *, loaders:Maybe[dict[str, Loaders_p]]=None,
-                 configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
-                 extra_config:Maybe[dict[str,Any]|ChainGuard]=None,
-                 args:Maybe[list[str]]=None):
-        raise NotImplementedError()
+    def subprinter(self, name:Maybe[str]=None, *, prefix=None) -> Logger:
+        pass
 
-    def __call__(self, cmd:Maybe[str]=None) -> int:
-        """entry point for all commands
+@runtime_checkable
+class Main_p(Protocol):
+    """
+    protocol for doot as a main program
+    """
 
-        :param all_args: list of string arguments from command line
+    def __init__(self, *, args:Maybe[list]=None) -> None:
+        pass
 
-        return codes:
-          0: tasks executed successfully
-          1: one or more tasks failed
-          2: error while executing a task
-          3: error before task execution starts,
-             in this case the Reporter is not used.
-             So be aware if you expect a different formatting (like JSON)
-             from the Reporter.
-        """
-        raise NotImplementedError()
+    def main(self) -> None:
+        pass
+
+    def run_cmd(self, cmd:Maybe[str]=None) -> int:
+        pass
 
     def shutdown(self) -> None:
         raise NotImplementedError()

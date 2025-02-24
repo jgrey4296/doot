@@ -140,7 +140,7 @@ class DootTaskLoader:
     def load(self) -> ChainGuard[TaskSpec]:
         with TimeCtx(logger=logging, entry_msg="---- Loading Tasks",  exit_msg="---- Task Loading Time"):
             logging.debug("Loading Tasks from Config files")
-            for source in doot._configs_loaded_from:
+            for source in doot.configs_loaded_from:
                 try:
                     source_data : ChainGuard = ChainGuard.load(source)
                     task_specs = source_data.on_fail({}).tasks()
@@ -203,8 +203,7 @@ class DootTaskLoader:
                 if "startup" not in data:
                     self.failures[task_file].append("Version mismatch")
             else:
-                for update in data.on_fail({}).state():
-                    doot.update_global_task_state(update, source=task_file)
+                doot.update_global_task_state(data, source=task_file)
 
                 raw_specs = []
                 for group, val in data.on_fail({}).tasks().items():

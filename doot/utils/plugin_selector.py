@@ -60,9 +60,12 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def plugin_selector(plugins:ChainGuard, *, target:str="default", fallback:Maybe[type]=None) -> Maybe[type]:
-    """ Selects and loads plugins from a chainguard , based on a target,
-    with an available fallback constructor """
+def plugin_selector(plugins:ChainGuard, *,
+                    target:str="default", fallback:Maybe[type]=None) -> Maybe[type]:
+    """ Selects and loads plugins from a chainguard ,
+    based on a target,
+    with an available fallback constructor
+    """
     logging.debug("Selecting plugin for target: %s", target)
 
     match target:
@@ -90,6 +93,8 @@ def plugin_selector(plugins:ChainGuard, *, target:str="default", fallback:Maybe[
             matching = [x for x in loaders if x.name == target]
             if bool(matching):
                 return matching[0].load()
+            else:
+                raise ValueError("No matching plugin for target", target)
         case type():
             return x
         case _:

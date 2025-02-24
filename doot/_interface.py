@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""
+
+
+"""
+# ruff: noqa:
+
+# Imports:
+from __future__ import annotations
+
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
+import logging as logmod
+import re
+import time
+import types
+import collections
+import contextlib
+import hashlib
+from copy import deepcopy
+from uuid import UUID, uuid1
+from weakref import ref
+import atexit # for @atexit.register
+import faulthandler
+from importlib.resources import files
+# ##-- end stdlib imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+from jgdv.structs.chainguard import ChainGuard
+
+if TYPE_CHECKING:
+    import pathlib as pl
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from jgdv import Maybe, VerStr
+
+##--|
+
+# isort: on
+# ##-- end types
+
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
+# Vars:
+__version__          : Final[VerStr]         = "0.13.0"
+
+##-- data
+data_path      = files("doot.__data")
+constants_file = data_path.joinpath("constants.toml")
+aliases_file   = data_path.joinpath("aliases.toml")
+template_path   = files("doot.__templates")
+##-- end data
+
+# Can't be in doot.constants, because that isn't loaded yet
+CONSTANT_PREFIX       : Final[str]         = "doot.constants"
+ALIAS_PREFIX          : Final[str]         = "doot.aliases"
+TOOL_PREFIX           : Final[str]         = "tool.doot"
+DEFAULT_FILENAMES     : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
+
+fail_prefix           : Final[str]         = "!!!"
+GLOBAL_STATE_KEY      : Final[str]         = "global"
+LASTERR               : Final[str]         = "doot.lasterror"
+
+##--|
+class ExitCodes(enum.Enum):
+    INITIAL         = 99
+    SUCCESS         = 0
+    NOT_SETUP       = enum.auto()
+    EARLY           = enum.auto()
+    MISSING_CONFIG  = enum.auto()
+    BAD_CONFIG      = enum.auto()
+    BAD_CMD         = enum.auto()
+    TASK_FAIL       = enum.auto()
+    BAD_STATE       = enum.auto()
+    BAD_STRUCT      = enum.auto()
+    TRACKING_FAIL   = enum.auto()
+    BACKEND_FAIL    = enum.auto()
+    FRONTEND_FAIL   = enum.auto()
+    DOOT_FAIL       = enum.auto()
+    NOT_IMPLEMENTED = enum.auto()
+    IMPORT_FAIL     = enum.auto()
+    PYTHON_FAIL     = enum.auto()
