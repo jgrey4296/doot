@@ -38,7 +38,7 @@ from jgdv.structs.strang import Strang
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.enums import TaskMeta_e
 from doot._abstract import Command_p
 

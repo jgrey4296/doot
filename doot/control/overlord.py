@@ -86,6 +86,19 @@ logging = logmod.getLogger(__name__)
 
 class Startup_m:
 
+    def null_setup(self) -> None:
+        """
+        Doesn't load anything but constants,
+        Used for initialising Doot when testing.
+        Doesn't set the is_setup flag.
+        """
+        if self.is_setup:
+            return
+
+        self._setup_printers()
+        self._load_constants()
+        self._load_aliases()
+
     def setup(self, *, targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=API.TOOL_PREFIX) -> None: # noqa: PLR0912
         """
         The core requirement to call before any other doot code is run.
@@ -96,6 +109,24 @@ class Startup_m:
 
         targets=False is for loading nothing, for testing
         """
+        if self.is_setup:
+            self.overlord_l("doot.setup called even though doot is already set up")
+
+        self._load_config(targets, prefix)
+        self._setup_logging()
+        self._load_constants()
+        self._load_aliases()
+        self._load_locations()
+        self._update_import_path()
+        self._set_command_aliases()
+
+        # add global task state
+        self.update_global_task_state(self.config, source="doot.toml")
+        DKey.add_sources(self.global_task_state)
+
+        self.is_setup = True
+
+    def _load_config(self, targets:Maybe[list[pl.Path]], prefix:Maybe[str]):
         match targets:
             case False:
                 targets :list[pl.Path] = []
@@ -107,15 +138,13 @@ class Startup_m:
                 targets : list[pl.Path] = [pl.Path(x) for x in self.constants.paths.DEFAULT_LOAD_TARGETS]
 
         logging.log(0, "Loading Doot Config, version: %s targets: %s", API.__version__, targets)
-        if self.is_setup:
-            logging.warning("doot.setup called even though doot is already set up")
 
         # Load config Files
         match [x for x in targets if x.exists()]:
             case [] if bool(targets):
                 raise doot.errors.MissingConfigError("No Doot data found")
             case []:
-                 existing_targets = []
+                existing_targets = []
             case [*xs]:
                 existing_targets = xs
             case x:
@@ -134,19 +163,6 @@ class Startup_m:
             if bool(existing_targets):
                 self.verify_config_version(self.config.on_fail(None).startup.doot_version(), source=targets)
 
-        ##--|
-        # Config Loaded, use it
-        self._setup_logging()
-        self._load_constants()
-        self._load_aliases()
-        self._load_locations()
-        self._update_import_path()
-        self._set_command_aliases()
-
-        # add global task state
-        self.update_global_task_state(self.config, source="doot.toml")
-        DKey.add_sources(self.global_task_state)
-
     def _load_constants(self) -> None:
         """ Load the override constants if the loaded base config specifies one
         Modifies the global `doot.constants`
@@ -163,10 +179,9 @@ class Startup_m:
     def _load_aliases(self, *, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None:
         """ Load plugin aliases.
         if given the kwarg `data`, will *append* to the aliases
-        Modifies the global `doot.aliases`
         """
         if not bool(self.aliases):
-            match self.config.on_failj(API.aliases_file).startup.aliases_file(wrapper=pl.Path):
+            match self.config.on_fail(API.aliases_file).startup.aliases_file(wrapper=pl.Path):
                 case _ if bool(self.aliases) and not force:
                     base_data = {}
                     pass
@@ -205,10 +220,8 @@ class Startup_m:
 
     def _load_locations(self) -> None:
         """ Load and update the JGDVLocator db
-        Modifies the global `doot.locs`
         """
         self.setup_l.trace("Loading Locations")
-        self.locs   = JGDVLocator(pl.Path.cwd())
         # Load Initial locations
         for loc in self.config.on_fail([]).locations():
             try:
@@ -251,18 +264,24 @@ class Logging_m:
         """ Get a sub-printer at position `name`.
         Names are registered using JGDV.logging.LogConfig
         """
+        if not self.is_setup:
+            return logmod.getLogger(name)
+
         try:
-            return self.log_config.self.subprinter(name, prefix=prefix)
+            return self.log_config.subprinter(name, prefix=prefix)
         except ValueError as err:
             raise doot.errors.ConfigError("Invalid Subprinter", name) from err
 
     def _setup_logging(self) -> None:
         self.log_config.setup(self.config)
+        self._setup_printers()
+
+    def _setup_printers(self):
         self.overlord_l      = self.subprinter("overlord")
         self.header_l        = self.subprinter("header")
         self.setup_l         = self.subprinter("setup")
         self.help_l          = self.subprinter("help")
-        self.self.shutdown_l = self.subprinter("shutdown")
+        self.shutdown_l      = self.subprinter("shutdown")
         self.fail_l          = self.subprinter("fail", prefix=API.fail_prefix)
 
 class WorkflowArgs_m:
@@ -272,9 +291,21 @@ class WorkflowArgs_m:
 
 ##--|
 
+class OverlordMeta(type):
+
+    _inst = None
+
+    def __call__(cls, *args, **kwargs):
+        if not OverlordMeta._inst:
+            logging.info("Creating Overlord")
+            OverlordMeta._inst = object.__new__(cls)
+            OverlordMeta._inst.__init__(*args, **kwargs)
+
+        return OverlordMeta._inst
+
 @Proto(Overlord_p)
 @Mixin(Startup_m, Logging_m)
-class DootOverlord:
+class DootOverlord(metaclass=OverlordMeta):
     """
     TODO make singleton
     The main control point of Doot
@@ -286,16 +317,19 @@ class DootOverlord:
     """
 
     def __init__(self):
+        logging.info("Creating Overlord")
         self.config                                   = ChainGuard()
         self.constants                                = ChainGuard.load(API.constants_file).remove_prefix(API.CONSTANT_PREFIX)
         self.aliases                                  = ChainGuard()
         self.cmd_aliases                              = ChainGuard()
         self.args                                     = ChainGuard() # parsed arg access
         self.log_config                               = JGDVLogConfig(self.constants.on_fail(None).printer.PRINTER_CHILDREN())
+        self.locs                : Maybe[JGDVLocator] = JGDVLocator(pl.Path.cwd())
         self.configs_loaded_from : list[str]          = []
         self.global_task_state   : dict               = {}
-        self.locs                : Maybe[JGDVLocator] = None
         self.is_setup                                 = False
+
+        self.null_setup()
 
     def verify_config_version(self, ver:Maybe[str], source:str|pl.Path) -> None:
         "Ensure the config file is compatible with doot"
@@ -336,10 +370,3 @@ class DootOverlord:
                     self.global_task_state[x] = y
                 elif self.global_task_state[x] != y:
                     raise doot.errors.GlobalStateMismatch(x, y, source)
-
-    def _null_setup(self) -> None:
-        """
-        Doesn't load anything but constants,
-        Used for initialising Doot when testing.
-        """
-        self.setup(False)  # noqa: FBT003

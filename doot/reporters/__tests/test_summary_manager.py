@@ -14,7 +14,6 @@ import warnings
 import pytest
 
 import doot
-doot._test_setup()
 
 from doot.reporters.summary_manager import DootReportManagerSummary
 from doot.enums import Report_f

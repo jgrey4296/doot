@@ -26,7 +26,6 @@ from jgdv.structs.dkey import DKey
 
 # ##-- 1st party imports
 import doot
-doot._test_setup()
 import doot.errors
 from doot._structs.inject_spec import InjectSpec
 

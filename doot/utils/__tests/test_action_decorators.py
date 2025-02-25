@@ -15,7 +15,6 @@ import warnings
 
 import pytest
 import doot
-doot._test_setup()
 from doot.structs import DKey, DKeyed
 from doot.utils.testing_fixtures import wrap_locs
 from doot.utils import action_decorators as decs

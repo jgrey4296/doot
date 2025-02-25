@@ -20,7 +20,7 @@ from jgdv import Proto
 
 # ##-- 1st party imports
 import doot
-from doot.task.base_job import DootJob
+from doot.task.core.job import DootJob
 
 # ##-- end 1st party imports
 

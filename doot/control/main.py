@@ -39,17 +39,16 @@ from jgdv import JGDVError, Mixin, Proto
 from jgdv.cli.param_spec import LiteralParam, ParamSpec
 from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
 from jgdv.structs.chainguard import ChainGuard
-
+from jgdv.util.plugins.selector import plugin_selector
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot._interface as API  # noqa: N812
 import doot.errors
-from doot.loaders.cmd_loader import DootCommandLoader
-from doot.loaders.plugin_loader import DootPluginLoader
-from doot.loaders.task_loader import DootTaskLoader
-from doot.utils.plugin_selector import plugin_selector
+from doot.loaders.cmd import DootCommandLoader
+from doot.loaders.plugin import DootPluginLoader
+from doot.loaders.task import DootTaskLoader
 
 # ##-- end 1st party imports
 
@@ -64,7 +63,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from doot._abstract.loader import Loader_p
-from doot._abstract.control import Main_p, Command_p
+from doot._abstract import Command_p, Main_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -300,7 +299,7 @@ class CmdRun_m:
             case x:
                 raise TypeError(type(x))
 
-    def _run_cmd(self, cmd:Maybe[str]=None) -> None:
+    def run_cmd(self, cmd:Maybe[str]=None) -> None:
         """
         The method run to trigger a doot workflow
 
@@ -382,7 +381,7 @@ class Shutdown_m:
 class ExitHandlers_m:
 
     def _early_exit(self, err:Exception) -> int:  # noqa: ARG002
-        self.self.shutdown_l.warning("Early Exit Triggered")
+        self.shutdown_l.warning("Early Exit Triggered")
         return API.ExitCodes.EARLY
 
     def _missing_config_exit(self, err:Exception) -> int:  # noqa: ARG002

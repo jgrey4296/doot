@@ -15,7 +15,6 @@ import pytest
 logging = logmod.root
 
 import doot
-doot._test_setup()
 from doot._structs.action_spec import ActionSpec
 from jgdv.structs.strang import CodeReference
 

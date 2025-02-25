@@ -25,7 +25,6 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- 1st party imports
 import doot
-doot._test_setup()
 import doot.errors
 import doot.structs
 from doot.control.statemachine.task_registry import TaskRegistry

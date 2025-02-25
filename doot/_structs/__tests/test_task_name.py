@@ -16,10 +16,9 @@ import pytest
 logging = logmod.root
 
 import doot
-doot._test_setup()
 
 from doot._structs.task_name import TaskName
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 class TestTaskName:
 

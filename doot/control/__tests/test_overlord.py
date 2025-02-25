@@ -17,6 +17,7 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
+import doot._interface as API
 from doot.control.overlord import DootOverlord
 
 # ##-- types
@@ -54,21 +55,14 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class TestInitialiser:
+class TestOverlord:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
     def test_basic(self):
-        match DootInitialiser():
-            case DootInitialiser():
-                assert(True)
-            case x:
-                 assert(False), x
-
-    def test_setup(self):
-        match DootInitialiser():
-            case DootInitialiser():
+        match DootOverlord():
+            case DootOverlord():
                 assert(True)
             case x:
                  assert(False), x

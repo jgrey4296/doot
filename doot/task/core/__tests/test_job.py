@@ -16,10 +16,9 @@ import pytest
 logging = logmod.root
 
 import doot
-doot._test_setup()
 from doot.enums import TaskMeta_e
 from doot.structs import TaskSpec, TaskStub
-from doot.task.base_job import DootJob
+from doot.task.core.job import DootJob
 import doot._abstract
 
 class TestBaseJob:

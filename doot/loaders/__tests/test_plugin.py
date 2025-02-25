@@ -18,19 +18,17 @@ from unittest import mock
 import pytest
 import doot
 from jgdv.structs.chainguard import ChainGuard
-doot._test_setup()
-doot.config = ChainGuard({})
-from doot.loaders import plugin_loader
+from doot.loaders import plugin
 logging = logmod.root
 
 class TestPluginLoader:
 
     def test_initial(self):
-        basic = plugin_loader.DootPluginLoader()
+        basic = plugin.DootPluginLoader()
         assert(basic is not None)
 
     def test_loads_defaults(self):
-        basic = plugin_loader.DootPluginLoader()
+        basic = plugin.DootPluginLoader()
         basic.setup()
         loaded = basic.load()
 

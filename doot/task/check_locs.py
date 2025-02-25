@@ -28,7 +28,7 @@ import doot
 import doot.errors
 from doot.enums import LocationMeta_e
 from doot.structs import ActionSpec
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 

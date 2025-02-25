@@ -42,7 +42,7 @@ from doot.control.split_tracker.track_queue import TrackQueue
 from doot.control.split_tracker.track_registry import TrackRegistry
 from doot.enums import ArtifactStatus_e, TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 

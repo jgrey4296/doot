@@ -14,7 +14,6 @@ import warnings
 import pytest
 from jgdv.structs.locator import Location
 import doot
-doot._test_setup()
 
 from doot.structs import DKey
 

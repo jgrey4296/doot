@@ -29,7 +29,6 @@ import pytest
 
 from jgdv.structs.locator import Location
 import doot
-doot._test_setup()
 import doot.errors
 from doot._structs.relation_spec import RelationSpec, RelationMeta_e
 from doot.structs import TaskName

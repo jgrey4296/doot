@@ -27,7 +27,6 @@ import networkx as nx
 
 # ##-- 1st party imports
 import doot
-doot._test_setup()
 import doot.errors
 import doot.structs
 from doot.control.statemachine.state_tracker import StateTracker

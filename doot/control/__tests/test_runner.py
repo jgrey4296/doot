@@ -28,7 +28,6 @@ import doot
 
 # ##-- end 1st party imports
 
-doot._test_setup()
 
 # ##-- 1st party imports
 from doot.control.runner import DootRunner
@@ -36,7 +35,7 @@ from doot.control.naive_tracker import DootTracker
 from doot.enums import TaskStatus_e
 from doot.structs import ActionSpec, TaskSpec, DKey, TaskName
 from doot.control.naive_tracker import DootTracker
-from doot.reporters.base_reporter import BaseReporter
+from doot.reporters.core.reporter import BaseReporter
 from doot.task import DootTask, DootJob
 
 # ##-- end 1st party imports

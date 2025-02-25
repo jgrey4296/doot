@@ -62,14 +62,13 @@ logging = logmod.getLogger(__name__)
 # Vars:
 __version__          : Final[VerStr]         = "0.13.0"
 
-##-- data
+# -- data
 data_path      = files("doot.__data")
 constants_file = data_path.joinpath("constants.toml")
 aliases_file   = data_path.joinpath("aliases.toml")
 template_path   = files("doot.__templates")
-##-- end data
 
-# Can't be in doot.constants, because that isn't loaded yet
+# -- Can't be in doot.constants, because that isn't loaded yet
 CONSTANT_PREFIX       : Final[str]         = "doot.constants"
 ALIAS_PREFIX          : Final[str]         = "doot.aliases"
 TOOL_PREFIX           : Final[str]         = "tool.doot"
@@ -80,21 +79,23 @@ GLOBAL_STATE_KEY      : Final[str]         = "global"
 LASTERR               : Final[str]         = "doot.lasterror"
 
 ##--|
-class ExitCodes(enum.Enum):
-    INITIAL         = 99
+class ExitCodes(enum.IntEnum):
     SUCCESS         = 0
-    NOT_SETUP       = enum.auto()
-    EARLY           = enum.auto()
-    MISSING_CONFIG  = enum.auto()
-    BAD_CONFIG      = enum.auto()
-    BAD_CMD         = enum.auto()
-    TASK_FAIL       = enum.auto()
-    BAD_STATE       = enum.auto()
-    BAD_STRUCT      = enum.auto()
-    TRACKING_FAIL   = enum.auto()
-    BACKEND_FAIL    = enum.auto()
-    FRONTEND_FAIL   = enum.auto()
-    DOOT_FAIL       = enum.auto()
-    NOT_IMPLEMENTED = enum.auto()
-    IMPORT_FAIL     = enum.auto()
-    PYTHON_FAIL     = enum.auto()
+    UNKNOWN_FAIL    = -1
+    NOT_SETUP       = -2
+    EARLY           = -3
+    MISSING_CONFIG  = -4
+    BAD_CONFIG      = -5
+    BAD_CMD         = -6
+    TASK_FAIL       = -7
+    BAD_STATE       = -8
+    BAD_STRUCT      = -9
+    TRACKING_FAIL   = -10
+    BACKEND_FAIL    = -11
+    FRONTEND_FAIL   = -12
+    DOOT_FAIL       = -13
+    NOT_IMPLEMENTED = -14
+    IMPORT_FAIL     = -15
+    PYTHON_FAIL     = -16
+
+    INITIAL         = -99

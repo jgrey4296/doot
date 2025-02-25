@@ -36,7 +36,7 @@ import doot
 from doot.errors import TaskError, TaskFailed
 from doot.structs import DKey, DKeyed
 from doot.mixins.path_manip import PathManip_m
-from doot.actions.base_action import DootBaseAction
+from doot.actions.core.action import DootBaseAction
 from doot.utils.action_decorators import ControlFlow
 
 printer = doot.subprinter()

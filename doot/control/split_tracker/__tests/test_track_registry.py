@@ -24,7 +24,6 @@ import pytest
 
 # ##-- 1st party imports
 import doot
-doot._test_setup()
 import doot.errors
 import doot.structs
 from doot.enums import TaskStatus_e
@@ -77,7 +76,7 @@ class TestRegistry:
 
     def test_register_job_spec(self):
         obj = TrackRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor":"doot.task.base_job:DootJob"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor":"doot.task.core.job:DootJob"})
         assert(not bool(obj.specs))
         obj.register_spec(spec)
         assert(bool(obj.specs))
@@ -225,7 +224,7 @@ class TestRegistryInternals:
 
     def test_instantiate_job_head(self):
         obj = TrackRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor": "doot.task.base_job:DootJob", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor": "doot.task.core.job:DootJob", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
         abs_head = spec.name.with_head()
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)

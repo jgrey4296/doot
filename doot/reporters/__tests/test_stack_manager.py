@@ -13,7 +13,6 @@ import warnings
 
 import pytest
 import doot
-doot._test_setup()
 
 from doot._abstract import Reporter_p
 from doot.reporters.stack_manager import DootReportManagerStack

@@ -20,7 +20,6 @@ from jgdv.structs.dkey import DKeyFormatter, ImportDKey, DKey, DKeyed
 from jgdv.structs.locator import JGDVLocator as DootLocator
 
 import doot
-doot._test_setup()
 from doot.utils.testing_fixtures import wrap_locs
 from doot._structs.action_spec import ActionSpec
 from doot._structs import dkey

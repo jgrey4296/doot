@@ -14,7 +14,6 @@ import warnings
 import pytest
 
 import doot
-doot._test_setup()
 from doot.control.locations import DootLocator, DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.structs import DKey
 from doot._structs.dkey import NonDKey

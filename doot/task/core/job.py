@@ -30,7 +30,7 @@ import doot.errors
 from doot._abstract import Job_p, Task_p
 from doot.enums import TaskMeta_e
 from doot.structs import TaskName, TaskSpec
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 

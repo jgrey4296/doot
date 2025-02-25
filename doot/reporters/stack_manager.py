@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from doot._abstract import Reporter_p, ReportLine_p
-from doot.reporters.base_reporter import BaseReporter
+from doot.reporters.core.reporter import BaseReporter
 from doot.structs import TraceRecord
 
 # ##-- end 1st party imports

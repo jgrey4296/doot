@@ -17,9 +17,8 @@ import pytest
 logging = logmod.root
 
 import doot
-doot._test_setup()
 from doot.structs import TaskSpec, TaskStub
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 import doot._abstract
 
 basic_action = lambda x: ftz.partial(lambda val, state: logging.info("Got: %s : %s", val, state), x)
@@ -45,7 +44,7 @@ class TestBaseTask:
     def test_expand_lambda_action(self):
         spec = TaskSpec.build({"name":"basic::example",
                                "action_ctor":basic_action,
-                               "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]})
+                               "actions": [{"do": "doot.actions.core.action:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case doot._abstract.Task_p() as task:
                 actions = list(task.get_action_group("actions"))
@@ -55,7 +54,7 @@ class TestBaseTask:
 
     def test_run_lambda_action(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
-        spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]})
+        spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.core.action:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case doot._abstract.Task_p() as task:
                 actions = list(task.get_action_group("actions"))
@@ -68,7 +67,7 @@ class TestBaseTask:
 
     def test_expand_action_str(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
-        spec = TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]})
+        spec = TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.core.action:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case doot._abstract.Task_p() as task:
                 actions      = task.get_action_group("actions")
