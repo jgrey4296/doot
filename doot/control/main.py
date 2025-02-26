@@ -517,7 +517,11 @@ class DootMain:
         self.prog_name         = "doot"
         self.current_cmd       = None
         self._errored          = None
+        self.plugins           = ChainGuard()
+        self.cmds              = ChainGuard()
+        self.tasks             = ChainGuard()
         self._cmd_aliases      = ChainGuard()
+        self.implicit_task_cmd = None
         self._set_printers()
 
     @property
@@ -550,9 +554,12 @@ class DootMain:
                     self.result_code = x
                     return
 
-            target = doot.args.on_fail(self.implicit_task_cmd).cmd.name()
-            self._set_cmd_instance(target)
-            self.run_cmd()
+            match doot.args.on_fail(self.implicit_task_cmd).cmd.name():
+                case None:
+                    raise doot.errors.TaskFailed("No available Task")
+                case str():
+                    self._set_cmd_instance(target)
+                    self.run_cmd()
         except (doot.errors.EarlyExit, doot.errors.Interrupt, BdbQuit) as err:
             self.result_code = self._early_exit(err)
         except doot.errors.MissingConfigError as err:

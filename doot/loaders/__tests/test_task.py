@@ -24,8 +24,16 @@ from doot.structs import TaskSpec
 from doot.utils.mock_gen import mock_entry_point, mock_task_ctor
 
 from doot.loaders import task
-logging = logmod.root
+logging          = logmod.root
 
+job_ctor_str     = "doot.task.core.job:DootJob"
+task_ctor_str    = "doot.task.core.task:DootTask"
+bad_ctor_str     = "doot.task.core.job:DoesntExistJob"
+bad_mod_str      = "doot.task.bad.job:DootJob"
+bad_alias_str    = "doesntexist"
+bad_two_part_str = "doot:bad"
+basic_alias_str  = "basic"
+##--|
 class TestTaskLoader:
 
     def test_initial(self):
@@ -34,7 +42,7 @@ class TestTaskLoader:
 
     def test_basic__internal_load(self):
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "class" : job_ctor_str})
         basic = task.DootTaskLoader()
         basic.setup({})
         result = basic._get_raw_specs_from_data(ChainGuard(specs).tasks, "test_file")
@@ -44,12 +52,10 @@ class TestTaskLoader:
         assert(result[0]['name'] == "test")
 
     def test_basic_load(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": {"basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : job_ctor_str})
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
         result = basic.load()
 
@@ -59,13 +65,11 @@ class TestTaskLoader:
         assert(isinstance(result['basic::test'], TaskSpec))
 
     def test_multi_load(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
-        specs['tasks']['basic'].append({"name"  : "other", "ctor": "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : job_ctor_str})
+        specs['tasks']['basic'].append({"name"  : "other", "ctor": job_ctor_str})
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
         result = basic.load()
 
@@ -75,13 +79,11 @@ class TestTaskLoader:
         assert("basic::other" in result)
 
     def test_name_error_on_overload(self, mocker, caplog):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
-        specs['tasks']['basic'].append({"name"  : "test", "ctor": "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : job_ctor_str})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor": job_ctor_str})
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
         assert(not bool(basic.tasks))
         task.allow_overloads = False
@@ -89,12 +91,10 @@ class TestTaskLoader:
             basic.load()
 
     def test_cmd_name_conflict_doesnt_error(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : job_ctor_str})
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
         basic.cmd_names = set(["test"])
 
@@ -104,45 +104,37 @@ class TestTaskLoader:
         assert(bool(result))
 
     def test_bad_task_class(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": { "basic": []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DoesntExistJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : bad_ctor_str})
 
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
 
         result = basic.load()
         assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
     def test_bad_task_module(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.doesnt_exist_module:DoesntExistJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : bad_mod_str})
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
 
         result = basic.load()
         assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
     def test_bad_spec(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor": "doesntexist"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor": bad_alias_str})
         basic = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
 
         with pytest.raises(doot.errors.StructLoadError):
             result = basic.load()
 
     def test_task_type(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
         specs = {"tasks": {"basic": []}}
         specs['tasks']['basic'].append({"name": "simple"})
 
@@ -151,6 +143,7 @@ class TestTaskLoader:
 
         plugins                     = ChainGuard({"task": [mock_ep]})
         basic                       = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup(plugins, ChainGuard(specs))
 
         result    = basic.load()
@@ -161,17 +154,16 @@ class TestTaskLoader:
 
     def test_task_missing_plugin_results_in_disabled(self, mocker):
         """ a bad ctor alias disables the task """
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
-        specs['tasks']['basic'].append({"name": "simple", "ctor": "bad:not_basic"})
+        specs['tasks']['basic'].append({"name": "simple", "ctor": bad_two_part_str})
 
         mock_ep      = importlib.metadata.EntryPoint()
         mock_ep.name = "basic"
 
         plugins      = ChainGuard({"job": [mock_ep]})
         basic        = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup(plugins, ChainGuard(specs))
 
         result = basic.load()
@@ -179,16 +171,15 @@ class TestTaskLoader:
 
 
     def test_task_bad_type_loaded(self, mocker):
-        mocker.patch("doot.loaders._interface.task_sources")
-        mocker.patch("doot.configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
-        specs['tasks']['basic'].append({"name": "simple", "ctor": "basic"})
+        specs['tasks']['basic'].append({"name": "simple", "ctor": basic_alias_str})
 
         mock_ep      = mock_entry_point()
 
         plugins      = ChainGuard({"job": [mock_ep]})
         basic        = task.DootTaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup(plugins, ChainGuard(specs))
 
         with pytest.raises(doot.errors.StructLoadError):

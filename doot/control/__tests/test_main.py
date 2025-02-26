@@ -38,8 +38,8 @@ class TestDootMain:
         dmain       = DootMain()
         mocker.patch.object(dmain, "_load")
         mocker.patch.object(dmain, "_handle_cli_args", return_value=None)
-        mocker.patch.object(dmain, "_unalias_cmd", return_value="testcmd")
         mocker.patch.object(dmain, "_set_cmd_instance")
+        mocker.patch.object(dmain, "_parse_args")
         mocker.patch.object(dmain, "run_cmd")
         mocker.patch.object(dmain, "shutdown")
 

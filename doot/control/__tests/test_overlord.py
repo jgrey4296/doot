@@ -110,11 +110,6 @@ class TestOverlordStartup:
         do.setup()
         assert(bool(do.locs))
 
-    def test_cmd_alias_init(self, mocker):
-        do = DootOverlord(force_new=True)
-        assert(not bool(do.cmd_aliases))
-        do.setup()
-        assert(bool(do.cmd_aliases))
 
 class TestOverlordLogging:
 

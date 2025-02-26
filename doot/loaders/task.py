@@ -161,8 +161,8 @@ class DootTaskLoader:
                 raw = self._get_raw_specs_from_data(self.extra, "(extra)")
                 self._build_task_specs(raw, self.cmd_names)
 
-            logging.debug("Loading tasks from sources: %s", [str(x) for x in API.task_sources])
-            task_sources = doot.config.on_fail([doot.locs.Current[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+            task_sources = doot.config.on_fail([doot.locs[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+            logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
             for path in task_sources:
                 self._load_specs_from_path(path)
 

@@ -22,7 +22,6 @@ actions = [
 [[tasks.docs]]
 name        = "build"
 doc         = ["build sphinx project documentation"]
-ctor        = "task"
 # depends_on  = ["docs::_.api.gen"]
 setup       = [
     { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
@@ -77,7 +76,6 @@ actions = [
 disabled = true
 name        = "test"
 doc         = ["run sphinx doctest"]
-ctor        = "task"
 doc_builder = "doctest"
 env_name    = "distributor"
 setup       = [
