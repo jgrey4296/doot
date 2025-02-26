@@ -42,7 +42,6 @@ cleanup = [
 name       = "changelog"
 doc        = ["Generates a changelog using git cliff"]
 version    = "0.1"
-ctor       = "task"
 env_name = "distributor"
 depends_on = [
     {do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},

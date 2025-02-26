@@ -26,6 +26,7 @@ from weakref import ref
 
 # ##-- 3rd party imports
 from jgdv import Proto
+from jgdv.util.plugins.selector import plugin_selector
 import matplotlib.pyplot as plt
 import networkx as nx
 import sh
@@ -35,9 +36,9 @@ import sh
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.structs import DKey, TaskName, TaskArtifact
-from doot.utils.plugin_selector import plugin_selector
+
 from doot._abstract import Command_p
 
 # ##-- end 1st party imports

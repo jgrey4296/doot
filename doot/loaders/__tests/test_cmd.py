@@ -19,20 +19,18 @@ from importlib.metadata import EntryPoint
 import pytest
 import doot
 from jgdv.structs.chainguard import ChainGuard
-doot._test_setup()
 
-doot.config = ChainGuard({})
-from doot.loaders import cmd_loader
+from doot.loaders import cmd
 logging = logmod.root
 
 class TestCmdLoader(unittest.TestCase):
 
     def test_initial(self):
-        basic = cmd_loader.DootCommandLoader()
+        basic = cmd.DootCommandLoader()
         assert(basic is not None)
 
     def test_load_basic(self):
-        basic = cmd_loader.DootCommandLoader()
+        basic = cmd.DootCommandLoader()
         basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd")
@@ -42,7 +40,7 @@ class TestCmdLoader(unittest.TestCase):
         assert("list" in result)
 
     def test_load_multi(self):
-        basic = cmd_loader.DootCommandLoader()
+        basic = cmd.DootCommandLoader()
         basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd"),
@@ -54,7 +52,7 @@ class TestCmdLoader(unittest.TestCase):
         assert("run" in result)
 
     def test_load_fail(self):
-        basic = cmd_loader.DootCommandLoader()
+        basic = cmd.DootCommandLoader()
         basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="bad", group="doot.command", value="doot.cmds.bad:badcmd"),

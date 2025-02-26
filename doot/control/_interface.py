@@ -60,5 +60,5 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+LOG_PREFIX : Final[str] = "----"
 # Body:

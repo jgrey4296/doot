@@ -36,10 +36,10 @@ import doot
 import doot.enums
 import doot.errors
 from doot._structs.dkey import DKey
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.structs import DKeyed, TaskName, TaskStub
-from doot.task.base_job import DootJob
-from doot.task.base_task import DootTask
+from doot.task.core.job import DootJob
+from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 

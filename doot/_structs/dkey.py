@@ -89,10 +89,10 @@ class DootPathSingleDKey(DKey[DKeyMark_e.PATH]):
         self._typecheck       = pl.Path
         self._relative        = kwargs.get('relative', False)
 
-    def exp_extra_sources(self) -> list:
+    def exp_extra_sources_h(self) -> list:
         return [doot.locs.Current]
 
-    def exp_final_hook(self, val, opts) -> Maybe[ExpInst_d]:
+    def exp_final_h(self, val, opts) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
         match val:
             case ExpInst_d(val=pl.Path() as x) if relative and x.is_absolute():
@@ -121,10 +121,10 @@ class DootPathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
         self._typecheck       = pl.Path
         self._relative        = kwargs.get('relative', False)
 
-    def exp_extra_sources(self) -> list:
+    def exp_extra_sources_h(self) -> list:
         return [doot.locs.Current]
 
-    def exp_final_hook(self, val, opts) -> Maybe[ExpInst_d]:
+    def exp_final_h(self, val, opts) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
         match val:
             case ExpInst_d(val=pl.Path() as x) if relative and x.is_absolute():

@@ -30,7 +30,7 @@ from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.actions.base_action import DootBaseAction
+from doot.actions.core.action import DootBaseAction
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e
 from doot.errors import TaskError, StructLoadError
 from doot._structs.action_spec import ActionSpec

@@ -43,7 +43,7 @@ from doot.control.statemachine.task_registry import TaskRegistry
 from doot.enums import (ArtifactStatus_e, EdgeType_e, LocationMeta_e,
                         QueueMeta_e, RelationMeta_e, TaskMeta_e, TaskStatus_e)
 from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 

@@ -6,12 +6,19 @@ doot_version = "0.13"
 # ie: [project.entry-points."doot.plugins.{}"]
 PLUGIN_TOML_PREFIX     = "doot.plugins"
 FRONTEND_PLUGIN_TYPES  = ["command", "reporter", "report-line"]
-BACKEND_PLUGIN_TYPES   = ["tracker", "runner", "command-loader", "task-loader", "parser", "action", "task", "mixin"]
+BACKEND_PLUGIN_TYPES   = [
+    "tracker", "runner",
+    "command-loader", "task-loader",
+    "parser", "action", "task",
+]
 
 DEFAULT_COMMAND_LOADER_KEY  = "command-loader"
 DEFAULT_TASK_LOADER_KEY     = "task-loader"
 DEFAULT_PLUGIN_LOADER_KEY   = "plugin-loader"
 DEFAULT_TASK_CTOR_ALIAS     = "task"
+
+DEFAULT_COMMAND_LOADER      = "doot.loaders.cmd:DootCommandLoader"
+DEFAULT_TASK_LOADER         = "doot.loaders.task:DootTaskLoader"
 
 [doot.constants.paths]
 TEMPLATE_PATH           =  "doot.__templates"

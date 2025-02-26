@@ -42,7 +42,7 @@ import doot.errors
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec, InjectSpec)
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 

@@ -23,14 +23,15 @@ from weakref import ref
 
 # ##-- 3rd party imports
 from jgdv import Proto
+from jgdv.util.plugins.selector import plugin_selector
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.task.check_locs import CheckLocsTask
-from doot.utils.plugin_selector import plugin_selector
+
 
 # ##-- end 1st party imports
 

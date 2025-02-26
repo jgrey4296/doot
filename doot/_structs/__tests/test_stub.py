@@ -16,17 +16,16 @@ logging = logmod.root
 
 from jgdv.structs.chainguard import ChainGuard
 import doot
-doot._test_setup()
 from doot._structs import stub
 from doot._structs.task_name import TaskName
-from doot.loaders.task_loader import DootTaskLoader
+from doot.loaders.task import DootTaskLoader
 
 class TestTaskStub:
 
     def test_initial(self):
         obj = stub.TaskStub.build()
         assert(isinstance(obj, stub.TaskStub))
-        assert(obj.ctor == "doot.task.base_task:DootTask")
+        assert(obj.ctor == "doot.task.core.task:DootTask")
         assert(obj['name'].default == "basic::stub")
 
     def test_add_field(self):

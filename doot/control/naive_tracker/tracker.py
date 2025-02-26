@@ -30,7 +30,7 @@ import doot
 import doot.errors
 from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_e, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 from doot.control.naive_tracker._core import BaseTracker
 

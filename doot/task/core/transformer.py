@@ -28,7 +28,7 @@ import doot
 import doot.errors
 from doot.enums import TaskMeta_e
 from doot.structs import TaskName
-from doot.task.base_task import DootTask
+from doot.task.core.core import DootTask
 
 # ##-- end 1st party imports
 

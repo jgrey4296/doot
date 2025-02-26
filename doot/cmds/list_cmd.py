@@ -32,13 +32,14 @@ from weakref import ref
 # ##-- 3rd party imports
 from jgdv import Proto, Mixin
 from jgdv.structs.strang import Strang
+from jgdv.logging import _interface as LogAPI
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.enums import TaskMeta_e
 from doot._abstract import Command_p
 
@@ -272,8 +273,7 @@ class _LoggerLister_m:
 
     def _list_loggers(self) -> list[ListVal]:
         logging.info("---- Listing Logging/Printing info")
-        acceptable_names    = doot.constants.printer.PRINTER_CHILDREN
-        from jgdv.logging.logger_spec import TARGETS
+        acceptable_names    = doot.log_config._printer_children
 
         result = []
 
@@ -289,7 +289,7 @@ class _LoggerLister_m:
 
         result.append(None)
         result.append("--- Logging Targets: (Where a logger outputs to)")
-        result += [ f"- {x}" for x in TARGETS ]
+        result += [ f"- {x}" for x in LogAPI.TARGETS ]
 
         result.append(None)
         result.append("--- Notes: ")

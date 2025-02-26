@@ -18,8 +18,7 @@ from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 
-doot._test_setup()
-from doot.task.base_job import DootJob
+from doot.task.core.job import DootJob
 from doot.enums import TaskMeta_e
 from doot import structs
 

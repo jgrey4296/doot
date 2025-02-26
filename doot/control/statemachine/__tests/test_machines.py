@@ -13,7 +13,6 @@ import warnings
 
 import pytest
 import doot
-doot._test_setup()
 from doot.control.statemachine import task_machine as tm
 from doot.enums import TaskStatus_e
 

@@ -15,7 +15,6 @@ import pytest
 logging = logmod.root
 
 import doot
-doot._test_setup()
 
 
 class TestDootInits:

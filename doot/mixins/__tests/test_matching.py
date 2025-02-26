@@ -16,9 +16,8 @@ import pytest
 import doot
 import doot.errors
 
-doot._test_setup()
 from doot import structs
-from doot.task.base_job import DootJob
+from doot.task.core.job import DootJob
 from doot.enums import TaskMeta_e
 from doot.mixins.matching import TaskMatcher_m
 from doot._structs.relation_spec import RelationSpec

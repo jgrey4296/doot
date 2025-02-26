@@ -36,6 +36,7 @@ import doot
 import doot.errors
 from doot.structs import TaskName, TaskSpec
 
+from . import _interface as API  # noqa: N812
 # ##-- end 1st party imports
 
 # ##-- types
@@ -69,15 +70,19 @@ logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
 ##-- end logging
 
-DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
-IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
-TASK_STRING : Final[str]  = "task_"
-prefix_len  : Final[int]  = len(TASK_STRING)
-
-task_sources              = doot.config.on_fail([doot.locs.Current[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
-allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x): # noqa: ANN201, ANN001
+    """ insert the group and source  into a task definition dict
+
+    a task is:
+    [[tasks.GROUP]]:
+    name = TASKNAME
+    ...
+
+    So the group isn't actually part of the dict.
+    This fn adds it in, plus where the dict came from
+
+    """
     match x:
         case ChainGuard():
             x = dict(x.items())
@@ -104,9 +109,9 @@ class DootTaskLoader:
     task_builders : ClassVar[dict[str,Any]]                   = dict()
     extra         : ClassVar[Maybe[ChainGuard]]               = None
 
-    def setup(self, plugins, extra=None) -> Self:
+    def setup(self, plugins:ChainGuard, extra:Maybe[ChainGuard]=None) -> Self:
         logging.debug("---- Registering Task Builders")
-        self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
+        self.cmd_names     = {x.name for x in plugins.get("command", [])}
         self.tasks         = {}
         self.plugins       = plugins
         self.task_builders = {}
@@ -140,7 +145,7 @@ class DootTaskLoader:
     def load(self) -> ChainGuard[TaskSpec]:
         with TimeCtx(logger=logging, entry_msg="---- Loading Tasks",  exit_msg="---- Task Loading Time"):
             logging.debug("Loading Tasks from Config files")
-            for source in doot._configs_loaded_from:
+            for source in doot.configs_loaded_from:
                 try:
                     source_data : ChainGuard = ChainGuard.load(source)
                     task_specs = source_data.on_fail({}).tasks()
@@ -156,6 +161,7 @@ class DootTaskLoader:
                 raw = self._get_raw_specs_from_data(self.extra, "(extra)")
                 self._build_task_specs(raw, self.cmd_names)
 
+            task_sources = doot.config.on_fail([doot.locs[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
             logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
             for path in task_sources:
                 self._load_specs_from_path(path)
@@ -183,10 +189,10 @@ class DootTaskLoader:
         return raw_specs
 
     def _load_specs_from_path(self, path:pl.Path) -> None:
-        """ load a config file defined task_sources of tasks """
+        """ load a config file defined API.task_sources of tasks """
         targets   = []
         if path.is_dir():
-            targets += [x for x in path.iterdir() if x.suffix == ".toml"]
+            targets += [x for x in path.iterdir() if x.suffix == API.TOML_SUFFIX]
         elif path.is_file():
             targets.append(path)
         else:
@@ -203,8 +209,7 @@ class DootTaskLoader:
                 if "startup" not in data:
                     self.failures[task_file].append("Version mismatch")
             else:
-                for update in data.on_fail({}).state():
-                    doot.update_global_task_state(update, source=task_file)
+                doot.update_global_task_state(data, source=task_file)
 
                 raw_specs = []
                 for group, val in data.on_fail({}).tasks().items():
@@ -225,7 +230,7 @@ class DootTaskLoader:
         def _allow_registration(task_name:str) -> bool:
             """ precondition to check for overrides/name conflicts """
             logging.info("Checking: %s", task_name)
-            if allow_overloads:
+            if API.allow_overloads:
                 return True
             return task_name not in self.tasks
 

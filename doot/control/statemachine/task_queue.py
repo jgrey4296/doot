@@ -32,7 +32,7 @@ from doot._structs.relation_spec import RelationSpec
 from doot.enums import (EdgeType_e, LocationMeta_e, QueueMeta_e,
                         RelationMeta_e, TaskMeta_e, TaskStatus_e)
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
-from doot.task.base_task import DootTask
+from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 

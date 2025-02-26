@@ -34,7 +34,6 @@ import doot
 
 # ##-- end 1st party imports
 
-doot._test_setup()
 
 # ##-- 1st party imports
 import doot.errors
