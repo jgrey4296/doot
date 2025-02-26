@@ -2,7 +2,6 @@
 """
 
 """
-##-- imports
 from __future__ import annotations
 
 import logging as logmod
@@ -13,15 +12,19 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 from unittest import mock
-##-- end imports
 
+from importlib.metadata import EntryPoint
 import pytest
-import doot
 from jgdv.structs.chainguard import ChainGuard
+import doot
 from doot.loaders import plugin
+import doot.loaders._interface as LoaderAPI
 logging = logmod.root
 
 class TestPluginLoader:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_initial(self):
         basic = plugin.DootPluginLoader()
@@ -32,8 +35,16 @@ class TestPluginLoader:
         basic.setup()
         loaded = basic.load()
 
-        for key in (doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES + doot.constants.entrypoints.BACKEND_PLUGIN_TYPES):
+        for key in LoaderAPI.plugin_types:
             assert(key in loaded), f"{key} missing"
+
+    def test_all_loaded_are_entrypoints(self):
+        basic = plugin.DootPluginLoader()
+        basic.setup()
+        loaded = basic.load()
+        for key in LoaderAPI.plugin_types:
+            for value in loaded[key]:
+                assert(isinstance(value, EntryPoint))
 
     @pytest.mark.skip
     def test_todo(self):

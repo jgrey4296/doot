@@ -10,10 +10,14 @@ import logging as logmod
 
 ##-- logging
 logging         = logmod.root
+logging.setLevel(logmod.WARNING)
 ##-- end logging
 
-if __name__ == '__main__':
+def main():
     import doot
     from doot.control.main import DootMain
-    main = DootMain()
-    main.run_cmd()
+    main_obj = DootMain()
+    main_obj.main()
+
+if __name__ == "__main__":
+    main()

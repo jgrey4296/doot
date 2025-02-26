@@ -19,60 +19,59 @@ import pytest
 import sys
 import doot
 
+import doot._interface as API
 from doot.control.main import DootMain
 
-@pytest.mark.skip
 class TestDootMain:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_initial(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task.DootTaskLoader")
-        overlord = DootMain()
-        assert(bool(overlord))
-        assert(overlord.args == ["doot"])
+        match DootMain():
+            case DootMain() as m:
+                assert(True)
+            case x:
+                 assert(False), x
 
-    def test_plugins_loaded(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task.DootTaskLoader")
-        overlord = DootMain()
-        overlord._load_plugins()
-        assert(bool(overlord.plugins))
-        assert(all(x in overlord.plugins for x in doot.aliases.keys()))
+    def test_main_method(self, mocker):
+        dmain       = DootMain()
+        mocker.patch.object(dmain, "_load")
+        mocker.patch.object(dmain, "_handle_cli_args", return_value=None)
+        mocker.patch.object(dmain, "_unalias_cmd", return_value="testcmd")
+        mocker.patch.object(dmain, "_set_cmd_instance")
+        mocker.patch.object(dmain, "run_cmd")
+        mocker.patch.object(dmain, "shutdown")
 
-    def test_cmds_loaded(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task.DootTaskLoader")
-        overlord = DootMain()
-        overlord._load_plugins()
-        overlord._load_commands()
-        assert(bool(overlord.cmds))
-        assert(len(overlord.cmds) >= len(doot.aliases.command))
+        with pytest.raises(SystemExit) as ctx:
+            dmain.main()
 
-    def test_tasks_loaded(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task.task_sources")
-        overlord = DootMain(
-            extra_config={"tasks" : {"basic" : [{"name": "simple"}]}}
-        )
-        overlord._load_plugins()
-        overlord._load_commands()
-        overlord._load_tasks(overlord._extra_config)
-        assert(bool(overlord.tasks))
+        assert(ctx.value.code is API.ExitCodes.INITIAL)
 
-    def test_tasks_multi(self, mocker):
-        mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task.task_sources")
-        mocker.patch("doot.configs_loaded_from")
-        overlord = DootMain(extra_config={
-            "tasks" : {"basic": [
-                {"name": "simple"},
-                {"name": "another"},
-            ]}})
-        overlord.setup()
-        assert(bool(overlord.tasks))
-        assert(len(overlord.tasks) == 2), len(overlord.tasks)
+class TestMainLoading:
 
+    @pytest.mark.skip("TODO")
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.skip
-    def test_todo(self):
-        pass
+    def test_load(self):
+        dmain = DootMain()
+        dmain._load()
+
+class TestMainCLIArgParsing:
+
+    @pytest.mark.skip("TODO")
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+class TestMainCmdRun:
+
+    @pytest.mark.skip("TODO")
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+class TestMainShutdown:
+
+    @pytest.mark.skip("TODO")
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133

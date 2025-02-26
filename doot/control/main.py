@@ -2,8 +2,6 @@
 """
 
 """
-# ruff: noqa:
-
 # Imports:
 from __future__ import annotations
 
@@ -46,9 +44,6 @@ from jgdv.util.plugins.selector import plugin_selector
 import doot
 import doot._interface as API  # noqa: N812
 import doot.errors
-from doot.loaders.cmd import DootCommandLoader
-from doot.loaders.plugin import DootPluginLoader
-from doot.loaders.task import DootTaskLoader
 
 # ##-- end 1st party imports
 
@@ -90,36 +85,52 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 env = os.environ
-LOG_PREFIX : Final[str] = "----"
 
 # Body:
 
 class Loading_m:
+    """ mixin for triggering full loading  """
 
     def _load(self) -> None:
+        doot.setup()
+        self._set_constants()
+        self._set_printers()
         self._get_from_config()
+        self._set_command_aliases()
         self._load_plugins()
+        self._load_cli_parser()
         self._load_commands()
         self._load_tasks()
-        self._load_cli_parser()
+
+    def _set_printers(self) -> None:
+        # Default printers
+        self.overlord_l        = doot.subprinter("overlord")
+        self.header_l          = doot.subprinter("header")
+        self.help_l            = doot.subprinter("help")
+        self.shutdown_l        = doot.subprinter("shutdown")
+        self.fail_l            = doot.subprinter("fail", prefix=API.fail_prefix)
+
+    def _set_constants(self) -> None:
+        # Constants are always loaded, so need no on_fail
+        self.plugin_loader_key  = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
+        self.command_loader_key = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
+        self.task_loader_key    = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
+        self.announce_voice     = doot.constants.misc.ANNOUNCE_VOICE
+        self.version_template   = doot.constants.printer.version_template
+        self.HEADER_MSG         = doot.constants.printer.doot_header
 
     def _get_from_config(self) -> None:
         """ Get main-relevant config settings """
-        self.plugin_loader_key  : Final[str]               = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
-        self.command_loader_key : Final[str]               = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
-        self.task_loader_key    : Final[str]               = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
-        self.announce_voice     : Final[str]               = doot.constants.misc.ANNOUNCE_VOICE
-        self.version_template   : Final[str]               = doot.constants.printer.doot.version_template
-        self.HEADER_MSG         : Final[str]               = doot.constants.printer.doot_header
+        # but config vals
         self.preferred_cmd_loader                          = doot.config.on_fail("default").startup.loaders.command()
         self.preferred_task_loader                         = doot.config.on_fail("default").startup.loaders.task()
         self.preferred_parser                              = doot.config.on_fail("default").startup.loaders.parser()
         self.empty_call_cmd                                = doot.config.on_fail("list").startup.empty_cmd()
         self.implicit_task_cmd                             = doot.config.on_fail("run").startup.doot.implicit_task_cmd()
 
-
     def _load_plugins(self) -> None:
         """ Use the plugin loader to find all applicable `importlib.EntryPoint`s  """
+        from doot.loaders.plugin import DootPluginLoader
         try:
             self.plugin_loader = DootPluginLoader()
             self.plugin_loader.setup()
@@ -129,13 +140,31 @@ class Loading_m:
             self.shutdown_l.error("Plugins Not Loaded Due to Error: %s", err)
             raise
 
+    def _load_cli_parser(self) -> None:
+        match plugin_selector(self.plugins.on_fail([], list).parser(),
+                              target=self.preferred_parser,
+                              fallback=None):
+            case None:
+                parser_callbacks = None
+            case type() as ctor:
+                parser_callbacks = ctor()
+            case x:
+                raise TypeError(type(x))
+
+        match parser_callbacks:
+            case None:
+                self.parser = jgdv.cli.ParseMachine()
+            case jgdv.cli.ArgParser_p() as p:
+                self.parser = jgdv.cli.ParseMachine(parser=p)
+            case _:
+                raise TypeError("Improper argparser specified", self.arg_parser)
+
     def _load_commands(self) -> None:
         """ Select Commands from the discovered plugins,
         using the preferred cmd loader or the default
         """
         match plugin_selector(self.plugins.on_fail([], list).command_loader(),
-                              target=self.preferred_cmd_loader,
-                              fallback=DootCommandLoader):
+                              target=self.preferred_cmd_loader):
             case type() as ctor:
                 self.cmd_loader = ctor()
             case x:
@@ -157,8 +186,7 @@ class Loading_m:
         or the default
         """
         match plugin_selector(self.plugins.on_fail([], list).task_loader(),
-                              target=self.preferred_task_loader,
-                              fallback=DootTaskLoader):
+                              target=self.preferred_task_loader):
             case type() as ctor:
                 self.task_loader = ctor()
             case x:
@@ -171,36 +199,19 @@ class Loading_m:
             case x:
                 raise TypeError("Unrecognised loader type", x)
 
-    def _load_cli_parser(self) -> None:
-        match plugin_selector(self.plugins.on_fail([], list).parser(),
-                              target=self.preferred_parser,
-                              fallback=None):
-            case None:
-                parser_callbacks = None
-            case type() as ctor:
-                parser_callbacks = ctor()
-            case x:
-                raise TypeError(type(x))
-
-        match parser_callbacks:
-            case None:
-                self.parser = jgdv.cli.ParseMachine()
-            case jgdv.cli.ArgParser_p() as p:
-                self.parser = jgdv.cli.ParseMachine(parser=p)
-            case _:
-                raise TypeError("Improper argparser specified", self.arg_parser)
-
 class CLIArgParsing_m:
+    """ mixin for cli arg processing """
 
     def _parse_args(self) -> None:
         """ use the found task and command arguments to make sense of sys.argv """
-        cmds_and_aliases = list(self.cmds.values())
-        cmds_and_aliases += [(x, self.cmds[y[0]]) for x,y in doot.cmd_aliases.items()]
-        subcmds = [("run",x) for x in self.tasks.values()]
+        cmd_vals       = list(self.cmds.values())
+        subcmds        = [("run",x) for x in self.tasks.values()]
+        unaliased_args = self._unalias_raw_args(self.raw_args[1:])
+
         try:
-            cli_args = self.parser(self.args[1:],
+            cli_args = self.parser(unaliased_args,
                                    head_specs=self.param_specs,
-                                   cmds=cmds_and_aliases,
+                                   cmds=cmd_vals,
                                    # Associate tasks with the run cmd
                                    subcmds=subcmds)
         except jgdv.cli.errors.HeadParseError as err:
@@ -215,8 +226,8 @@ class CLIArgParsing_m:
             raise doot.errors.ParseError("Failed to Parse provided cli args", err) from err
 
         match cli_args:
-            case dict() as d:
-                doot.set_args(ChainGuard(d))
+            case dict() as parsed_args:
+                doot.set_parsed_cli_args(ChainGuard(parsed_args))
             case x:
                 raise TypeError(type(x))
 
@@ -226,31 +237,31 @@ class CLIArgParsing_m:
 
           return True to end doot early
         """
-        if doot.args.on_fail(False).head.args.verbose():
+        if doot.args.on_fail(False).head.args.verbose():  # noqa: FBT003
             self.overlord_l.user("Switching to Verbose Output")
             doot.log_config.set_level("NOTSET")
 
-        if doot.args.on_fail(False).head.args.version():  # noqa: FBT4
+        if doot.args.on_fail(False).head.args.version():  # noqa: FBT003
             self.help_l.user(self.version_template, API.__version__)
             return API.ExitCodes.SUCCESS
 
-        if doot.args.on_fail(False).head.args._help():  # noqa: FBT003
-            self.help_l.user(self._help())
+        if doot.args.on_fail(False).head.args.help():  # noqa: FBT003
+            self.help_l.user(self.help())
             return API.ExitCodes.SUCCESS
 
-        if not self.args.on_fail(False).cmd.args.suppress_header():  # noqa: FBT003
+        if not doot.args.on_fail(False).cmd.args.suppress_header():  # noqa: FBT003
             self.header_l.user(self.HEADER_MSG, extra={"colour": "green"})
 
-        if self.args.on_fail(False).head.args.debug():  # noqa: FBT003
+        if doot.args.on_fail(False).head.args.debug():  # noqa: FBT003
             self.overlord_l.user("Pausing for debugging")
             breakpoint()
             pass
 
         return None
 
-    def _help(self) -> str:
+    def help(self) -> str:
         help_lines = ["", f"Doot v{doot.__version__}", ""]
-        help_lines += self._help
+        help_lines += self._help_txt
 
         params = self.param_specs
         if bool(params):
@@ -264,19 +275,48 @@ class CLIArgParsing_m:
         return "\n".join(help_lines)
 
 class CmdRun_m:
+    """ mixin for actually running a command  """
 
-    def _unalias_cmd(self, target:str) -> Maybe[str]:
-        """ returns the unaliased command """
-        match doot.cmd_aliases.on_fail(None)[target]():
-            case None:
-                # cmd name is not an alias
-                return None
-            case [name, *_] as args:
-                # is an alias
-                self.overlord_l.detail("Using Alias: %s", target)
-                return name
-            case x:
-                raise TypeError(type(x))
+    def _set_command_aliases(self) -> None:
+        """ Read settings.commands.* and register aliases
+
+        commands use doot.config.settings.commands.NAME,
+        and within that, 'aliases' gives a dict of {alias=[args]}
+
+        eg: commands.list.aliases.acts = ['--actions']
+        ..  aliases 'doot acts'
+        ..  to equiv of 'doot list --actions'
+
+        """
+        self.overlord_l.trace("Setting Command Aliases")
+        registered = {}
+        for name,details in doot.config.on_fail({}).settings.commands().items():
+            for alias, args in details.on_fail({}, non_root=True).aliases().items():
+                self.overlord_l.trace("- %s -> %s", name, alias)
+                registered[alias] = [name, *args]
+        else:
+            self.cmd_aliases = ChainGuard(registered)
+            self.overlord_l.trace("Finished Command Aliases")
+
+    def _unalias_raw_args(self, raw:list[str]) -> list[str]:
+        """ replaces aliases with their full command args """
+        result        = []
+        sep           = doot.constants.patterns.TASK_PARSE_SEP
+        for i, x in enumerate(raw):
+            match self.cmd_aliases.on_fail(None)[x]():
+                case None:
+                    # cmd name is not an alias
+                    result.append(x)
+                case list() if 0 < i and sep not in raw[i-1:i]:
+                    result.append(x)
+                case [name, *_] as args:
+                    # is an alias
+                    self.overlord_l.detail("Using Alias: %s -> %s", x, name)
+                    result += args
+                case x:
+                    raise TypeError(type(x))
+        else:
+            return result
 
     def _set_cmd_instance(self, cmd:Maybe[str]=None) -> None:
         """ Uses the full command name to get the instance of the command """
@@ -294,22 +334,23 @@ class CmdRun_m:
             case None if cmd.startswith("_") and cmd.endswith("_"):
                 self.overlord_l.detail("Falling back to empty: %s", self.empty_call_cmd)
                 self.current_cmd = self.cmds.get(self.empty_call_cmd, None)
-            case Command_p():
+            case Command_p() as x:
                 self.current_cmd = x
             case x:
-                raise TypeError(type(x))
+                raise TypeError(type(x), cmd)
 
     def run_cmd(self, cmd:Maybe[str]=None) -> None:
         """
         The method run to trigger a doot workflow
 
         """
-        match self._current_cmd:
+        match self.current_cmd:
             case Command_p() as cmd:
                 pass
             case x:
                 self.result_code = API.ExitCodes.BAD_CMD
                 return
+
         try:
             # Do the cmd
             self.overlord_l.trace("---- Doot Calling Cmd: %s", cmd)
@@ -323,9 +364,10 @@ class CmdRun_m:
             self.overlord_l.trace("---- Doot Cmd Call Complete")
 
 class Shutdown_m:
+    """ mixin for cleaning up on and shutting down doot  """
 
     def shutdown(self) -> None:
-        """ Doot has finished normally, so report on what was done """
+        """ Doot has finished, report on what was done and how doot finished"""
         self.overlord_l.trace("Shutting Down Doot")
         match self.current_cmd:
             case None:
@@ -333,7 +375,7 @@ class Shutdown_m:
             case Command_p() as cmd:
                 cmd.shutdown(self.tasks, self.plugins, errored=self._errored)
 
-        self._record_defaulted_config_values()
+        doot.record_defaulted_config_values()
 
         self.shutdown_l.user("")
         match self._errored:
@@ -352,6 +394,7 @@ class Shutdown_m:
         self.shutdown_l.user("---- Dooted ----")
 
     def _announce_exit(self, message:str) -> None:
+        """ triggers speech synthesis on exiting doot """
         if not doot.config.on_fail(False).shutdown.notify.say_on_exit():  # noqa: FBT003
             return
 
@@ -363,22 +406,8 @@ class Shutdown_m:
             case "darwin":
                 sh.say("-v", "Moira", "-r", "50", message)
 
-    def _record_defaulted_config_values(self) -> None:
-        if not doot.config.on_fail(False).shutdown.write_defaulted_values():  # noqa: FBT003
-            return
-
-        defaulted_file = doot.config.on_fail("{logs}/.doot_defaults.toml", pl.Path).shutdown.defaulted_values.path()
-        expanded_path = doot.locs.Current[defaulted_file]
-        if not expanded_path.parent.exists():
-            self.shutdown_l.error("Couldn't log defaulted config values to: %s", expanded_path)
-            return
-
-        defaulted_toml = ChainGuard.report_defaulted()
-        with pl.Path(expanded_path).open('w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
-
 class ExitHandlers_m:
+    """ Mixin for handling different errors of doot """
 
     def _early_exit(self, err:Exception) -> int:  # noqa: ARG002
         self.shutdown_l.warning("Early Exit Triggered")
@@ -452,7 +481,7 @@ class ExitHandlers_m:
 ##--|
 
 @Proto(Main_p)
-@Mixin(Loading_m, CmdRun_m, ExitHandlers_m, Shutdown_m)
+@Mixin(Loading_m, CLIArgParsing_m, CmdRun_m, ExitHandlers_m, Shutdown_m, ParamSpecMaker_m)
 class DootMain:
     """ doot.main and the associated exit handlers
 
@@ -464,45 +493,41 @@ class DootMain:
     """
 
     plugins      : dict
-    current_cmd  : Command_p
+    current_cmd  : Maybe[Command_p]
     plugins      : ChainGuard
     cmds         : ChainGuard
     tasks        : ChainGuard
-    _errored     : DootError
-    _current_cmd : str
+    _cmd_aliases : ChainGuard
+    _errored     : Maybe[DootError]
 
-    _help : ClassVar[tuple[str]] = tuple(["A Toml Specified Task Runner"])
+    _help_txt    : ClassVar[tuple[str]] = tuple(["A Toml Specified Task Runner"])
 
     def __init__(self, *, cli_args:Maybe[list]=None) -> None:
-        if not doot.is_setup:
-            sys.exit(API.ExitCodes.NOT_SETUP)
-
         match cli_args:
             case None:
-                self.args = sys.argv[:]
+                self.raw_args = sys.argv[:]
             case list() as vals:
-                self.args = vals
+                self.raw_args = vals
             case x:
                 raise TypeError(type(x))
 
         ##--|
-        self.result_code : int                             = API.ExitCodes.INITIAL
-        self.BIN_NAME                                      = self.args[-1].split('/')[-1]
-        self.prog_name                                     = "doot"
-
-        self.overlord_l      = doot.subprinter("overlord")
-        self.header_l        = doot.subprinter("header")
-        self.setup_l         = doot.subprinter("setup")
-        self.help_l          = doot.subprinter("_help")
-        self.shutdown_l      = doot.subprinter("shutdown")
-        self.fail_l          = doot.subprinter("fail", prefix=API.fail_prefix)
+        self.result_code : int = API.ExitCodes.INITIAL
+        self.BIN_NAME          = pl.Path(self.raw_args[0]).name
+        self.prog_name         = "doot"
+        self.current_cmd       = None
+        self._errored          = None
+        self._cmd_aliases      = ChainGuard()
+        self._set_printers()
 
     @property
     def param_specs(self) -> list[ParamSpec]:
+        """ The cli parameters of the main doot program. """
         return [
             LiteralParam(name=self.prog_name),
             self.build_param(name="--version" , type=bool),
-            self.build_param(name="--_help"    , type=bool),
+            self.build_param(name="--help"    , type=bool),
+
             self.build_param(name="--verbose" , type=bool),
             self.build_param(name="--debug",    type=bool),
         ]
@@ -510,24 +535,24 @@ class DootMain:
     def main(self) -> None:  # noqa: PLR0912
         """ The Main Doot CLI Program.
         Loads data and plugins before starting the requested command.
+
+        Catches: doot errors, then NotImplementedError, then Exception
+
+        has a 'finally' block to call sys.exit
         """
         try:
             self._load()
+            self._parse_args()
             match self._handle_cli_args():
+                case None:
+                    pass
                 case int() as x:
                     self.result_code = x
                     return
-                case None:
-                    pass
 
             target = doot.args.on_fail(self.implicit_task_cmd).cmd.name()
-            match self._unalias_cmd(target):
-                case str() as unaliased:
-                    target = unaliased
-                case None:
-                    pass
             self._set_cmd_instance(target)
-            self._run_cmd()
+            self.run_cmd()
         except (doot.errors.EarlyExit, doot.errors.Interrupt, BdbQuit) as err:
             self.result_code = self._early_exit(err)
         except doot.errors.MissingConfigError as err:

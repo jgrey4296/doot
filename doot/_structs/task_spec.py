@@ -407,7 +407,6 @@ class _SpecUtils_m:
     def param_specs(self) -> list:
         result = []
         for x in self.extra.on_fail([]).cli():
-            assert(isinstance(x, dict|ChainGuard)), x
             result.append(ParamSpec.build(x))
         else:
             return result

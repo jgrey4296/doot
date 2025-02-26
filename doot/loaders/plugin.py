@@ -3,7 +3,6 @@
 """
 
 """
-# ruff: noqa: UP032
 # Imports:
 from __future__ import annotations
 
@@ -32,7 +31,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- 1st party imports
 import doot
-
+from . import _interface as API  # noqa: N812
 # ##-- end 1st party imports
 
 # ##-- types
@@ -63,39 +62,21 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-skip_default_plugins        = doot.config.on_fail(False).startup.skip_default_plugins()
-skip_plugin_search          = doot.config.on_fail(False).startup.skip_plugin_search()
-env_plugins                 = doot.config.on_fail({}).startup.plugins(wrapper=dict)
-plugin_types                = set(doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES + doot.constants.entrypoints.BACKEND_PLUGIN_TYPES)
-cmd_loader_key  : Final     = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
-task_loader_key : Final     = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
-
 def build_entry_point (x:str, y:str, z:str) -> EntryPoint:
     """ Make an EntryPoint """
-    if z not in plugin_types:
+    if z not in API.plugin_types:
         raise doot.errors.PluginError("Plugin Type Not Found: %s : %s", z, (x, y))
-    return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, z))
+    group = f"{API.PLUGIN_PREFIX}.{z}"
+    return EntryPoint(name=x, value=y, group=group)
 
 @Proto(PluginLoader_p)
 class DootPluginLoader:
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
+    TODO singleton?
     """
-    loaded : ClassVar[ChainGuard] = None
 
-    @staticmethod
-    def get_loaded(group:str, name:str) -> Maybe[str]:
-        if DootPluginLoader.loaded is None:
-            return None
-        if group not in DootPluginLoader.loaded:
-            return None
-        matches = [x.value for x in DootPluginLoader.loaded[group] if x.name == name]
-        if bool(matches):
-            return matches[0]
-
-        return None
-
-    def setup(self, extra_config=None) -> Self:
+    def setup(self, extra_config:Maybe[dict|ChainGuard]=None) -> Self:
         self.plugins = defaultdict(list)
         match extra_config:
             case None:
@@ -134,17 +115,17 @@ class DootPluginLoader:
             raise doot.errors.PluginError("Failed to load plugin defaults: %s", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
-        DootPluginLoader.loaded = ChainGuard(self.plugins)
-        return DootPluginLoader.loaded
+        loaded = ChainGuard(self.plugins)
+        return loaded
 
     def _load_system_plugins(self) -> None:
-        if skip_plugin_search:
+        if API.skip_plugin_search:
             return
 
         logging.info("-- Searching environment for plugins, skip with `skip_plugin_search` in config")
-        for plugin_type in plugin_types:
+        for plugin_type in API.plugin_types:
             try:
-                plugin_group = "{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, plugin_type)
+                plugin_group = f"{API.PLUGIN_PREFIX}.{plugin_type}"
                 # Load env wide entry points
                 for entry_point in entry_points(group=plugin_group):
                     self.plugins[plugin_type].append(entry_point)
@@ -154,8 +135,8 @@ class DootPluginLoader:
     def _load_from_toml(self) -> None:
         logging.info("-- Loading Plugins from Toml")
         # load config entry points
-        for cmd_group, vals in env_plugins.items():
-            if cmd_group not in plugin_types:
+        for cmd_group, vals in API.env_plugins.items():
+            if cmd_group not in API.plugin_types:
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue
 
@@ -176,7 +157,7 @@ class DootPluginLoader:
         logging.info("-- Loading Extra Plugins")
         # load extra-config entry points
         for k,v in extra_eps.items():
-            if k not in plugin_types:
+            if k not in API.plugin_types:
                 logging.warning("Unknown plugin type found in extra config: %s", k)
                 continue
             ep = build_entry_point(k, v, doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
@@ -184,12 +165,12 @@ class DootPluginLoader:
             self.plugins[k].append(ep)
 
     def _append_defaults(self) -> None:
-        if skip_default_plugins:
+        if API.skip_default_plugins:
             return
 
         logging.info("-- Loading Default Plugin Aliases")
-        self.plugins[cmd_loader_key].append(build_entry_point(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
-        self.plugins[task_loader_key].append(build_entry_point(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
+        self.plugins[API.cmd_loader_key].append(build_entry_point(API.cmd_loader_key, API.DEFAULT_CMD_LOADER, API.cmd_loader_key))
+        self.plugins[API.task_loader_key].append(build_entry_point(API.task_loader_key, API.DEFAULT_TASK_LOADER, API.task_loader_key))
 
         for group, vals in doot.aliases.items():
             logging.debug("Loading aliases: %s (%s)", group, len(vals))

@@ -44,7 +44,7 @@ class TestTaskLoader:
         assert(result[0]['name'] == "test")
 
     def test_basic_load(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": {"basic" : []}}
@@ -59,7 +59,7 @@ class TestTaskLoader:
         assert(isinstance(result['basic::test'], TaskSpec))
 
     def test_multi_load(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
@@ -75,7 +75,7 @@ class TestTaskLoader:
         assert("basic::other" in result)
 
     def test_name_error_on_overload(self, mocker, caplog):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
@@ -89,7 +89,7 @@ class TestTaskLoader:
             basic.load()
 
     def test_cmd_name_conflict_doesnt_error(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
@@ -104,7 +104,7 @@ class TestTaskLoader:
         assert(bool(result))
 
     def test_bad_task_class(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": { "basic": []}}
@@ -117,7 +117,7 @@ class TestTaskLoader:
         assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
     def test_bad_task_module(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
@@ -129,7 +129,7 @@ class TestTaskLoader:
         assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
     def test_bad_spec(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
@@ -141,7 +141,7 @@ class TestTaskLoader:
             result = basic.load()
 
     def test_task_type(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
         specs = {"tasks": {"basic": []}}
         specs['tasks']['basic'].append({"name": "simple"})
@@ -161,7 +161,7 @@ class TestTaskLoader:
 
     def test_task_missing_plugin_results_in_disabled(self, mocker):
         """ a bad ctor alias disables the task """
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
@@ -179,7 +179,7 @@ class TestTaskLoader:
 
 
     def test_task_bad_type_loaded(self, mocker):
-        mocker.patch("doot.loaders.task.task_sources")
+        mocker.patch("doot.loaders._interface.task_sources")
         mocker.patch("doot.configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}

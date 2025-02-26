@@ -36,7 +36,7 @@ import sh
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.structs import DKey, TaskName, TaskArtifact
 
 from doot._abstract import Command_p

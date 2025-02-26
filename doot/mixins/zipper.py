@@ -181,7 +181,7 @@ class Zipper_m:
         """ Unzip a member file in a multiple zip files,
           append their text contents into a single file """
         assert(member is not None)
-        with open(fpath, "ab") as out:
+        with fpath.open("ab") as out:
             for zipf in zips:
                 try:
                     logging.debug("Concating: %s (%s) to %s", zipf, member, fpath)

@@ -29,7 +29,7 @@ from jgdv.cli._interface import NON_DEFAULT_KEY
 
 # ##-- 1st party imports
 import doot
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot._abstract import Command_p
 
 # ##-- end 1st party imports

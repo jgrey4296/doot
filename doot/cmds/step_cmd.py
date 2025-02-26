@@ -29,7 +29,7 @@ from jgdv.util.plugins.selector import plugin_selector
 
 # ##-- 1st party imports
 import doot
-from doot.cmds.base import BaseCommand
+from doot.cmds.core.cmd import BaseCommand
 from doot.task.check_locs import CheckLocsTask
 
 
