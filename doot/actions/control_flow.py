@@ -3,9 +3,10 @@
 Actions for task control flow.
 ie: Early exit from a task if a file exists
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 # import enum
@@ -14,32 +15,61 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
-
-##-- end imports
-
 from time import sleep
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import sh
-import shutil
+from jgdv import Proto, Mixin
 from jgdv.structs.strang import CodeReference
 
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
-from doot.errors import TaskError, TaskFailed
-from doot.structs import DKey, DKeyed
-from doot.mixins.path_manip import PathManip_m
 from doot.actions.core.action import DootBaseAction
+from doot.errors import TaskError, TaskFailed
+from doot.mixins.path_manip import PathManip_m
+from doot.structs import DKey, DKeyed
 from doot.utils.action_decorators import ControlFlow
 
+# ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
+
+##-- logging
+logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
+##-- end logging
 
 class PredicateCheck(DootBaseAction):
     """
@@ -104,7 +134,8 @@ class SuffixCheck(DootBaseAction):
                 case True, False:
                     continue
 
-class RelativeCheck(PathManip_m, DootBaseAction):
+@Mixin(PathManip_m, allow_inheritance=True)
+class RelativeCheck(DootBaseAction):
     """ continue only if paths are relative to a base.
       invertable. Skips by default, can fail
     """
@@ -175,13 +206,12 @@ class AssertInstalled(DootBaseAction):
         printer.exception("Required Programs were not found: %s", ", ".join(failures))
         return self.ActRE.FAIL
 
-class WaitAction:
+class WaitAction(DootBaseAction):
     """ An action that waits for some amount of time """
 
     @DKeyed.types("count")
     def __call__(self, spec, state, count):
         sleep(count)
-
 
 class TriggerActionGroup(DootBaseAction):
     """ Trigger a non-standard action group """

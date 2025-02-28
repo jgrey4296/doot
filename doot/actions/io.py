@@ -1,38 +1,72 @@
 ## base_action.py -*- mode: python -*-
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import time
 import types
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-
-##-- end imports
-
 from time import sleep
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import sh
-import shutil
+from jgdv import Proto, Mixin
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
-from doot.errors import TaskError, TaskFailed
-from doot.errors import LocationError
 from doot.enums import ActionResponse_e
+from doot.errors import LocationError, TaskError, TaskFailed
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed
 from doot.utils.action_decorators import IOWriter
+from .core.action import DootBaseAction
 
+# ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
+
+##-- logging
+logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
+##-- end logging
 
-# TODO using doot.config.startup.protect to disallow write/delete/backup/copy
+@Mixin(PathManip_m, allow_inheritance=True)
+class IOBase(DootBaseAction):
+    pass
 
-class AppendAction(PathManip_m):
+class AppendAction(IOBase):
     """
       Pre/Ap-pend data from the state to a file
     """
@@ -59,7 +93,7 @@ class AppendAction(PathManip_m):
                 f.write(sep)
                 f.write(arg)
 
-class WriteAction(PathManip_m):
+class WriteAction(IOBase):
     """
       Writes data from the state to a file, accessed through the
       doot.locs object
@@ -99,7 +133,7 @@ class WriteAction(PathManip_m):
                 printer.info("Writing %s chars to %s", len(as_str), loc)
                 loc.write_text(as_str)
 
-class ReadAction(PathManip_m):
+class ReadAction(IOBase):
     """
       Reads data from the doot.locs location to  return for the state
       The arguments of the action are held in self.spec
@@ -127,7 +161,7 @@ class ReadAction(PathManip_m):
                 case unk:
                     raise TypeError("Unknown read type", unk)
 
-class CopyAction(PathManip_m):
+class CopyAction(IOBase):
     """
       copy a file somewhere
       The arguments of the action are held in self.spec
@@ -178,7 +212,7 @@ class CopyAction(PathManip_m):
             case _:
                 raise doot.errors.ActionError("CopyAction expected a path", source)
 
-class MoveAction(PathManip_m):
+class MoveAction(IOBase):
     """
       move a file somewhere
       The arguments of the action are held in self.spec
@@ -201,7 +235,7 @@ class MoveAction(PathManip_m):
 
         source.rename(dest_loc)
 
-class DeleteAction(PathManip_m):
+class DeleteAction(IOBase):
     """
       delete a file / directory specified in spec.args
     """
@@ -225,7 +259,7 @@ class DeleteAction(PathManip_m):
                 printer.info("Deleting File: %s", loc)
                 loc.unlink(missing_ok=lax)
 
-class BackupAction(PathManip_m):
+class BackupAction(IOBase):
     """
       copy a file somewhere, but only if it doesn't exist at the dest, or is newer than the dest
       The arguments of the action are held in self.spec
@@ -260,7 +294,7 @@ class BackupAction(PathManip_m):
         printer.debug("Destination: %s", dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
-class EnsureDirectory(PathManip_m):
+class EnsureDirectory(IOBase):
     """
       ensure the directories passed as arguments exist
       if they don't, build them
@@ -274,7 +308,7 @@ class EnsureDirectory(PathManip_m):
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
-class UserInput(PathManip_m):
+class UserInput(IOBase):
 
     @DKeyed.types("prompt", check=str, fallback="?::- ")
     @DKeyed.redirects("update_")
@@ -282,7 +316,7 @@ class UserInput(PathManip_m):
         result = input(prompt)
         return { _update : result }
 
-class SimpleFind(PathManip_m):
+class SimpleFind(IOBase):
     """
     A Simple glob on a path
     """
@@ -299,7 +333,7 @@ class SimpleFind(PathManip_m):
             case False:
                 return { _update : list(from_loc.glob(pattern)) }
 
-class TouchFileAction(PathManip_m):
+class TouchFileAction(IOBase):
 
     @DKeyed.args
     @DKeyed.types("soft", fallback=False)
@@ -311,7 +345,7 @@ class TouchFileAction(PathManip_m):
                 continue
             target_path.touch()
 
-class LinkAction(PathManip_m):
+class LinkAction(IOBase):
     """
       for x,y in spec.args:
       x.expand().symlink_to(y.expand())
@@ -360,7 +394,7 @@ class LinkAction(PathManip_m):
             printer.info("SymLinking: %s -> %s", x_path, y_path)
             x_path.symlink_to(y_path)
 
-class ListFiles(PathManip_m):
+class ListFiles(IOBase):
     """ add a list of all files in a path (recursively) to the state """
 
     @DKeyed.paths("from")

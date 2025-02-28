@@ -27,8 +27,6 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 from doot._abstract import Action_p
-from doot.actions.job_injection import (JobInjectPathParts,
-                                        JobInjectShadowAction)
 from doot.errors import TaskError, TaskFailed
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed
@@ -45,8 +43,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -108,7 +104,7 @@ class PushState:
     @DKeyed.args
     @DKeyed.types("update_", check=set|list, fallback=list)
     @DKeyed.redirects("update_")
-    def __call__(self, spec, state, args, data, _update) -> dict|bool|None:
+    def __call__(self, spec, state, args, _data, _update) -> dict|bool|None:
         target_data = data.copy()
         to_add = []
         for x in args:
