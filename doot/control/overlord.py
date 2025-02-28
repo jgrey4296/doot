@@ -276,9 +276,6 @@ class Logging_m:
         """ Get a sub-printer at position `name`.
         Names are registered using JGDV.logging.LogConfig
         """
-        if not self.is_setup:
-            return logmod.getLogger(name)
-
         try:
             return self.log_config.subprinter(name, prefix=prefix)
         except ValueError as err:
