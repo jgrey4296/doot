@@ -23,7 +23,7 @@ time  = "doot.reporters.basic_reporters:TimerReporter"
 
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
-basic = "doot.control.naive_tracker:DootTracker"
+basic = "doot.control.naive_tracker:NaiveTracker"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String

@@ -98,7 +98,7 @@ class TrackerPlanGen_m:
         logging.trace("Generating DFS Plan")
         plan  : list[PlanEntry]      = []
         # Reverse the sort because its a stack
-        stack : list[PlanEntry]      = [(0, x, "Initial Task") for x in sorted(self.network.pred[self._root_node], key=DootTracker._node_sort, reverse=True)]
+        stack : list[PlanEntry]      = [(0, x, "Initial Task") for x in sorted(self.network.pred[self._root_node], key=NaiveTracker._node_sort, reverse=True)]
         found_count                                = defaultdict(lambda: 0)
         logging.detail("Initial DFS Stack: %s", stack)
         while bool(stack):
@@ -108,7 +108,7 @@ class TrackerPlanGen_m:
                 case 0:
                     found_count[node] += 1
                     plan.append((depth, node, f"{depth}: Enter {node_type} {desc}: {node.readable}"))
-                    stack += [(depth+1, x, "Dependency") for x in sorted(self.network.pred[node], key=DootTracker._node_sort, reverse=True)]
+                    stack += [(depth+1, x, "Dependency") for x in sorted(self.network.pred[node], key=NaiveTracker._node_sort, reverse=True)]
                 case 1: # exit
                     found_count[node] += 1
                     if node_type != "Leaf":
@@ -127,7 +127,7 @@ class TrackerPlanGen_m:
         """
         logging.trace("Generating BFS Plan")
         plan  : list[PlanEntry]      = []
-        queue : list[PlanEntry]      = [(0, x, "Initial Task") for x in sorted(self.network.pred[self._root_node], key=DootTracker._node_sort)]
+        queue : list[PlanEntry]      = [(0, x, "Initial Task") for x in sorted(self.network.pred[self._root_node], key=NaiveTracker._node_sort)]
         found_count                  = defaultdict(lambda: 0)
         logging.detail("Initial BFS Queue: %s", queue)
         while bool(queue):
@@ -137,7 +137,7 @@ class TrackerPlanGen_m:
                 case 0:
                     found_count[node] += 1
                     plan.append((depth, node, f"{depth}: Enter {node_type} {desc}: {node.readable}"))
-                    queue += [(depth+1, x, "Dependency") for x in sorted(self.network.pred[node], key=DootTracker._node_sort)]
+                    queue += [(depth+1, x, "Dependency") for x in sorted(self.network.pred[node], key=NaiveTracker._node_sort)]
                     queue += [(depth, node, desc)]
                 case 1: # exit
                     if all(found_count[y] > 1 for y in self.network.pred[node]):
@@ -183,7 +183,7 @@ class TrackerPlanGen_m:
 
 @Proto(TaskTracker_p)
 @Mixin(TrackerPersistence_m, TrackerPlanGen_m)
-class DootTracker(BaseTracker):
+class NaiveTracker(BaseTracker):
     """
     track dependencies in a networkx digraph,
     predecessors of a node are its dependencies.
