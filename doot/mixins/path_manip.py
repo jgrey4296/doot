@@ -49,5 +49,5 @@ walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting
 class PathManip_m(PathManip_Base):
 
     def _is_write_protected(self, loc) -> bool:
-        logmod.warning("TODO: is_write_protected?")
+        logmod.info("TODO: is_write_protected?")
         return False

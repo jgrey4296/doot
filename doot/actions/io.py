@@ -174,7 +174,6 @@ class CopyAction(IOBase):
     @DKeyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         dest_loc   = to
-
         if self._is_write_protected(dest_loc):
             raise LocationError("Tried to write a protected location", to)
 
