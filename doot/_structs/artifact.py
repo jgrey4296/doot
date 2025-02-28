@@ -49,7 +49,6 @@ from doot._abstract.task import ArtifactStatus_e
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 class TaskArtifact(Location):
     """
     A Location, but specialized to represent artifacts/files
@@ -67,7 +66,7 @@ class TaskArtifact(Location):
     def __bool__(self):
         return self.exists()
 
-    @ftz.cached_property
+    @property
     def parent(self):
         return self.path.parent
 
@@ -166,5 +165,6 @@ class TaskArtifact(Location):
         return self.__class__("/".join(result))
 
     def exists(self) -> bool:
-        as_path = pl.Path(self[1:])
-        return as_path.exists()
+        as_path = self.path
+        expanded = doot.locs[as_path]
+        return expanded.exists()
