@@ -556,8 +556,8 @@ class DootMain:
 
             match doot.args.on_fail(self.implicit_task_cmd).cmd.name():
                 case None:
-                    raise doot.errors.TaskFailed("No available Task")
-                case str():
+                    raise doot.errors.TaskFailed("No available Task")  # noqa: TRY301
+                case str() as target:
                     self._set_cmd_instance(target)
                     self.run_cmd()
         except (doot.errors.EarlyExit, doot.errors.Interrupt, BdbQuit) as err:
