@@ -1,5 +1,5 @@
 ## docs.toml -*- mode: toml -*-
-doot-version = "0.13"
+doot-version = "1.0"
 
 [[state]]
 address     = "127.0.0.1"

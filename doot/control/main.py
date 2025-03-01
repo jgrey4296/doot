@@ -424,7 +424,7 @@ class ExitHandlers_m:
         return API.ExitCodes.MISSING_CONFIG
 
     def _config_error_exit(self, err:Exception) -> int:
-        self.fail_l.warning("Config Error: %s", " ".join(err.args))
+        self.fail_l.warning("Config Error: %s", err)
         return API.ExitCodes.BAD_CONFIG
 
     def _task_failed_exit(self, err:Exception) -> int:
@@ -433,7 +433,7 @@ class ExitHandlers_m:
         return API.ExitCodes.TASK_FAIL
 
     def _bad_state_exit(self, err:Exception) -> int:
-        self.fail_l.error("State Error: %s", " ".join(err.args))
+        self.fail_l.error("State Error: %s", err.args)
         return API.ExitCodes.BAD_STATE
 
     def _bad_struct_exit(self, err:Exception) -> int:
@@ -453,23 +453,23 @@ class ExitHandlers_m:
         return API.ExitCodes.BAD_STRUCT
 
     def _tracking_exit(self, err:Exception) -> int:
-        self.fail_l.error("Tracking Failure: %s", " ".join(err.args))
+        self.fail_l.error("Tracking Failure: %s", err.args)
         return API.ExitCodes.TRACKING_FAIL
 
     def _backend_exit(self, err:Exception) -> int:
-        self.fail_l.exception("Backend Error: %s", " ".join(err.args), exc_info=err)
+        self.fail_l.exception("Backend Error: %s", err.args, exc_info=err)
         return API.ExitCodes.BACKEND_FAIL
 
     def _frontend_exit(self, err:Exception) -> int:
-        self.fail_l.error("%s", " ".join(err.args))
+        self.fail_l.error("%s", err.args)
         return API.ExitCodes.FRONTEND_FAIL
 
     def _misc_doot_exit(self, err:Exception) -> int:
-        self.fail_l.exception("%s", " ".join(err.args), exc_info=err)
+        self.fail_l.exception("%s", err.args, exc_info=err)
         return API.ExitCodes.DOOT_FAIL
 
     def _not_implemented_exit(self, err:Exception) -> int:
-        self.fail_l.exception("Not Implemented: %s", " ".join(err.args), exc_info=err)
+        self.fail_l.exception("Not Implemented: %s", err.args, exc_info=err)
         return API.ExitCodes.NOT_IMPLEMENTED
 
     def _python_exit(self, err:Exception) -> int:
