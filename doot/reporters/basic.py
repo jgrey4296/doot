@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -40,7 +39,6 @@ from doot.structs import TraceRecord
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
 
 class DootAlwaysReport(BaseReporter):
 

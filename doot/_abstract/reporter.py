@@ -73,6 +73,7 @@ class Report_f(enum.Flag):
     default  = enum.auto()
 
 ##--|
+
 @runtime_checkable
 class Reporter_p(Protocol):
     """
@@ -92,6 +93,7 @@ class Reporter_p(Protocol):
         pass
 
 ##--|
+
 @runtime_checkable
 class ReportLine_p(Protocol):
     """
@@ -101,3 +103,5 @@ class ReportLine_p(Protocol):
     @abc.abstractmethod
     def __call__(self, trace:TraceRecord) -> Maybe[str]:
         pass
+
+##--|
