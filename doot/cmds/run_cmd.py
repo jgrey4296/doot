@@ -111,26 +111,29 @@ class RunCmd(BaseCommand):
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_i, TaskRunner_i]:
         # Note the final parens to construct:
-        available_reporters    = plugins.on_fail([], list).report_line()
-        report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
+        reporters = plugins.on_fail([], list).reporter()
+        trackers  = plugins.on_fail([], list).tracker()
+        runners   = plugins.on_fail([], list).runner()
 
-        match plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target):
-            case None:
-                pass
+        match plugin_selector(reporters, target=reporter_target):
+            case type() as x:
+                available_lines = plugins.on_fail([], list).report_line()
+                report_lines    = [plugin_selector(available_lines, target=x)() for x in report_line_targets]
+                reporter        = x(report_lines)
             case x:
-                reporter = x(report_lines)
+                raise TypeError(type(x))
 
-        match plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target):
-            case None:
-                pass
-            case x:
+        match plugin_selector(trackers, target=tracker_target):
+            case type() as x:
                 tracker = x()
-
-        match plugin_selector(plugins.on_fail([], list).runner(), target=runner_target):
-            case None:
-                pass
             case x:
+                raise TypeError(type(x))
+
+        match plugin_selector(runners, target=runner_target):
+            case type() as x:
                 runner = x(tracker=tracker, reporter=reporter)
+            case x:
+                raise TypeError(type(x))
 
         return tracker, runner
 

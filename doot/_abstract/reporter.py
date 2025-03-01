@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-
+Reporters track events and format them into a report for the user
 """
 # Imports:
 from __future__ import annotations
