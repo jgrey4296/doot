@@ -62,9 +62,11 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
+
     type ActionSpec = Any
     type TaskName   = str
-    from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
+    type ActionReturn = Maybe[dict|bool|ActionResponse_e]
 
 # isort: on
 # ##-- end types
@@ -147,7 +149,7 @@ class Action_p(Protocol):
     holds individual action information and state, and executes it
     """
 
-    def __call__(self, spec:ActionSpec, task_state:dict) -> Maybe[dict|bool|ActionResponse_e]:
+    def __call__(self, spec:ActionSpec, task_state:dict) -> ActionReturn:
         pass
 ##--|
 
@@ -155,8 +157,8 @@ class Task_d:
     """ Core Interface for Tasks """
 
     _version         : str       = "0.1"
-    _help            : list[str] = []
-    doc              : list[str] = []
+    _help            : list[str]
+    doc              : list[str]
 
 @runtime_checkable
 class Task_p(Protocol):
