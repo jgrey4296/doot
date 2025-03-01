@@ -19,7 +19,7 @@ from sphinx.util.docutils import SphinxDirective
 
 # -- Project information -----------------------------------------------------
 
-release        = "0.13.0"
+release        = "1.0.0"
 project        = 'Doot'
 author         = 'John Grey'
 copyright      = '{}, {}'.format(datetime.datetime.now().strftime("%Y"), author)

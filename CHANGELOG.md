@@ -4,6 +4,163 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.0.0] - 2025-03-01
+
+### Features
+
+- Move action 'force' option
+- Component tracker
+- Required_for job head
+- Branch 'statemachine.tracker'
+- Global state aware dkey decorator
+- Improved python error reporting
+- Is_write_protected stub
+- Cmd alias registration
+- Constant INJECT_KEYS value
+- Inject suffix option
+- Taskspec recognition of jobs by name
+- Branch 'refactor.injector'
+- DKeyed extension tests
+- Dkey extra kwargs
+- Firefox refresher action
+- Merge branch 'docs'
+- Todo test markers
+
+### Bug Fixes
+
+- Config-less startup
+- Logger typo
+- Branch 'docs'
+- Job expansion on emptylist/none source
+- Cwd expansion
+- Cleanup task halting
+- Injection matching
+- Tests
+- Enums
+- Tests
+- Startup bugs
+- Branch 'refactor.errors'
+- Param spec sorting and use
+- Help md and error printing
+- Cmd selection
+- Task loading and verification
+- Commands and arg parsing
+- Injection building
+- Injection
+- Location check
+- Dkey import
+- Path dkey final hooks
+- Injection spec key checking
+- Dkey global state access
+- Injections not building required keys
+- Tests
+- Path modification
+- Copy action key expansion
+- Missing var
+- Artifact exists check
+
+### Dependencies
+
+- Dependencies
+- Jgdv version
+- Submodule
+- Version 0.13.0 -> 1.0.0
+
+### Refactoring
+
+- Auto dkey mark assignment
+- Abstract loader specs
+- Importer_m is obsolete
+- Overlord to use loader_p for instance checks
+- Build_injection and match_with_constraints to mixin
+- Relationmeta to [needs, blocks]
+- Relation injection/constraint format and use
+- Shell action printing
+- Traker build_network
+- Matching out of injection_m to TaskMatcher_m
+- Location/artifact
+- Flagsbuilder_m
+- Relationspec instantiation
+- Enum declaration locations
+- Artifact status out from task status
+- Location dict keywords
+- Old injection kwargs
+- Enumbuilder_m and flagsbuilder_m to jgdv
+- Key expansion to understand fallback=Self
+- Redirection keys can return None
+- Separate taskstatus and artifact  status
+- Assertions to explicit errors
+- Postbox to dootle
+- Obsolete code
+- Check_protocol, use jgdv instead
+- Dkey and locations out to jgdv
+- Tomlguard -> chainguard
+- Tomlguard -> chainguard
+- Update to pass tests
+- Param spec to jgdv
+- To use jgdv parser
+- Base tracker transformer functionality
+- Generate priority plan functionality
+- Branch 'refactor.dkey.and.locations'
+- Transformer tracking
+- Transformer functionality
+- Branch 'fix.trackers'
+- Types
+- Compress/json/speak time actions to dootle
+- Errors
+- Config loading, adding global task state
+- Listcmd into separate mixins
+- Logger use to use custom levels
+- Stub cmd logging levels to 'user'
+- Obsolete 'locs' command
+- Imports and action decorators
+- Cmd printing
+- Cmd logging
+- Trackers
+- Overlord logging/printing
+- Submodules
+- Job actions to dootle
+- Doot.mixins.injection -> injector
+- Taskspec methods
+- Action spec 'verify' calls
+- Shell actions -> dootle
+- Injection -> InjectSpec
+- Build to be classmethod
+- Trackers to have mixins
+- Commands
+- Runner and tests
+- Locations -> locator
+- Obsolete aliases
+- Autodoc rst's
+- Move static templates
+- Protocols
+- Typing imports
+- Protocol and mixin use
+- Base_cmd -> cmds.base
+- Decorator definition
+- Param spec names
+- Main/init into classes
+- Imports and test setup
+- Doottracker -> naivetracker
+- Unnecessary subprinter retrieval guard
+
+### Testing
+
+- Injection building
+
+### [Merge]
+
+- Branch 'docs'
+- Branch 'fix.trackers'
+
+### [submodule]
+
+- Doot-examples
+
+### [update]
+
+- Sphinx config
+
 ## [0.13.0] - 2024-09-06
 
 ### Features
