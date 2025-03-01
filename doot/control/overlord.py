@@ -31,6 +31,7 @@ from weakref import ref
 
 # ##-- 3rd party imports
 from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 from jgdv import JGDVError, Mixin, Proto
 from jgdv.structs.metalord.singleton import MLSingleton
 from jgdv.structs.chainguard import ChainGuard
@@ -349,12 +350,13 @@ class WorkflowUtil_m:
 
     def verify_config_version(self, ver:Maybe[str], source:str|pl.Path) -> None:
         "Ensure the config file is compatible with doot"
-        doot_ver = SpecifierSet(f"~={API.__version__}")
+        doot_ver = Version(API.__version__)
+        test_ver = SpecifierSet(f"~={doot_ver.major}.{doot_ver.minor}.0")
         match ver:
-            case str() as x if x in doot_ver:
+            case str() as x if x in test_ver:
                 return
             case str() as x:
-                raise DErr.VersionMismatchError("Config File is incompatible with this version of doot (%s) : %s : %s", API.__version__, x, source)
+                raise DErr.VersionMismatchError("Config File is incompatible with this version of doot (%s, %s) : %s : %s", API.__version__, test_ver, x, source)
             case _:
                 raise DErr.VersionMismatchError("No Doot Version Found in config file: %s", source)
 ##--|
