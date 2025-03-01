@@ -33,7 +33,7 @@ import doot
 import doot.errors
 import doot.structs
 from doot.control.naive_tracker._core import BaseTracker
-from doot.control.naive_tracker.tracker import DootTracker
+from doot.control.naive_tracker.tracker import NaiveTracker
 from doot.enums import ExecutionPolicy_e, TaskStatus_e
 
 # ##-- end 1st party imports
@@ -70,24 +70,24 @@ logging = logmod.root
 class TestTrackerNext:
 
     def test_basic(self):
-        obj = DootTracker()
-        assert(isinstance(obj, DootTracker))
+        obj = NaiveTracker()
+        assert(isinstance(obj, NaiveTracker))
 
 
     def test_next_for_fails_with_unbuilt_network(self):
-        obj = DootTracker()
+        obj = NaiveTracker()
         with pytest.raises(doot.errors.TrackingError):
             obj.next_for()
 
 
     def test_next_for_empty(self):
-        obj = DootTracker()
+        obj = NaiveTracker()
         obj.build_network()
         assert(obj.next_for() is None)
 
 
     def test_next_for_no_connections(self):
-        obj  = DootTracker()
+        obj  = NaiveTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
@@ -103,7 +103,7 @@ class TestTrackerNext:
 
     def test_next_simple_dependendency(self):
         # need to check on doot.args... results for this
-        obj  = DootTracker()
+        obj  = NaiveTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -120,7 +120,7 @@ class TestTrackerNext:
 
 
     def test_next_dependency_success_produces_ready_state_(self):
-        obj  = DootTracker()
+        obj  = NaiveTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -140,7 +140,7 @@ class TestTrackerNext:
 
 
     def test_next_artificial_success(self):
-        obj  = DootTracker()
+        obj  = NaiveTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -160,7 +160,7 @@ class TestTrackerNext:
 
 
     def test_next_halt(self):
-        obj  = DootTracker()
+        obj  = NaiveTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -180,7 +180,7 @@ class TestTrackerNext:
 
 
     def test_next_fail(self):
-        obj  = DootTracker()
+        obj  = NaiveTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -198,7 +198,7 @@ class TestTrackerNext:
             assert(x.status in [TaskStatus_e.DEAD])
 
     def test_next_job_head(self):
-        obj       = DootTracker()
+        obj       = NaiveTracker()
         job_spec  = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"], "cleanup":["basic::task"]})
         task_spec = doot.structs.TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
         obj.register_spec(job_spec)
@@ -238,7 +238,7 @@ class TestTrackerNext:
 
 
     def test_next_job_head_with_subtasks(self):
-        obj       = DootTracker()
+        obj       = NaiveTracker()
         job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
         sub_spec1 = doot.structs.TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
         sub_spec2 = doot.structs.TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
@@ -294,12 +294,12 @@ class TestTrackerWalk:
 
 
     def test_basic(self):
-        obj = DootTracker()
-        assert(isinstance(obj, DootTracker))
+        obj = NaiveTracker()
+        assert(isinstance(obj, NaiveTracker))
 
 
     def test_empty(self):
-        obj = DootTracker()
+        obj = NaiveTracker()
         result = obj.generate_plan()
         assert(len(result) == 0)
 
@@ -318,7 +318,7 @@ class TestTrackerWalk:
             "basic::beta",
         ]
         head, tail = specs
-        obj      = DootTracker()
+        obj      = NaiveTracker()
         obj.register_spec(*head, *tail)
         t1_name = obj.queue_entry(head[0].name, from_user=True)
         t2_name = obj.queue_entry(head[1].name, from_user=True)
@@ -348,7 +348,7 @@ class TestTrackerWalk:
             "basic::alpha",
             ]
         head, tail = specs
-        obj      = DootTracker()
+        obj      = NaiveTracker()
         obj.register_spec(*head, *tail)
         t1_name = obj.queue_entry(head[0].name, from_user=True)
         t2_name = obj.queue_entry(head[1].name, from_user=True)

@@ -96,6 +96,7 @@ class TestOverlordStartup:
             case x:
                 assert(False), x
 
+    @pytest.mark.filterwarnings("ignore")
     def test_load_config_default(self, mocker):
         do = DootOverlord(force_new=True)
         default_config = API.template_path / do.constants.paths.TOML_TEMPLATE
@@ -104,6 +105,7 @@ class TestOverlordStartup:
         do.verify_config_version(do.config.startup.doot_version, source="testing")
         assert(True)
 
+    @pytest.mark.filterwarnings("ignore")
     def test_loc_init(self, mocker):
         do = DootOverlord(force_new=True)
         assert(not bool(do.locs))

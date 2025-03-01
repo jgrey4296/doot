@@ -31,10 +31,9 @@ import doot
 
 # ##-- 1st party imports
 from doot.control.runner import DootRunner
-from doot.control.naive_tracker import DootTracker
 from doot.enums import TaskStatus_e
 from doot.structs import ActionSpec, TaskSpec, DKey, TaskName
-from doot.control.naive_tracker import DootTracker
+from doot.control.naive_tracker import NaiveTracker
 from doot.reporters.core.reporter import BaseReporter
 from doot.task import DootTask, DootJob
 
@@ -78,7 +77,7 @@ class _MockObjs_m:
 
     @pytest.fixture(scope="function")
     def runner(self, ctor, mocker):
-        tracker  = DootTracker()
+        tracker  = NaiveTracker()
         reporter = BaseReporter()
         runner   = ctor(tracker=tracker, reporter=reporter)
         return runner
