@@ -116,9 +116,9 @@ tag                = false
                    '^version\s+=\s+"{version}"',
                    '^current_version\s+=\s+"{version}"'
 ]
-"doot/__init__.py" = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
-"README.md"        = ["^Version : {version}  "]
-"docs/conf.py"     = ["^release = '{version}'"]
+"doot/_interface.py" = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
+"README.md"          = ["^Version : {version}  "]
+"docs/conf.py"       = ["^release = '{version}'"]
 
 ##-- end bumpver
 
