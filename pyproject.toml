@@ -26,7 +26,8 @@ dependencies   = [
     "boltons >= 23.0.0",
     "pydantic >= 2.7.0",
     "jgdv >= 1.0.0",
-    "packaging"
+    "packaging",
+    "matplotlib",
 ]
 
 [project.optional-dependencies]
