@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.0.4] - 2025-03-02
+
+### Bug Fixes
+
+- Injection of cli args
+
+### Dependencies
+
+- Py version in github actions
+- Version 1.0.3 -> 1.0.4
+
 ## [1.0.3] - 2025-03-02
 
 ### Bug Fixes
