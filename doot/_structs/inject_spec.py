@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.chainguard import ChainGuard
-
+from jgdv.cli import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -219,7 +219,8 @@ class InjectSpec(BaseModel):
         logging.trace("Validating Injection against constraint: %s", constraint)
 
         constraint_defaults = {k:v for k,v in constraint.items() if k != MUST_INJECT_K}
-        cli                 = {cli.name : cli.default for cli in constraint.get(CLI_K, [])}
+        cli_params          = [ParamSpec(**cli) for cli in constraint.get(CLI_K, [])]
+        cli                 = {cli.name : cli.default for cli in cli_params}
 
         inject_keys         = {} | self.delay.keys() | self.now.keys() | self.insert.keys()
 
@@ -232,7 +233,7 @@ class InjectSpec(BaseModel):
         inject_keys |= {x[:-1] for x in indirect_keys}
 
         spec_keys           = {str(x) for x in constraint_defaults.keys()}
-        cli_keys            = {str(cli.name) for cli in constraint.get(CLI_K, [])}
+        cli_keys            = set(cli.keys())
         required_keys       = {str(x) for x in constraint.get(MUST_INJECT_K, [])}
 
         if bool(missing:=required_keys - inject_keys):
