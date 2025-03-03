@@ -137,7 +137,7 @@ class _RunnerHandlers_m:
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task:Task_p, failure:Error) -> None:
+    def _handle_failure(self, failure:Error) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.
@@ -161,16 +161,13 @@ class _RunnerHandlers_m:
                 raise err
             case doot.errors.TrackingError() as err:
                 self._signal_failure = err
-                self.tracker.set_status(task, TaskStatus_e.FAILED)
                 raise err
             case doot.errors.DootError() as err:
                 self._signal_failure = err
-                self.tracker.set_status(task, TaskStatus_e.FAILED)
                 raise err
             case _:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
                 fail_l.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
-                self.tracker.set_status(task, TaskStatus_e.FAILED)
                 raise err
 
     def _notify_artifact(self, art:TaskArtifact) -> None:

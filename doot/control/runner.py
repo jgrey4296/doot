@@ -256,10 +256,12 @@ class DootRunner:
                     self._execute_task(task)
                 case x:
                     in_task_header_l.error("Unknown Value provided to runner: %s", x)
-        except doot.errors.DootError as err:
+        except doot.errors.TaskError as err:
             self.reporter.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
             err.task = task
-            self._handle_failure(task, err)
+            self._handle_failure(err)
+        except doot.errors.DootError as err:
+            self._handle_failure(err)
         except Exception as err:
             self.tracker.clear_queue()
             raise

@@ -97,12 +97,14 @@ class WriteAction(IOBase):
     """
       Writes data from the state to a file, accessed through the
       doot.locs object
+
+    'from' is *not* expanded.
     """
 
-    @DKeyed.types("from")
+    @DKeyed.redirects("from")
     @DKeyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
-        data = _from
+        data = state[_from]
         match to:
             case None:
                 raise LocationError("Can't write to a null location")

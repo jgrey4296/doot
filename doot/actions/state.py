@@ -19,9 +19,10 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Proto
+from jgdv import Proto, Mixin
 import sh
 from jgdv.structs.strang import CodeReference
+from jgdv.mixins.path_manip import PathManip_m
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -139,6 +140,7 @@ class AddNow:
         return { _update : now.strftime(format) }
 
 @Proto(Action_p)
+@Mixin(PathManip_m, allow_inheritance=True)
 class PathParts:
     """ take a path and add fstem, fpar, fname to state """
 
@@ -150,6 +152,7 @@ class PathParts:
         return self._calc_path_parts(_from, root_paths)
 
 @Proto(Action_p)
+@Mixin(PathManip_m, allow_inheritance=True)
 class ShadowPath:
 
     @DKeyed.paths("shadow_root")
