@@ -385,7 +385,7 @@ class _Listings_m:
     pass
 
 @Proto(Command_p)
-@Mixin(_Listings_m, allow_inheritance=True)
+@Mixin(_Listings_m, None, allow_inheritance=True)
 class ListCmd(BaseCommand):
     _name      = "list"
     _help  : ClassVar[tuple[str]]    = tuple([

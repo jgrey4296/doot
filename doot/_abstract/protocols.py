@@ -14,11 +14,11 @@ from jgdv._abstract.protocols import (ActionGrouper_p, ArtifactStruct_p,
                                       ExecutableTask, Factory_p,
                                       InstantiableSpecification_p,
                                       Loader_p, Nameable_p,
-                                      ProtocolModelMeta,
                                       SpecStruct_p, StubStruct_p,
                                       TomlStubber_p, UpToDate_p,
                                       Persistent_p,
                                       )
+from jgdv._abstract.pydantic_proto import ProtocolModelMeta
 from jgdv.structs.dkey import Key_p
 from jgdv.structs.locator import Location_p
 from jgdv.cli import CLIParamProvider_p, ParamStruct_p
