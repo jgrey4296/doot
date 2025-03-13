@@ -207,3 +207,19 @@ output = ".temp/coverage/coverage.xml" # where to write output
 output = ".temp/coverage/coverage.json" # where to write output
 pretty_print = true
 ##-- end coverage
+
+##-- mypy
+# https://mypy.readthedocs.io/en/stable/config_file.html
+[tool.mypy]
+python_version      = "3.12"
+warn_return_any     = true
+warn_unused_configs = true
+exclude             = [] # regexs to ignore
+cache_dir           = ".temp/mypy_cache"
+
+# Per-module options:
+# [[tool.mypy.overrides]]
+# module                = "blah"
+# disallow_untyped_defs = true
+
+##-- end mypy
