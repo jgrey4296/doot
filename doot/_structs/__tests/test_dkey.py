@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: E402
+# ruff: noqa: E402, ANN201, B011, PLR2004, ANN001, F811, UP031
 from __future__ import annotations
 
 # Imports:
@@ -25,8 +25,6 @@ from doot._structs.action_spec import ActionSpec
 from doot._structs import dkey
 from doot._abstract.protocols import Key_p
 from doot.structs import TaskName
-
-from doot.utils.testing_fixtures import wrap_locs
 
 # Vars:
 logging = logmod.root
@@ -76,6 +74,52 @@ class TestPathSingleKey:
             case x:
                  assert(False), x
 
+    def test_expansion_miss(self):
+        assert(doot.locs is not None)
+        assert("test" not in doot.locs)
+        key = DKey("{test}", force=dkey.DootPathSingleDKey)
+        match key.expand(None, {}):
+            case None:
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_hit(self):
+        assert(doot.locs is not None)
+        assert("test" not in doot.locs)
+        key = DKey("{test}", force=dkey.DootPathSingleDKey)
+        match key.expand(None, {"test":"blah"}):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_hit_loc(self):
+        locs = DootLocator(pl.Path.cwd())
+        locs.update({"test": "blah"})
+        key = DKey("{test}", force=dkey.DootPathSingleDKey)
+        match key.expand(None, locs):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_implicit_hit_loc(self):
+        locs = DootLocator(pl.Path.cwd())
+        locs.update({"test": "blah"})
+        key = DKey("test", force=dkey.DootPathSingleDKey, implicit=True)
+        match key.expand(None, locs):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
     @pytest.mark.skip
     def test_todo(self):
         pass
@@ -92,6 +136,47 @@ class TestPathMultiKey:
                 assert(True)
             case x:
                  assert(False), x
+
+    def test_expansion_implicit_hit_loc(self):
+        locs = DootLocator(pl.Path.cwd())
+        locs.update({"test": "blah"})
+        key = DKey("test", force=dkey.DootPathMultiDKey, implicit=True)
+        match key.expand(None, locs):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_explicit_loc(self):
+        key = DKey("test", force=dkey.DootPathMultiDKey, implicit=False)
+        match key.expand():
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "test")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_loc_miss(self):
+        assert(doot.locs is not None)
+        key = DKey("{test}", mark=DKey.Mark.PATH)
+        match key.expand(None, {}):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_expansion_cwd(self):
+        assert(doot.locs is not None)
+        key = DKey(".", mark=DKey.Mark.PATH)
+        match key.expand(None, {}):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd())
+            case x:
+                assert(False), x
 
     @pytest.mark.skip
     def test_todo(self):

@@ -121,6 +121,17 @@ class DootPathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
         self._typecheck       = pl.Path
         self._relative        = kwargs.get('relative', False)
 
+    def exp_pre_lookup_h(self, sources, opts) -> list:
+        match self.keys():
+            case []:
+                return [[
+                    ExpInst_d(val=str(self), literal=True)
+                ]]
+            case [*xs]:
+                return super().exp_pre_lookup_h(sources, opts)
+
+
+
     def exp_extra_sources_h(self) -> list:
         return [doot.locs.Current]
 
