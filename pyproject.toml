@@ -84,7 +84,10 @@ include    = ["doot*"]
 ##-- pytest
 # https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 [tool.pytest.ini_options]
-addopts           = ["--ignore-glob=related_/*"]
+addopts          = [
+  # "--cov=",
+  "--ignore-glob=related_/*"
+]
 cache_dir         = ".temp/pytest_cache"
 log_file          = ".temp/logs/pytest.log"
 

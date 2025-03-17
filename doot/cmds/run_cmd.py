@@ -21,7 +21,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from jgdv import Proto
 from jgdv.structs.strang import CodeReference
-from jgdv.util.time_ctx import TimeCtx
+from jgdv.debugging.timeblock_ctx import TimeBlock_ctx
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -99,10 +99,10 @@ class RunCmd(BaseCommand):
         self._register_specs(tracker, tasks)
         self._queue_tasks(tracker)
 
-        with TimeCtx(logger=logging,
-                     entry_msg="--- Runner Entry",
-                     exit_msg="---- Runner Exit",
-                     level=20):
+        with TimeBlock_ctx(logger=logging,
+                           enter="--- Runner Entry",
+                           exit="---- Runner Exit",
+                           level=20):
             with runner:
                 if not self._confirm_plan(runner):
                     return

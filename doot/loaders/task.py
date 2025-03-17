@@ -26,7 +26,7 @@ from uuid import UUID, uuid1
 from jgdv import Proto
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
-from jgdv.util.time_ctx import TimeCtx
+from jgdv.debugging.timeblock_ctx import TimeBlock_ctx
 from jgdv.structs.locator.errors import LocationError, StrangError
 from pydantic import ValidationError
 # ##-- end 3rd party imports
@@ -143,7 +143,7 @@ class DootTaskLoader:
         return self
 
     def load(self) -> ChainGuard[TaskSpec]:
-        with TimeCtx(logger=logging, entry_msg="---- Loading Tasks",  exit_msg="---- Task Loading Time"):
+        with TimeBlock_ctx(logger=logging, enter="---- Loading Tasks",  exit="---- Task Loading Time"):
             logging.debug("Loading Tasks from Config files")
             for source in doot.configs_loaded_from:
                 try:
