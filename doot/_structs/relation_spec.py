@@ -130,7 +130,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 inject      = data.get("inject", None)      or data.get("inject_", None)
                 result = cls(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
             case _:
-                raise ValueError("Bad data used for relation spec", data)
+                raise ValueError("Bad data used for relation spec", type(data), data)
 
         return result
 

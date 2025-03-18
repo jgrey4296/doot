@@ -204,7 +204,7 @@ class DootTaskLoader:
                 data = ChainGuard.load(task_file)
                 doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
             except OSError as err:
-                self.failures[task_file].append("Failed to Load Toml File")
+                self.failures[task_file].append(str(err))
             except doot.errors.VersionMismatchError as err:
                 if "startup" not in data:
                     self.failures[task_file].append("Version mismatch")

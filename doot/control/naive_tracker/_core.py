@@ -122,13 +122,14 @@ class _Registration_m:
 
     def _register_artifacts(self, name:Concrete[TaskSpec]) -> None:
         """ Register the artifacts in a spec """
-        if name not in self.specs:
-            raise doot.errors.TrackingError("tried to register artifacts of a non-registered spec", name)
-
-        spec = self.specs[name]
-
-        if spec.name.is_uniq():
-            return
+        match self.specs.get(name, None):
+            case None:
+                msg = "Tried to register artifacts of a non-registered spec"
+                raise doot.errors.TrackingError(msg, name)
+            case x if x.name.is_uniq():
+                return
+            case x:
+                spec = x
 
         for rel in spec.action_group_elements():
             match rel:
@@ -515,6 +516,7 @@ class _Expansion_m:
         to_expand = set()
 
         logging.trace("-- Instantiating Artifact relevant tasks")
+
         for name in self.artifacts[artifact]:
             instance = self._instantiate_spec(name)
             # Don't connect it to the network, it'll be expanded later

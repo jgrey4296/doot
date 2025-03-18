@@ -82,7 +82,7 @@ logging = logmod.getLogger(__name__)
 
 DEFAULT_JOB : Final[str] = "job"
 
-def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
+def _dicts_to_specs(deps:list[dict], *, relation:RelationMeta_e=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
     """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
     results = []
     for x in deps:
@@ -96,7 +96,7 @@ def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list
 
     return results
 
-def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
+def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
       Validates and Builds action/relation groups,
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
@@ -106,14 +106,16 @@ def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler,
 
       # TODO handle callables?
     """
-    if group is None:
-        return []
+    match group:
+        case None | []:
+            return []
+        case [*xs] if info.field_name in TaskSpec._blocking_groups:
+            relation_type = RelationMeta_e.blocks
+            results = _dicts_to_specs(group, relation=relation_type)
+        case [*xs]:
+            relation_type = RelationMeta_e.needs
+            results = _dicts_to_specs(group, relation=relation_type)
 
-    relation_type = RelationMeta_e.needs
-    if info.field_name in TaskSpec._blocking_groups:
-        relation_type = RelationMeta_e.blocks
-
-    results = _dicts_to_specs(group, relation=relation_type)
     return handler(results)
 
 ##--|
@@ -502,7 +504,7 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
 
     @model_validator(mode="after")
     def _validate_metadata(self) -> Self:
-        if self.extra.on_fail(False).disabled():
+        if self.extra.on_fail(False).disabled(): # noqa: FBT003
             self.meta.add(TaskMeta_e.DISABLED)
 
         if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
@@ -544,13 +546,13 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     def _validate_meta(cls, val) -> set:
         match val:
             case TaskMeta_e():
-                return set([val])
+                return {val}
             case str():
                 vals = [val]
             case set() | list():
                 vals = val
 
-        return set([x if isinstance(x, TaskMeta_e) else TaskMeta_e[x] for x in vals])
+        return {x if isinstance(x, TaskMeta_e) else TaskMeta_e[x] for x in vals}
 
     @field_validator("ctor", mode="before")
     def _validate_ctor(cls, val) -> CodeReference:
