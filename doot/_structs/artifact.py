@@ -168,3 +168,12 @@ class TaskArtifact(Location):
         as_path = self.path
         expanded = doot.locs[as_path]
         return expanded.exists()
+
+    def is_concrete(self) -> bool:
+        if super().is_concrete():
+            return True
+        try:
+            _ = doot.locs.expand(self)
+            return True
+        except KeyError:
+            return False

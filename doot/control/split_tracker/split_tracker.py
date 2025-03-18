@@ -228,6 +228,8 @@ class SplitTracker:
                     self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
                 case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self._network.incomplete_dependencies(focus):
+                        case [] if not focus.is_concrete():
+                            self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
                         case []:
                             assert(not bool(focus))
                             path = focus.expand()

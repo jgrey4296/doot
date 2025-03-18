@@ -114,12 +114,18 @@ class _Reactive_m:
 class TrackQueue:
     """ The queue of active tasks. """
 
+    active_set             : list[Concrete[TaskName]|TaskArtifact]
+    execution_trace        : list[Concrete[TaskName|TaskArtifact]]
+    _registry              : TrackRegistry
+    _network               : TrackNetwork
+    _queue                 : boltons.queueutils.HeapPriorityQueue
+
     def __init__(self, registry:TrackRegistry, network:TrackNetwork):
-        self._registry                                                           = registry
-        self._network                                                            = network
-        self.active_set             : list[Concrete[TaskName]|TaskArtifact]      = set()
-        self.execution_trace        : list[Concrete[TaskName|TaskArtifact]]      = []
-        self._queue                 : boltons.queueutils.HeapPriorityQueue       = boltons.queueutils.HeapPriorityQueue()
+        self._registry              = registry
+        self._network               = network
+        self.active_set             = set()
+        self.execution_trace        = []
+        self._queue                 = boltons.queueutils.HeapPriorityQueue()
 
     def __bool__(self):
         return self._queue.peek(default=None) is not None

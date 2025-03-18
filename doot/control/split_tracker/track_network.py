@@ -26,6 +26,7 @@ from uuid import UUID, uuid1
 from jgdv import Proto, Mixin
 import networkx as nx
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.dkey import DKey
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -68,7 +69,6 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
-
 ##-- logging
 logging          = logmod.getLogger(__name__)
 printer          = doot.subprinter()
@@ -85,6 +85,7 @@ DECLARE_PRIORITY                : Final[int]                  = 10
 MIN_PRIORITY                    : Final[int]                  = -10
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 ##--|
+
 class _Expansion_m:
 
     def build_network(self, *, sources:None|True|list[Concrete[TaskName]|TaskArtifact]=None) -> None:
@@ -312,13 +313,19 @@ class _Expansion_m:
         match artifact.is_concrete():
             case True:
                 logging.detail("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and TaskArtifact.bmark_e.glob in x]:
+                art_path = DKey(artifact[1:], mark=DKey.Mark.PATH)(relative=True)
+                for abstract in self._registry._abstract_artifacts:
+                    if art_path not in abstract and artifact not in abstract:
+                        continue
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
                 logging.detail("-- Connecting abstract task to child concrete _registry.artifacts")
-                for conc in [x for x in self._registry._concrete_artifacts if x in artifact]:
-                    assert(conc in artifact)
+                for conc in self._registry._concrete_artifacts:
+                    assert(conc.is_concrete())
+                    conc_path = DKey(conc[1:], mark=DKey.Mark.PATH)(relative=True)
+                    if conc_path not in artifact:
+                        continue
                     self.connect(conc, artifact)
                     to_expand.add(conc)
 
@@ -351,11 +358,13 @@ class _Validation_m:
                     else:
                         logging.user("Abstract ConcreteId in graph: %s", node)
                 case TaskArtifact() if TaskArtifact.bmark_e.glob in node:
-                    bad_nodes = [x for x in self.pred[node] if x in self._registry.specs]
-                    if strict and bool(bad_nodes):
-                        raise doot.errors.TrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
-                    elif bool(bad_nodes):
-                        logging.user("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
+                    # If a node is abtract, it needs to be attacked to something
+                    no_ctor = not bool(self.network.pred[node])
+                    msg = "Abtract Artifact has not predecessors"
+                    if strict and no_ctor:
+                        raise doot.errors.TrackingError(msg, node)
+                    elif no_ctor:
+                        logging.user(msg, node)
 
     def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
         """ get the concrete edges of a task.
@@ -378,7 +387,9 @@ class _Validation_m:
         """ Get all predecessors of a node that don't evaluate as complete """
         assert(focus in self.nodes)
         incomplete = []
-        for x in [x for x in self.pred[focus] if self._registry.get_status(x) not in TaskStatus_e.success_set]:
+        for x in self.pred[focus]:
+            if self._registry.get_status(x) in TaskStatus_e.success_set:
+                continue
             match x:
                 case TaskName() if CLEANUP in self.edges[x, focus]:
                     pass
@@ -388,21 +399,28 @@ class _Validation_m:
                     incomplete.append(x)
                 case TaskArtifact() if not bool(x):
                     incomplete.append(x)
-
-        return incomplete
+        else:
+            return incomplete
 
 ##--|
+
 @Mixin(_Expansion_m, _Validation_m, TaskMatcher_m)
 class TrackNetwork:
     """ The _graph of concrete tasks and their dependencies """
+    _registry         : TrackRegistry
+    _root_node        : TaskName
+    _declare_priority : int
+    _min_priority     : int
+    _graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact]
+    is_valid          : bool
 
     def __init__(self, registry:TrackRegistry):
-        self._registry                                                       = registry
-        self._root_node        : TaskName                                    = TaskName(ROOT)
-        self._declare_priority : int                                         = DECLARE_PRIORITY
-        self._min_priority     : int                                         = MIN_PRIORITY
-        self._graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact] = nx.DiGraph()
-        self.is_valid          : bool                                        = False
+        self._registry         = registry
+        self._root_node        = TaskName(ROOT)
+        self._declare_priority = DECLARE_PRIORITY
+        self._min_priority     = MIN_PRIORITY
+        self._graph            = nx.DiGraph()
+        self.is_valid          = False
 
         self._add_node(self._root_node)
 

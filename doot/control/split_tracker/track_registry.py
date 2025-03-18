@@ -112,10 +112,10 @@ class _Registration_m:
         logging.trace("Registering Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
         # Add it to the relevant abstract/concrete set
-        if not art.is_concrete():
-            self._abstract_artifacts.add(art)
-        else:
+        if art.is_concrete():
             self._concrete_artifacts.add(art)
+        else:
+            self._abstract_artifacts.add(art)
 
     def _register_spec_artifacts(self, spec:TaskSpec) -> None:
         """ Register the artifacts in a spec """
@@ -341,18 +341,27 @@ class _Instantiation_m:
 class TrackRegistry:
     """ Stores and manipulates specs, tasks, and artifacts """
 
+    specs                : dict[TaskName, TaskSpec]
+    concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]
+    # Invariant for tasks: every key in tasks has a matching key in specs.
+    tasks                : dict[Concrete[TaskName], Task_p]
+    artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]
+    _artifact_status     : dict[TaskArtifact, TaskStatus_e]
+    # Artifact sets
+    _abstract_artifacts  : set[Abstract[TaskArtifact]]
+    _concrete_artifacts  : set[Concrete[TaskArtifact]]
+    # indirect blocking requirements:
+    _blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]
+
     def __init__(self):
-        self.specs                : dict[TaskName, TaskSpec]  = {}
-        self.concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]                 = defaultdict(lambda: [])
-        # Invariant for tasks: every key in tasks has a matching key in specs.
-        self.tasks                : dict[Concrete[TaskName], Task_p]                                   = {}
-        self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]                                   = defaultdict(lambda: ArtifactStatus_e.DECLARED)
-        # Artifact sets
-        self._abstract_artifacts  : set[Abstract[TaskArtifact]]                                        = set()
-        self._concrete_artifacts  : set[Concrete[TaskArtifact]]                                        = set()
-        # indirect blocking requirements:
-        self._blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]          = defaultdict(lambda: [])
+        self.specs                = {}
+        self.concrete             = defaultdict(lambda: [])
+        self.tasks                = {}
+        self.artifacts            = defaultdict(set)
+        self._artifact_status     = defaultdict(lambda: ArtifactStatus_e.DECLARED)
+        self._abstract_artifacts  = set()
+        self._concrete_artifacts  = set()
+        self._blockers            = defaultdict(lambda: [])
 
     def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """

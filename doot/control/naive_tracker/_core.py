@@ -34,6 +34,7 @@ import boltons.queueutils
 import networkx as nx
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
+from jgdv.structs.dkey import DKey
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -138,10 +139,11 @@ class _Registration_m:
                     # Link artifact to its source task
                     self.artifacts[art].add(spec.name)
                     # Add it to the relevant abstract/concrete set
-                    if LocationMeta_e.abstract in art:
-                        self._abstract_artifacts.add(art)
-                    else:
-                        self._concrete_artifacts.add(art)
+                    match art.is_concrete():
+                        case False:
+                            self._abstract_artifacts.add(art)
+                        case True:
+                            self._concrete_artifacts.add(art)
                 case _:
                     pass
 
@@ -363,23 +365,33 @@ class _Instantiation_m:
 class _TrackerStore:
     """ Stores and manipulates specs, tasks, and artifacts """
 
+    # All [Abstract, Concrete] Specs:
+    specs                : dict[Ident, TaskSpec]
+    # Mapping (Abstract Spec) -> Concrete Specs. Every id, abstract and concerete, has a spec in specs.
+    # TODO: Check first entry is always uncustomised
+    concrete             : dict[Abstract[Ident], list[Concrete[Ident]]]
+    # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
+    tasks                : dict[Concrete[Ident], Task_p]
+    # Artifact -> list[TaskName] of related tasks
+    artifacts            : dict[TaskArtifact, list[Abstract[Ident]]]
+    _artifact_status     : dict[TaskArtifact, ArtifactStatus_e]
+    # Artifact sets
+    _abstract_artifacts  : set[TaskArtifact]
+    _concrete_artifacts  : set[TaskArtifact]
+    # indirect requirements from other tasks:
+    _indirect_deps       : dict[Concrete[Ident], list[RelationSpec]]
+
+
     def __init__(self):
         super().__init__()
-        # All [Abstract, Concrete] Specs:
-        self.specs                : dict[Ident, TaskSpec]                          = {}
-        # Mapping (Abstract Spec) -> Concrete Specs. Every id, abstract and concerete, has a spec in specs.
-        # TODO: Check first entry is always uncustomised
-        self.concrete             : dict[Abstract[Ident], list[Concrete[Ident]]]            = defaultdict(lambda: [])
-        # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
-        self.tasks                : dict[Concrete[Ident], Task_p]                      = {}
-        # Artifact -> list[TaskName] of related tasks
-        self.artifacts            : dict[TaskArtifact, list[Abstract[Ident]]]          = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
-        # Artifact sets
-        self._abstract_artifacts  : set[TaskArtifact]                             = set()
-        self._concrete_artifacts  : set[TaskArtifact]                             = set()
-        # indirect requirements from other tasks:
-        self._indirect_deps        : dict[Concrete[Ident], list[RelationSpec]]          = defaultdict(lambda: [])
+        self.specs                = {}
+        self.concrete             = defaultdict(lambda: [])
+        self.tasks                = {}
+        self.artifacts            = defaultdict(set)
+        self._artifact_status     = defaultdict(lambda: ArtifactStatus_e.DECLARED)
+        self._abstract_artifacts  = set()
+        self._concrete_artifacts  = set()
+        self._indirect_deps        = defaultdict(lambda: [])
 
     def get_status(self, task:Concrete[Ident]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
@@ -516,7 +528,6 @@ class _Expansion_m:
         to_expand = set()
 
         logging.trace("-- Instantiating Artifact relevant tasks")
-
         for name in self.artifacts[artifact]:
             instance = self._instantiate_spec(name)
             # Don't connect it to the network, it'll be expanded later
@@ -525,14 +536,20 @@ class _Expansion_m:
 
         match artifact.is_concrete():
             case True:
-                logging.detail("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_e.abstract in x]:
+                logging.detail("-- Connecting concrete artifact to dependenct abstracts")
+                art_path = DKey(artifact[1:], mark=DKey.Mark.PATH)(relative=True)
+                for abstract in self._abstract_artifacts:
+                    if art_path not in abstract and artifact not in abstract:
+                        continue
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
-                logging.detail("-- Connecting abstract task to child concrete artifacts")
-                for conc in [x for x in self._concrete_artifacts if x in artifact]:
-                    assert(conc in artifact)
+                logging.detail("-- Connecting abstract artifact to concrete predecessor artifacts")
+                for conc in self._concrete_artifacts:
+                    assert(conc.is_concrete())
+                    conc_path = DKey(conc[1:], mark=DKey.Mark.PATH)(relative=True)
+                    if conc_path not in artifact:
+                        continue
                     self.connect(conc, artifact)
                     to_expand.add(conc)
 
@@ -543,14 +560,19 @@ class _Expansion_m:
 @Mixin(_Expansion_m, TaskMatcher_m)
 class _TrackerNetwork:
     """ the network of concrete tasks and their dependencies """
+    _root_node        : TaskName
+    _declare_priority : int
+    _min_priority     : int
+    network           : nx.DiGraph[Concrete[Ident]]
+    network_is_valid  : bool
 
     def __init__(self):
         super().__init__()
-        self._root_node        : TaskName                                  = TaskName(ROOT)
-        self._declare_priority : int                                       = DECLARE_PRIORITY
-        self._min_priority     : int                                       = MIN_PRIORITY
-        self.network           : nx.DiGraph[Concrete[Ident]]               = nx.DiGraph()
-        self.network_is_valid  : bool                                      = False
+        self._root_node        = TaskName(ROOT)
+        self._declare_priority = DECLARE_PRIORITY
+        self._min_priority     = MIN_PRIORITY
+        self.network           = nx.DiGraph()
+        self.network_is_valid  = False
 
         self._add_node(self._root_node)
 
@@ -670,26 +692,32 @@ class _TrackerNetwork:
                         raise doot.errors.TrackingError("Abstract Concrete[Ident] in network", node)
                     logging.user("Abstract Concrete[Ident] in network: %s", node)
                 case TaskArtifact() if LocationMeta_e.abstract in node:
-                    bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
-                    if strict and bool(bad_nodes):
-                        raise doot.errors.TrackingError("Glob Artifact Concrete[Ident] is a successor to a task", node, bad_nodes)
-                    elif bool(bad_nodes):
-                        logging.user("Glob Artifact Concrete[Ident] is a successor to a task: %s (%s)", node, bad_nodes)
+                    # If a node is abtract, it needs to be attacked to something
+                    no_ctor = not bool(self.network.pred[node])
+                    msg = "Abstract Artifact has no predecessors"
+                    if strict and no_ctor:
+                        raise doot.errors.TrackingError(msg, node)
+                    elif no_ctor:
+                        logging.user(msg, node)
 
     def incomplete_dependencies(self, focus:Concrete[Ident]) -> list[Concrete[Ident]]:
         """ Get all predecessors of a node that don't evaluate as complete """
         assert(focus in self.network.nodes)
         incomplete = []
-        for x in [x for x in self.network.pred[focus] if (status:=self.get_status(x)) not in TaskStatus_e.success_set and status != ArtifactStatus_e.EXISTS]:
+        for x in self.network.pred[focus]:
+            status = self.get_status(x)
+            is_success = status in TaskStatus_e.success_set or status is ArtifactStatus_e.EXISTS
             match x:
+                case _ if is_success:
+                    pass
                 case TaskName() if x not in self.tasks:
                     incomplete.append(x)
                 case TaskName() if not bool(self.tasks[x]):
                     incomplete.append(x)
                 case TaskArtifact() if not bool(x):
                     incomplete.append(x)
-
-        return incomplete
+        else:
+            return incomplete
 
     def build_network(self, *, sources:Maybe[True|list[Concrete[Ident]]]=None) -> None:
         """
@@ -737,11 +765,15 @@ class _TrackerNetwork:
 class _TrackerQueue_boltons:
     """ The _queue of tasks """
 
+    active_set         : list[Concrete[Ident]]
+    execution_trace    : list[Concrete[Ident]]
+    _queue             : boltons.queueutils.HeapPriorityQueue
+
     def __init__(self):
         super().__init__()
-        self.active_set         : list[Concrete[Ident]]                     = set()
-        self.execution_trace    : list[Concrete[Ident]]                     = []
-        self._queue             : boltons.queueutils.HeapPriorityQueue      = boltons.queueutils.HeapPriorityQueue()
+        self.active_set         = set()
+        self.execution_trace    = []
+        self._queue             = boltons.queueutils.HeapPriorityQueue()
 
     def __bool__(self):
         return self._queue.peek(default=None) is not None
