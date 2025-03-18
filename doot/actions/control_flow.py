@@ -172,6 +172,7 @@ class LogAction(DootBaseAction):
     @DKeyed.formats("msg")
     @DKeyed.formats("target", fallback="task")
     def __call__(self, spec, state, level, msg, target):
+        assert(msg is not None), "msg"
         logger = doot.subprinter(target)
         level  = logmod.getLevelName(level)
         logger.log(level, msg)
