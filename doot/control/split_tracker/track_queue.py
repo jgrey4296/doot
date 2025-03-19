@@ -28,11 +28,13 @@ import boltons.queueutils
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.enums import (EdgeType_e, LocationMeta_e, QueueMeta_e, RelationMeta_e, TaskMeta_e, TaskStatus_e)
+from doot.enums import (QueueMeta_e, TaskMeta_e, TaskStatus_e, ArtifactStatus_e)
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
+
+from . import _interface as API # noqa: N812
 
 # ##-- types
 # isort: off
@@ -58,10 +60,12 @@ if TYPE_CHECKING:
     from doot._structs.relation_spec import RelationSpec
     from .track_registry import TrackRegistry
     from .track_network import TrackNetwork
+
     type Abstract[T]  = T
     type Concrete[T]  = T
     type ActionElem   = ActionSpec|RelationSpec
     type ActionGroup  = list[ActionElem]
+    type Status  = ArtifactStatus_e|TaskStatus_e
 
 ##--|
 from doot._abstract import Task_p
@@ -75,9 +79,8 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
-REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 ##--|
+
 class _Reactive_m:
 
     def _maybe_implicit_queue(self, task:Task_p) -> None:
@@ -91,7 +94,7 @@ class _Reactive_m:
             case QueueMeta_e.auto:
                 self.queue_entry(task.name)
             case QueueMeta_e.reactive:
-                self._network.nodes[task.name][REACTIVE_ADD] = True
+                self._network.nodes[task.name][API.REACTIVE_ADD] = True
             case QueueMeta_e.default:
                 # Waits for explicit _queue
                 pass
@@ -101,7 +104,7 @@ class _Reactive_m:
     def _reactive_queue(self, focus:Concrete[TaskName]) -> None:
         """ Queue any known task in the _network that auto-reacts to a focus """
         for adj in self._network.adj[focus]:
-            if self._network.nodes[adj].get(REACTIVE_ADD, False):
+            if self._network.nodes[adj].get(API.REACTIVE_ADD, False):
                 self.queue_entry(adj, silent=True)
 
     def _reactive_fail_queue(self, focus:Concrete[TaskName]) -> None:
@@ -111,6 +114,7 @@ class _Reactive_m:
         raise NotImplementedError()
 
 ##--|
+
 class TrackQueue:
     """ The queue of active tasks. """
 
@@ -127,7 +131,7 @@ class TrackQueue:
         self.execution_trace        = []
         self._queue                 = boltons.queueutils.HeapPriorityQueue()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self._queue.peek(default=None) is not None
 
     def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]:
@@ -140,7 +144,7 @@ class TrackQueue:
         match self._queue.pop():
             case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
                 track_l.user("Task halted due to reaching minimum priority while tracking: %s", focus)
-                self.set_status(focus, TaskStatus_e.HALTED)
+                self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self._registry.tasks[focus].priority -= 1
                 track_l.detail("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
@@ -149,7 +153,7 @@ class TrackQueue:
 
         return focus
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
+    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
         """
           Queue a task by name|spec|Task_p.
           registers and instantiates the relevant spec, inserts it into the _network
@@ -160,7 +164,7 @@ class TrackQueue:
           kwarg 'from_user' signifies the enty is a starting target, adding cli args if necessary and linking to the root.
         """
 
-        prepped_name : None|TaskName|TaskArtifact = None
+        prepped_name : Maybe[TaskName|TaskArtifact] = None
         # Prep the task: register and instantiate
         match name:
             case TaskSpec() as spec:
@@ -168,7 +172,7 @@ class TrackQueue:
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
             case Task_p() as task if task.name not in self._registry.tasks:
                 self._registry.register_spec(task.spec)
-                instance = self._instantiate_spec(task.name, add_cli=from_user)
+                instance = self._registry._instantiate_spec(task.name, add_cli=from_user)
                 # update the task with its concrete spec
                 task.spec = self._registry.specs[instance]
                 self._network.connect(instance, None if from_user else False)
@@ -203,7 +207,7 @@ class TrackQueue:
             return None
         assert(prepped_name in self._network)
 
-        final_name      : None|TaskName|TaskArtifact = None
+        final_name      : Maybe[TaskName|TaskArtifact] = None
         target_priority : int                        = self._network._declare_priority
         match prepped_name:
             case TaskName() if TaskMeta_e.JOB_HEAD in prepped_name:
@@ -230,7 +234,7 @@ class TrackQueue:
         self._queue.add(final_name, priority=target_priority)
         # Apply the override status if necessary:
         match status:
-            case TaskStatus_e():
+            case TaskStatus_e() | ArtifactStatus_e():
                 self._registry.set_status(final_name, status)
             case None:
                 status = self._registry.get_status(final_name)

@@ -46,6 +46,8 @@ from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 
+from . import _interface as API # noqa: N812
+
 # ##-- types
 # isort: off
 import abc
@@ -56,8 +58,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -67,6 +67,8 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from networkx import DiGraph
+
     type Abstract[T] = T
     type Concrete[T] = T
 
@@ -85,8 +87,8 @@ task_l     = doot.subprinter("task")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-MAX_LOOP  : Final[int]     = 100
 ##--|
+
 @Proto(TaskTracker_p)
 class SplitTracker:
     """ The public part of the standard tracker implementation
@@ -102,10 +104,25 @@ class SplitTracker:
         self._network  = TrackNetwork(self._registry)
         self._queue    = TrackQueue(self._registry, self._network)
 
+    @property
+    def active_set(self) -> set:
+        return self._queue.active_set
+
+    @property
+    def network(self) -> DiGraph:
+        return self._network._graph
+
+    @property
+    def _root_node(self) -> TaskName:
+        return self._network._root_node
+
+    def __bool__(self) -> bool:
+        return bool(self._queue)
+
     def register_spec(self, *specs:TaskSpec)-> None:
         self._registry.register_spec(*specs)
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
+    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
         # Register
         # Instantiate
         # Make Task
@@ -122,6 +139,9 @@ class SplitTracker:
     def build_network(self) -> None:
         self._network.build_network()
 
+    def validate_network(self) -> None:
+        self._network.validate_network()
+
     def propagate_state_and_cleanup(self, name:TaskName) -> None:
         """ Propagate a task's state on to its cleanup task"""
         logging.trace("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
@@ -136,7 +156,7 @@ class SplitTracker:
             case _:
                 task.state.clear()
 
-    def next_for(self, target:None|str|TaskName=None) -> None|Task_p|TaskArtifact:
+    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:
         """ ask for the next task that can be performed
 
           Returns a Task or Artifact that needs to be executed or created
@@ -152,19 +172,19 @@ class SplitTracker:
         if target and target not in self._queue.active_set:
             self.queue_entry(target, silent=True)
 
-        focus : None|str|TaskName|TaskArtifact = None
-        count = MAX_LOOP
-        result = None
+        focus : Maybe[str|TaskName|TaskArtifact] = None
+        count                                    = API.MAX_LOOP
+        result : Maybe[Task_p|TaskArtifact]      = None
         while (result is None) and bool(self._queue) and 0 < (count:=count-1):
             focus  : TaskName|TaskArtifact = self._queue.deque_entry()
             status : TaskStatus_e          = self._registry.get_status(focus)
             match focus:
                 case TaskName():
                     track_l.detail("Tracker Head: %s (Task). State: %s, Priority: %s",
-                                  focus, self._registry.get_status(focus), self._registry.tasks[focus].priority)
+                                   focus, self._registry.get_status(focus), self._registry.tasks[focus].priority)
                 case TaskArtifact():
                     track_l.detail("Tracker Head: %s (Artifact). State: %s, Priority: %s",
-                                  focus, self._registry.get_status(focus), self._registry.get_status(focus))
+                                   focus, self._registry.get_status(focus), self._registry.get_status(focus))
 
             match status:
                 case TaskStatus_e.DEAD:
@@ -177,7 +197,13 @@ class SplitTracker:
                     self._queue.active_set.remove(focus)
                     self._registry.set_status(focus, TaskStatus_e.DEAD)
                     self.propagate_state_and_cleanup(focus)
-                case TaskStatus_e.SUCCESS | ArtifactStatus_e.EXISTS:
+                case ArtifactStatus_e.EXISTS:
+                    # Task Exists, queue its dependents and *don't* add the artifact back in
+                    self._queue.execution_trace.append(focus)
+                    heads = [x for x in self._network.succ[focus] if self._network.edges[focus, x].get("job_head", False)]
+                    if bool(heads):
+                        self.queue_entry(heads[0])
+                case TaskStatus_e.SUCCESS:
                     track_l.trace("Task Succeeded: %s", focus)
                     self._queue.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
@@ -259,3 +285,6 @@ class SplitTracker:
 
     def generate_plan(self, *args):
         raise NotImplementedError()
+
+    def clear_queue(self):
+        self._queue.clear_queue()

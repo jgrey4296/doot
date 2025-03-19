@@ -38,6 +38,8 @@ from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 
+from . import _interface as API # noqa: N812
+
 # ##-- types
 # isort: off
 import abc
@@ -75,11 +77,8 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                            : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
-EXPANDED                        : Final[str]                    = "expanded"  # Node attribute name
-REACTIVE_ADD                    : Final[str]                    = "reactive-add"
-INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
 ##--|
+
 class _Registration_m:
 
     def register_spec(self, *specs:TaskSpec) -> None:
@@ -93,7 +92,7 @@ class _Registration_m:
             if spec.name in self.specs:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.user("Ignoring Registration of disabled task: %s", spec.name.readable)
+                logging.trace("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
             self.specs[spec.name] = spec
@@ -160,8 +159,8 @@ class _Instantiation_m:
                 assert(not name.is_concrete())
         spec                          = self.specs[name]
         chain   : list[TaskSpec]  = []
-        current : None|TaskSpec   = spec
-        count   : int = INITIAL_SOURCE_CHAIN_COUNT
+        current : Maybe[TaskSpec] = spec
+        count   : int = API.INITIAL_SOURCE_CHAIN_COUNT
         while current is not None:
             if 0 > count:
                 raise doot.errors.TrackingError("Building a source chain grew to large", name)
@@ -187,7 +186,7 @@ class _Instantiation_m:
         chain.reverse()
         return chain
 
-    def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|Concrete[TaskName]:
+    def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[TaskName]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name not in self.specs:
             logging.detail("Not reusing instantiation because name doesn't have a matching spec: %s", name)
@@ -213,7 +212,7 @@ class _Instantiation_m:
                 # Can use an existing concrete spec
                 return x
 
-    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:None|dict|ChainGuard=None) -> Concrete[TaskName]:
+    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:Maybe[dict|ChainGuard]=None) -> Concrete[TaskName]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
           """
@@ -309,7 +308,7 @@ class _Instantiation_m:
                 logging.detail("Reusing latest Instance: %s", instance)
                 return instance
 
-    def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_p=None) -> Concrete[TaskName]:
+    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 
@@ -337,6 +336,7 @@ class _Instantiation_m:
         return name
 
 ##--|
+
 @Mixin(_Registration_m, _Instantiation_m, TaskMatcher_m)
 class TrackRegistry:
     """ Stores and manipulates specs, tasks, and artifacts """

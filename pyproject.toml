@@ -214,11 +214,13 @@ pretty_print = true
 ##-- mypy
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
-python_version      = "3.12"
-warn_return_any     = true
-warn_unused_configs = true
-exclude             = [] # regexs to ignore
-cache_dir           = ".temp/mypy_cache"
+python_version         = "3.12"
+follow_imports         = "skip"
+cache_dir              = ".temp/mypy_cache"
+warn_return_any        = false
+warn_unused_configs    = true
+ignore_missing_imports = true
+exclude                = []
 
 # Per-module options:
 # [[tool.mypy.overrides]]

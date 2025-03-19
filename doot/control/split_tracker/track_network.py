@@ -33,11 +33,13 @@ from jgdv.structs.dkey import DKey
 import doot
 import doot.errors
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskStatus_e, EdgeType_e
+from doot.enums import TaskStatus_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.core.task import DootTask
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
+
+from . import _interface as API # noqa: N812
 
 # ##-- types
 # isort: off
@@ -76,19 +78,11 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                            : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
-EXPANDED                        : Final[str]                  = "expanded"  # Node attribute name
-REACTIVE_ADD                    : Final[str]                  = "reactive-add"
-CLEANUP                         : Final[str]                  = "cleanup"
-ARTIFACT_EDGES                  : Final[set[EdgeType_e]]      = EdgeType_e.artifact_edge_set
-DECLARE_PRIORITY                : Final[int]                  = 10
-MIN_PRIORITY                    : Final[int]                  = -10
-INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 ##--|
 
 class _Expansion_m:
 
-    def build_network(self, *, sources:None|True|list[Concrete[TaskName]|TaskArtifact]=None) -> None:
+    def build_network(self, *, sources:Maybe[True|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
         """
         for each task queued (ie: connected to the root node)
         expand its dependencies and add into the _graph, until no mode nodes to expand.
@@ -109,7 +103,7 @@ class _Expansion_m:
         while bool(queue): # expand tasks
             logging.detail("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
-                case x if x in processed or self.nodes[x].get(EXPANDED, False):
+                case x if x in processed or self.nodes[x].get(API.EXPANDED, False):
                     logging.detail("- Processed already")
                     processed.add(x)
                 case TaskName() as x if x in self.nodes:
@@ -131,10 +125,10 @@ class _Expansion_m:
             self.is_valid = True
             pass
 
-    def connect(self, left:None|Concrete[TaskName]|TaskArtifact, right:None|False|Concrete[TaskName]|TaskArtifact=None, **kwargs) -> None:
+    def connect(self, left:Maybe[Concrete[TaskName]|TaskArtifact], right:Maybe[False|Concrete[TaskName]|TaskArtifact]=None, **kwargs) -> None:
         """
         Connect a task node to another. left -> right
-        If given left, None, connect left -> ROOT
+        If given left, None, connect left -> API.ROOT
         if given left, False, just add the node
 
         (This preserves graph.pred[x] as the nodes x is dependent on)
@@ -188,8 +182,8 @@ class _Expansion_m:
         match name:
             case x if x is self._root_node:
                 self._graph.add_node(name)
-                self.nodes[name][EXPANDED]     = True
-                self.nodes[name][REACTIVE_ADD] = False
+                self.nodes[name][API.EXPANDED]     = True
+                self.nodes[name][API.REACTIVE_ADD] = False
             case TaskName() if TaskName.bmark_e.gen not in name:
                 raise doot.errors.TrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:
@@ -198,15 +192,15 @@ class _Expansion_m:
                 # Add node with metadata
                 logging.trace("Inserting Artifact into graph: %s", name)
                 self._graph.add_node(name)
-                self.nodes[name][EXPANDED]     = False
-                self.nodes[name][REACTIVE_ADD] = False
+                self.nodes[name][API.EXPANDED]     = False
+                self.nodes[name][API.REACTIVE_ADD] = False
                 self.is_valid = False
             case TaskName():
                 # Add node with metadata
                 logging.trace("Inserting Task into graph: %s", name)
                 self._graph.add_node(name)
-                self.nodes[name][EXPANDED]     = False
-                self.nodes[name][REACTIVE_ADD] = False
+                self.nodes[name][API.EXPANDED]     = False
+                self.nodes[name][API.REACTIVE_ADD] = False
                 self.is_valid = False
 
     def _expand_task_node(self, name:Concrete[TaskName]) -> set[Concrete[TaskName]|TaskArtifact]:
@@ -215,7 +209,7 @@ class _Expansion_m:
         returns a list of the new nodes tasknames
         """
         assert(name.is_uniq())
-        assert(not self.nodes[name].get(EXPANDED, False))
+        assert(not self.nodes[name].get(API.EXPANDED, False))
         spec                                                  = self._registry.specs[name]
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
         to_expand                                             = set()
@@ -245,7 +239,7 @@ class _Expansion_m:
                     to_expand.add(instance)
         else:
             assert(name in self.nodes)
-            self.nodes[name][EXPANDED] = True
+            self.nodes[name][API.EXPANDED] = True
 
         to_expand.update(self._generate_node_subtasks(spec))
         to_expand.update(self._generate_successor_edges(spec))
@@ -299,7 +293,7 @@ class _Expansion_m:
           """
         assert(artifact in self._registry.artifacts)
         assert(artifact in self.nodes)
-        assert(not self.nodes[artifact].get(EXPANDED, False))
+        assert(not self.nodes[artifact].get(API.EXPANDED, False))
         logging.trace("--> Expanding Artifact: %s", artifact)
         to_expand = set()
 
@@ -330,7 +324,7 @@ class _Expansion_m:
                     to_expand.add(conc)
 
         logging.trace("<-- Artifact Expansion Complete: %s", artifact)
-        self.nodes[artifact][EXPANDED] = True
+        self.nodes[artifact][API.EXPANDED] = True
         return to_expand
 
 class _Validation_m:
@@ -347,7 +341,7 @@ class _Validation_m:
             match node:
                 case TaskName() as x if x == self._root_node:
                     pass
-                case TaskName() | TaskArtifact() if not data[EXPANDED]:
+                case TaskName() | TaskArtifact() if not data[API.EXPANDED]:
                     if strict:
                         raise doot.errors.TrackingError("Network isn't fully expanded", node)
                     else:
@@ -388,10 +382,12 @@ class _Validation_m:
         assert(focus in self.nodes)
         incomplete = []
         for x in self.pred[focus]:
-            if self._registry.get_status(x) in TaskStatus_e.success_set:
-                continue
+            status = self._registry.get_status(x)
+            is_success = status in TaskStatus_e.success_set or status is ArtifactStatus_e.EXISTS
             match x:
-                case TaskName() if CLEANUP in self.edges[x, focus]:
+                case _ if is_success:
+                    pass
+                case TaskName() if API.CLEANUP in self.edges[x, focus]:
                     pass
                 case TaskName() if x not in self._registry.tasks:
                     incomplete.append(x)
@@ -416,9 +412,9 @@ class TrackNetwork:
 
     def __init__(self, registry:TrackRegistry):
         self._registry         = registry
-        self._root_node        = TaskName(ROOT)
-        self._declare_priority = DECLARE_PRIORITY
-        self._min_priority     = MIN_PRIORITY
+        self._root_node        = TaskName(API.ROOT)
+        self._declare_priority = API.DECLARE_PRIORITY
+        self._min_priority     = API.MIN_PRIORITY
         self._graph            = nx.DiGraph()
         self.is_valid          = False
 
