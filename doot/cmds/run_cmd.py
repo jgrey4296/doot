@@ -177,7 +177,7 @@ class RunCmd(BaseCommand):
                 interrupt = interrupt_handler
             case str():
                 cmd_l.trace("Loading custom interrupt handler")
-                interrupt = CodeReference.build(interrupt_handler)()
+                interrupt = CodeReference(interrupt_handler)()
 
     def _confirm_plan(self, runner:TaskRunner_i) -> bool:
         """ Confirm the plan """

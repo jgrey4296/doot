@@ -91,7 +91,7 @@ class AddStateFn:
         for kwarg, val in kwargs:
             key = DKey(val)
             val = key.expand(spec, state)
-            ref = CodeReference.build(val)
+            ref = CodeReference(val)
             result[kwarg] = ref()
 
         return result
