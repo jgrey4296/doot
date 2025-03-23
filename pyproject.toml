@@ -25,20 +25,18 @@ dependencies   = [
     "sty >= 1.0.0",
     "boltons >= 23.0.0",
     "pydantic >= 2.7.0",
-    "jgdv >= 1.0.0",
+    "jgdv>=1.0.0",
     "packaging",
     "matplotlib",
 ]
 
 [project.optional-dependencies]
-test = [
-  "pytest >= 8.3.0",
-  "pytest-mock >= 3.14",
-]
-docs = [
-    "Sphinx >=7.4.0",
-    "sphinx-rtd-theme",
-    "myst_parser >= 4.0.0",
+dev = [
+    "myst-parser>=4.0.1",
+    "pytest>=8.3.5",
+    "pytest-mock>=3.14.0",
+    "sphinx>=8.2.3",
+    "sphinx-rtd-theme>=3.0.2",
 ]
 
 ##-- urls
@@ -228,3 +226,9 @@ exclude                = []
 # disallow_untyped_defs = true
 
 ##-- end mypy
+
+[tool.uv.sources]
+jgdv = { path = "../jgdv", editable = true }
+
+[dependency-groups]
+dev = []
