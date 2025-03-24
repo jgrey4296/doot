@@ -2,6 +2,7 @@
 """
 
 """
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -289,7 +290,7 @@ class CmdRun_m:
 
         """
         self.overlord_l.trace("Setting Command Aliases")
-        registered = {}
+        registered : dict = {}
         for name,details in doot.config.on_fail({}).settings.commands().items():
             for alias, args in details.on_fail({}, non_root=True).aliases().items():
                 self.overlord_l.trace("- %s -> %s", name, alias)
@@ -320,12 +321,15 @@ class CmdRun_m:
 
     def _set_cmd_instance(self, cmd:Maybe[str]=None) -> None:
         """ Uses the full command name to get the instance of the command """
-        match self.current_cmd:
-            case None:
-                pass
-            case x:
+        match self.current_cmd, cmd:  # type: ignore[has-type]
+            case None, str():
+                cmd = cast(str, cmd)
+            case None, None:
+                raise ValueError("Cmd needs to exist")
+            case x, _:
                 raise ValueError("Cmd shouldn't be already set")
 
+        assert(cmd is not None)
         self.overlord_l.trace("Initial Retrieval attempt: %s", cmd)
         match self.cmds.get(cmd, None):
             case None if bool(doot.args.sub):
@@ -339,7 +343,7 @@ class CmdRun_m:
             case x:
                 raise TypeError(type(x), cmd)
 
-    def run_cmd(self, cmd:Maybe[str]=None) -> None:
+    def run_cmd(self, _:Maybe[str]=None) -> None:
         """
         The method run to trigger a doot workflow
 
@@ -428,7 +432,7 @@ class ExitHandlers_m:
         return API.ExitCodes.BAD_CONFIG
 
     def _task_failed_exit(self, err:Exception) -> int:
-        self.fail_l.error("Task Error : %s : %s", err, exc_info=err)
+        self.fail_l.error("Task Error : %s", err, exc_info=err)
         self.fail_l.error("Task Source: %s", err.task_source)
         return API.ExitCodes.TASK_FAIL
 
@@ -492,7 +496,6 @@ class DootMain:
 
     """
 
-    plugins      : dict
     current_cmd  : Maybe[Command_p]
     plugins      : ChainGuard
     cmds         : ChainGuard
@@ -500,7 +503,7 @@ class DootMain:
     _cmd_aliases : ChainGuard
     _errored     : Maybe[DootError]
 
-    _help_txt    : ClassVar[tuple[str]] = tuple(["A Toml Specified Task Runner"])
+    _help_txt    : ClassVar[tuple[str, ...]] = tuple(["A Toml Specified Task Runner"])
 
     def __init__(self, *, cli_args:Maybe[list]=None) -> None:
         match cli_args:
@@ -556,7 +559,7 @@ class DootMain:
 
             match doot.args.on_fail(self.implicit_task_cmd).cmd.name():
                 case None:
-                    raise doot.errors.TaskFailed("No available Task")  # noqa: TRY301
+                    raise doot.errors.CommandError("No available cmd")  # noqa: TRY301
                 case str() as target:
                     self._set_cmd_instance(target)
                     self.run_cmd()

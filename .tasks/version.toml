@@ -28,14 +28,14 @@ setup = [
     { do="installed?", args=["bumpver"], env_="env" },
 ]
 actions  = [
-    { do="shell!", args=["bumpver", "update", "--no-fetch", "--{raise}"], env_="env"},
+    {do="dootle.actions.shell:ShellAction", args=["bumpver", "update", "--no-fetch", "--{raise}"], env_="env"},
 ]
 cleanup = [
     "version::changelog",
     {do="dootle.python.mamba:MambaEnv", env="distributor", update_="env"},
-    {do="shell!", args=["bumpver", "show", "--no-fetch"], env_="env", update_="bump_ver"},
+    {do="dootle.actions.shell:ShellAction", args=["bumpver", "show", "--no-fetch"], env_="env", update_="bump_ver"},
     {do="fn::dootle.python.get_version:get_version", from_="bump_ver", update_="curr_ver"},
-    {do="shell!", args=["git", "tag", "{curr_ver}"]}
+    {do="dootle.actions.shell:ShellAction", args=["git", "tag", "{curr_ver}"]}
 ]
 
 [[tasks.version]]
@@ -50,9 +50,9 @@ depends_on = [
     # TODO regex test log_text for /[bump: version \d+.\d+.\d+ -> \d+.\d+.\d+/
 ]
 actions    = [
-    {do="shell!", args=["bumpver", "show", "--no-fetch"], env_="env", update_="bump_ver"},
+    {do="dootle.actions.shell:ShellAction", args=["bumpver", "show", "--no-fetch"], env_="env", update_="bump_ver"},
     {do="fn::dootle.python.get_version:get_version", from_="bump_ver", update_="curr_ver"},
-    {do="shell!", args=["git", "cliff", "--tag",  "{curr_ver}", "--output={changelog!p}"]},
-    {do="shell!", args=["git", "add", "{changelog!p}"]},
-    {do="shell!", args=["git", "commit", "--amend", "--no-edit"]},
+    {do="dootle.actions.shell:ShellAction", args=["git", "cliff", "--tag",  "{curr_ver}", "--output={changelog!p}"]},
+    {do="dootle.actions.shell:ShellAction", args=["git", "add", "{changelog!p}"]},
+    {do="dootle.actions.shell:ShellAction", args=["git", "commit", "--amend", "--no-edit"]},
 ]

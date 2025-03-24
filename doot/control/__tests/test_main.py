@@ -46,7 +46,7 @@ class TestDootMain:
         with pytest.raises(SystemExit) as ctx:
             dmain.main()
 
-        assert(ctx.value.code is API.ExitCodes.INITIAL)
+        assert(ctx.value.code is API.ExitCodes.FRONTEND_FAIL)
 
 class TestMainLoading:
 
