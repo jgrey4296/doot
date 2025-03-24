@@ -50,6 +50,9 @@ logger-objects            = ["logging", "printer", "logmod"]
 [lint.pep8-naming]
 extend-ignore-names = ["cls", "mcls"]
 
+[lint.flake8-builtins]
+builtins-strict-checking = false
+
 # [lint.per-file-ignore]
 # "__init__.py" = ["E402"]
 # "**/{test,docs,tools}/*" = ["E402"]

@@ -18,6 +18,7 @@ from time import sleep
 # ##-- 3rd party imports
 import sh
 from jgdv import Proto, Mixin
+from jgdv.structs.dkey import DKeyed, DKey
 
 # ##-- end 3rd party imports
 
@@ -26,7 +27,6 @@ import doot
 from doot.enums import ActionResponse_e
 from doot.errors import LocationError, TaskError, TaskFailed
 from doot.mixins.path_manip import PathManip_m
-from doot.structs import DKey, DKeyed
 from doot.utils.action_decorators import IOWriter
 from .core.action import DootBaseAction
 
@@ -135,6 +135,8 @@ class WriteAction(IOBase):
                 printer.info("Writing %s chars to %s", len(as_str), loc)
                 loc.write_text(as_str)
 
+        return None
+
 class ReadAction(IOBase):
     """
       Reads data from the doot.locs location to  return for the state
@@ -183,7 +185,7 @@ class CopyAction(IOBase):
             case str() | pl.Path():
                 expanded = [DKey(_from, fallback=pl.Path(_from), mark=DKey.Mark.PATH).expand(spec, state)]
             case list():
-                expanded = list(map(lambda x: DKey(x, fallback=pl.Path(x), mark=DKey.Mark.PATH).expand(spec, state), _from))
+                expanded = [DKey(x, fallback=pl.Path(x), mark=DKey.Mark.PATH).expand(spec, state) for x in  _from]
             case _:
                 raise doot.errors.ActionError("Unrecognized type for copy sources", _from)
 
@@ -203,8 +205,10 @@ class CopyAction(IOBase):
                     shutil.copy2(arg, dest_loc)
                 case x:
                     raise TypeError("Unexpected Type attempted to be copied")
+        else:
+            return None
 
-    def _validate_source(self, source:pl.Path):
+    def _validate_source(self, source:pl.Path) -> None:
         match source:
             case pl.Path() if not source.exists():
                 raise doot.errors.ActionError("Tried to copy a file that doesn't exist", source)
@@ -235,6 +239,7 @@ class MoveAction(IOBase):
             raise doot.errors.ActionError("Tried to move multiple files to a non-directory", source)
 
         source.rename(dest_loc)
+        return None
 
 class DeleteAction(IOBase):
     """
@@ -289,11 +294,12 @@ class BackupAction(IOBase):
         below_tolerance = difference <= tolerance
 
         if dest_loc.exists() and ((not source_newer) or below_tolerance):
-            return
+            return None
 
         printer.info("Backing up : %s", source_loc)
         printer.debug("Destination: %s", dest_loc)
         shutil.copy2(source_loc,dest_loc)
+        return None
 
 class EnsureDirectory(IOBase):
     """
@@ -374,7 +380,7 @@ class LinkAction(IOBase):
                 case _:
                     raise TypeError("unrecognized link targets")
 
-    def _do_link(self, spec, state, x, y, force, hard=False):
+    def _do_link(self, spec, state, x, y, force, *, hard:bool=False) -> None:
         x_key  = DKey(x, mark=DKey.Mark.PATH)
         y_key  = DKey(y, mark=DKey.Mark.PATH)
         x_path = x_key.expand(spec, state, symlinks=True)

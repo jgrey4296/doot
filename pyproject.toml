@@ -213,12 +213,14 @@ pretty_print = true
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
 python_version         = "3.12"
-follow_imports         = "skip"
+follow_imports         = "silent"
 cache_dir              = ".temp/mypy_cache"
 warn_return_any        = false
 warn_unused_configs    = true
 ignore_missing_imports = true
 exclude                = []
+incremental            = true
+
 
 # Per-module options:
 # [[tool.mypy.overrides]]
@@ -227,8 +229,11 @@ exclude                = []
 
 ##-- end mypy
 
+##-- uv
 [tool.uv.sources]
 jgdv = { path = "../jgdv", editable = true }
 
 [dependency-groups]
 dev = []
+
+##-- end uv
