@@ -68,6 +68,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from doot._abstract.loader import Loader_p
+    from doot._abstract import Reporter_p
     from jgdv import Maybe
 
     type Logger                            = logmod.Logger
@@ -372,6 +373,19 @@ class DootOverlord(metaclass=MLSingleton):
     the top-level package 'doot', uses a module getattr to offload attribute access to this class.
 
     """
+    __version__         : str
+    config              : ChainGuard
+    constants           : ChainGuard
+    aliases             : ChainGuard
+    cmd_aliases         : ChainGuard
+    args                : ChainGuard
+    log_config          : JGDVLogConfig
+    locs                : JGDVLocator
+    reporter            : Reporter_p
+    configs_loaded_from : list[str|pl.Path]
+    global_task_state   : dict
+    path_ext            : list[str]
+    is_setup            : bool
 
     def __init__(self, **kwargs:Any):
         logging.info("Creating Overlord")
@@ -382,11 +396,12 @@ class DootOverlord(metaclass=MLSingleton):
         # TODO Remove this:
         self.cmd_aliases                      = ChainGuard()
         self.args                             = ChainGuard() # parsed arg access
-        subprinters = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
+        subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
-        self.locs        : Maybe[JGDVLocator] = JGDVLocator(pl.Path.cwd())
-        self.configs_loaded_from : list[str]  = []
-        self.global_task_state   : dict       = {}
+        self.locs                             = JGDVLocator(pl.Path.cwd())
+        # self.reporter                         =  NullReporter()
+        self.configs_loaded_from              = []
+        self.global_task_state                = {}
         self.path_ext                         = []
         self.is_setup                         = False
 

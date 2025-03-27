@@ -3,6 +3,7 @@
 
 """
 # ruff: noqa: N812
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -79,8 +80,9 @@ state_l           = doot.subprinter("task_state")
 ##-- end logging
 
 skip_msg                : Final[str] = doot.constants.printer.skip_by_condition_msg
-max_steps               : Final[str] = doot.config.on_fail(100_000).settings.tasks.max_steps()
+max_steps               : Final[int] = doot.config.on_fail(100_000).settings.tasks.max_steps()
 ##--|
+
 class _ActionExecution_m:
     """ Covers the nuts and bolts of executing an action group """
 
@@ -203,14 +205,20 @@ class _ActionExecution_m:
         return result
 
 ##--|
+
 @Proto(TaskRunner_p, check=False)
 @Mixin(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._RunnerSleep_m)
 class DootRunner:
     """ The simplest single threaded task runner """
 
+    step          : int
+    tracker       : TaskTracker_p
+    reporter      : Reporter_p
+    teardown_list : list
+
     def __init__(self:Self, *, tracker:TaskTracker_p, reporter:Reporter_p):
         super().__init__()
-        self.step                                             = 0
+        self.step          = 0
         self.tracker       = tracker
         self.reporter      = reporter
         self.teardown_list = [] # list of tasks to teardown
@@ -329,7 +337,7 @@ class DootRunner:
                 return True
             case _, ActRE.SKIP | ActRE.FAIL:
                 return False
-            case _, _:
+            case _:
                 return True
 
     def _announce_entry(self, task:Task_p) -> None:

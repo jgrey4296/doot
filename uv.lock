@@ -2,6 +2,12 @@ version = 1
 revision = 1
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "doot",
+    "doot-examples",
+]
+
 [[package]]
 name = "alabaster"
 version = "1.0.0"
@@ -198,6 +204,17 @@ provides-extras = ["dev"]
 dev = []
 
 [[package]]
+name = "doot-examples"
+version = "0.1.0"
+source = { virtual = "related_/doot-examples" }
+dependencies = [
+    { name = "doot" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "doot", editable = "." }]
+
+[[package]]
 name = "fonttools"
 version = "4.56.0"
 source = { registry = "https://pypi.org/simple" }
@@ -266,23 +283,23 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=4.0.0" },
+    { name = "myst-parser", marker = "extra == 'dev'", specifier = ">=4.0.1" },
     { name = "networkx" },
-    { name = "packaging" },
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pydantic", specifier = ">=2.9.0" },
     { name = "pyparsing" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.0" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0.0" },
-    { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.14.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },
+    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.0" },
     { name = "python-statemachine", specifier = ">=2.5.0" },
     { name = "sh", specifier = ">=2.1.0" },
-    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=8.1.0" },
-    { name = "sphinx-autoapi", marker = "extra == 'docs'", specifier = ">=3.5.0" },
-    { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.0.0" },
+    { name = "sphinx", marker = "extra == 'dev'", specifier = ">=8.2.3" },
+    { name = "sphinx-autoapi", marker = "extra == 'dev'", specifier = ">=3.6.0" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'dev'", specifier = ">=3.0.2" },
     { name = "stackprinter", specifier = ">=0.2.0" },
     { name = "sty", specifier = ">=1.0.6" },
 ]
-provides-extras = ["docs", "test"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "jinja2"

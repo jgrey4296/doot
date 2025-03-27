@@ -80,15 +80,12 @@ class Reporter_p(Protocol):
       Holds ReportLine_i's, and stores TraceRecords
     """
 
-    @abc.abstractmethod
     def __init__(self, reporters:Maybe[list[ReportLine_p]]=None):
         pass
 
-    @abc.abstractmethod
     def _default_formatter(self, trace:TraceRecord) -> str:
         pass
 
-    @abc.abstractmethod
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         pass
 
@@ -100,7 +97,6 @@ class ReportLine_p(Protocol):
     Reporters, like loggers, are stacked, and each takes the flags and data and maybe runs.
     """
 
-    @abc.abstractmethod
     def __call__(self, trace:TraceRecord) -> Maybe[str]:
         pass
 

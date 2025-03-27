@@ -2,12 +2,11 @@
 """
 
 """
-
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -48,6 +47,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from doot._abstract import Task_p
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -57,7 +57,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from doot._abstract import Task_p
 # isort: on
 # ##-- end types
 
@@ -73,21 +72,24 @@ sleep_l    = doot.subprinter("sleep")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-dry_run              : Final[bool]           = doot.args.on_fail(False).cmd.args.dry_run()
-max_steps            : Final[str]            = doot.config.on_fail(100_000).startup.max_steps()
+dry_run              : Final[bool]           = doot.args.on_fail(False).cmd.args.dry_run()  # noqa: FBT003
+max_steps            : Final[int]            = doot.config.on_fail(100_000).startup.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
 loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
-default_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
+DEFAULT_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
+##--|
 
 class _RunnerCtx_m:
 
-    def __init__(self, *args, **kwargs):
+    _signal_failure : Maybe[doot.errors.DootError]
+
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._enter_msg = loop_entry_msg
-        self._exit_msg  = loop_exit_msg
-        self._signal_failure : Maybe[doot.errors.DootError]   = None
+        self._enter_msg      = loop_entry_msg
+        self._exit_msg       = loop_exit_msg
+        self._signal_failure = None
 
     def __enter__(self) -> Self:
         setup_l.info("Building Task Network...")
@@ -98,18 +100,18 @@ class _RunnerCtx_m:
         self.tracker.validate_network()
         setup_l.info("Validation Complete")
         taskloop_l.info(self._enter_msg, extra={"colour" : "green"})
-        return
+        return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> Literal[False]:
         logging.info("---- Exiting Runner Control")
         # TODO handle exc_types?
         printer.setLevel("INFO")
         taskloop_l.info("")
         taskloop_l.info(self._exit_msg, extra={"colour":"green"})
         self._finish()
-        return
+        return False
 
-    def _finish(self):
+    def _finish(self) -> None:
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
@@ -137,7 +139,7 @@ class _RunnerHandlers_m:
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
-    def _handle_failure(self, failure:Error) -> None:
+    def _handle_failure(self, failure:Exception) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.
@@ -147,6 +149,7 @@ class _RunnerHandlers_m:
 
           the tracker handle's clearing itself and shutting down
         """
+        self._signal_failure : Maybe[doot.errors.DootError]
         match failure:
             case doot.errors.Interrupt():
                 breakpoint()
@@ -165,7 +168,7 @@ class _RunnerHandlers_m:
             case doot.errors.DootError() as err:
                 self._signal_failure = err
                 raise err
-            case _:
+            case err:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
                 fail_l.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
@@ -189,6 +192,6 @@ class _RunnerSleep_m:
             case TaskArtifact():
                 return
 
-        sleep_len = task.spec.extra.on_fail(default_SLEEP_LENGTH, int|float).sleep()
+        sleep_len = task.spec.extra.on_fail(DEFAULT_SLEEP_LENGTH, int|float).sleep()
         sleep_l.debug("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
         time.sleep(sleep_len)
