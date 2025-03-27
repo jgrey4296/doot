@@ -68,8 +68,6 @@ cmd_l   = doot.subprinter("cmd")
 # TODO make a decorator to register these onto the cmd
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
-reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
-report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
 interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
 ##--|
 @Proto(Command_p)
@@ -77,7 +75,7 @@ class RunCmd(BaseCommand):
     _name                        = "run"
     _help : ClassVar[tuple[str]] = tuple(["Will perform the tasks/jobs targeted.",
                                           "Can be parameterized in a commands.run block with:",
-                                          "tracker(str), runner(str), reporter(str), report_lines(str)",
+                                          "tracker(str), runner(str)",
                                           ])
 
     @property
@@ -111,17 +109,8 @@ class RunCmd(BaseCommand):
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_i, TaskRunner_i]:
         # Note the final parens to construct:
-        reporters = plugins.on_fail([], list).reporter()
         trackers  = plugins.on_fail([], list).tracker()
         runners   = plugins.on_fail([], list).runner()
-
-        match plugin_selector(reporters, target=reporter_target):
-            case type() as x:
-                available_lines = plugins.on_fail([], list).report_line()
-                report_lines    = [plugin_selector(available_lines, target=x)() for x in report_line_targets]
-                reporter        = x(report_lines)
-            case x:
-                raise TypeError(type(x))
 
         match plugin_selector(trackers, target=tracker_target):
             case type() as x:
@@ -131,7 +120,7 @@ class RunCmd(BaseCommand):
 
         match plugin_selector(runners, target=runner_target):
             case type() as x:
-                runner = x(tracker=tracker, reporter=reporter)
+                runner = x(tracker=tracker)
             case x:
                 raise TypeError(type(x))
 

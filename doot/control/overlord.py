@@ -44,6 +44,7 @@ from jgdv.structs.locator import JGDVLocator
 # ##-- 1st party imports
 import doot._interface as API#  noqa: N812
 import doot.errors as DErr  # noqa: N812
+from doot.reporters import NullReporter
 # ##-- end 1st party imports
 
 # ##-- types
@@ -67,12 +68,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from doot._abstract.loader import Loader_p
-    from doot._abstract import Reporter_p
     from jgdv import Maybe
+    from doot._abstract.loader import Loader_p
+    from doot.reporters._interface import Reporter_p
 
     type Logger                            = logmod.Logger
     type DootError                         = DErr.DootError
+
 
 ##--|
 
@@ -268,7 +270,6 @@ class Startup_m:
         else:
             self.setup_l.trace("Import Path Updated")
 
-
 class Logging_m:
     """
     Overlord management of logging and printing
@@ -399,7 +400,7 @@ class DootOverlord(metaclass=MLSingleton):
         subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
         self.locs                             = JGDVLocator(pl.Path.cwd())
-        # self.reporter                         =  NullReporter()
+        self.reporter                         = NullReporter(logger=logging)
         self.configs_loaded_from              = []
         self.global_task_state                = {}
         self.path_ext                         = []

@@ -22,8 +22,6 @@ from .cmd import Command_p, Command_d
 from .task import Action_p, Task_d, Job_p, Task_p
 from .protocols import SpecStruct_p
 
-from .reporter import Reporter_p, ReportLine_p
-
 type Loaders_p             = CommandLoader_p | PluginLoader_p | TaskLoader_p
 type PluginLoader_p        = Loader_p[EntryPoint]
 type CommandLoader_p       = Loader_p[Command_p]

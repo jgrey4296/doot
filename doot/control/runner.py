@@ -34,7 +34,6 @@ import doot
 import doot.errors
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import ActionResponse_e as ActRE
-from doot.enums import Report_f
 from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
 
 from . import _runner_util as RU
@@ -62,7 +61,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from doot._abstract import (Action_p, Job_p, Reporter_p, Task_p, TaskRunner_p, TaskTracker_p)
+from doot._abstract import (Action_p, Job_p, Task_p, TaskRunner_p, TaskTracker_p)
 # isort: on
 # ##-- end types
 
@@ -174,7 +173,7 @@ class _ActionExecution_m:
         """
         result                     = None
         task.state['_action_step'] = count
-        self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
+        # doot.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
         actexec_l.trace( "Action %s.%s: %s", self.step, count, action.do or action.fun)
 
         actexec_l.detail("Action Executing for Task: %s", task.shortname)
@@ -186,7 +185,7 @@ class _ActionExecution_m:
             case None | True:
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
-                self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
+                # doot.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
@@ -198,10 +197,10 @@ class _ActionExecution_m:
             case list() if all(isinstance(x, TaskName|TaskSpec) for x in result):
                 pass
             case _:
-                self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
+                # doot.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
-        self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
+        # doot.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
         return result
 
 ##--|
@@ -213,14 +212,12 @@ class DootRunner:
 
     step          : int
     tracker       : TaskTracker_p
-    reporter      : Reporter_p
     teardown_list : list
 
-    def __init__(self:Self, *, tracker:TaskTracker_p, reporter:Reporter_p):
+    def __init__(self:Self, *, tracker:TaskTracker_p):
         super().__init__()
         self.step          = 0
         self.tracker       = tracker
-        self.reporter      = reporter
         self.teardown_list = [] # list of tasks to teardown
 
     def __call__(self, *tasks:str, handler:Maybe[Callable]=None): #noqa: ARG002
@@ -265,7 +262,7 @@ class DootRunner:
                 case x:
                     in_task_header_l.error("Unknown Value provided to runner: %s", x)
         except doot.errors.TaskError as err:
-            self.reporter.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
+            # doot.reporter.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
             err.task = task
             self._handle_failure(err)
         except doot.errors.DootError as err:
@@ -288,7 +285,7 @@ class DootRunner:
                 skip_l.trace(skip_msg, self.step, job.shortname)
                 return
 
-            self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.INIT)
+            # doot.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.INIT)
 
             self._execute_action_group(job, group="setup")
             self._execute_action_group(job, allow_queue=True, group="actions")
@@ -297,7 +294,7 @@ class DootRunner:
             self._execute_action_group(job, group="on_fail")
             raise
         finally:
-            self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
+            # doot.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
             out_task_header_l.trace("Job %s: %s", self.step, job.shortname)
 
     def _execute_task(self, task:Task_p) -> None:
@@ -312,11 +309,11 @@ class DootRunner:
                 skip_l.trace(skip_msg, self.step, task.shortname)
                 return
 
-            self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.INIT)
+            # doot.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.INIT)
 
             self._execute_action_group(task, group="setup")
             self._execute_action_group(task, group="actions")
-            self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.SUCCEED)
+            # doot.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.SUCCEED)
         except doot.errors.DootError as err:
             skip_task = True
             self._execute_action_group(task, group="on_fail")

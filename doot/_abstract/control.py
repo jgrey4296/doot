@@ -52,7 +52,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
-    from doot._abstract.reporter import Reporter_p
     from doot._abstract.task import Task_p
     type Actual      = Any
     type TaskSpec    = Any
@@ -165,7 +164,7 @@ class TaskRunner_p(Protocol):
         pass
 
     @abstractmethod
-    def __init__(self, *, tracker:TaskTracker_p, reporter:Reporter_p):
+    def __init__(self, *, tracker:TaskTracker_p):
         pass
 
     @abstractmethod

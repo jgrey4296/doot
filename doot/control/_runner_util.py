@@ -30,7 +30,7 @@ from jgdv.debugging import SignalHandler
 import doot
 import doot.errors
 from doot.enums import ActionResponse_e as ActRE
-from doot.enums import Report_f, TaskStatus_e
+from doot.enums import TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskSpec
 
 # ##-- end 1st party imports
@@ -120,7 +120,7 @@ class _RunnerCtx_m:
             report_l.warning("Runner Hit the Step Limit: %s", max_steps)
 
         report_l.info("Final Summary: ")
-        report_l.info(str(self.reporter), extra={"colour":"magenta"})
+        report_l.info(str(doot.reporter), extra={"colour":"magenta"})
         match self._signal_failure:
             case None:
                 return
@@ -176,7 +176,7 @@ class _RunnerHandlers_m:
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         artifact_l.info("---- Artifact: %s", art)
-        self.reporter.add_trace(art, flags=Report_f.ARTIFACT)
+        # doot.reporter.add_trace(art, flags=Report_f.ARTIFACT)
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
 class _RunnerSleep_m:

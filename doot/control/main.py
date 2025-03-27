@@ -100,6 +100,7 @@ class Loading_m:
         self._set_command_aliases()
         self._load_plugins()
         self._load_cli_parser()
+        self._load_reporter()
         self._load_commands()
         self._load_tasks()
 
@@ -159,6 +160,16 @@ class Loading_m:
                 self.parser = jgdv.cli.ParseMachine(parser=p)
             case _:
                 raise TypeError("Improper argparser specified", self.arg_parser)
+
+    def _load_reporter(self) -> None:
+        match plugin_selector(self.plugins.on_fail([], list).reporter(), fallback=False):
+            case type() as ctor:
+                doot.reporter = ctor()
+            case False:
+                pass
+            case x:
+                raise TypeError(type(x))
+
 
     def _load_commands(self) -> None:
         """ Select Commands from the discovered plugins,
