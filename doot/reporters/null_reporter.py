@@ -75,7 +75,7 @@ class NullReporter(API.Reporter_d):
         super().__init__(*args, **kwargs)
         self._logger            = logger or logging
         self._log_level         = logmod.INFO
-        self._segments          = API.TRACE_LINES.copy()
+        self._segments          = API.TRACE_LINES_ASCII.copy()
         self._fmt               = TraceFormatter()
         self.level              = 0
         self.ctx                = []

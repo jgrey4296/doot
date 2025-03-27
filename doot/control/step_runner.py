@@ -67,9 +67,26 @@ printer = doot.subprinter()
 
 ##-- end logging
 
-dry_run                     = doot.args.on_fail(False).cmd.args.dry_run()
-SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).startup.sleep.task()
-MAX_LOG_ACTIVE : Final[int] = 100
+dry_run        : final[bool] = doot.args.on_fail(False).cmd.args.dry_run()
+SLEEP_LENGTH   : Final[int]  = doot.config.on_fail(0.2, int|float).startup.sleep.task()
+MAX_LOG_ACTIVE : Final[int]  = 100
+CMDS           : Final[dict] = {
+  ""           : "continue",
+  "c"          : "continue",
+  "n"          : "skip",
+  "b"          : "break",
+  "l"          : "list",
+  "d"          : "down",
+  "u"          : "up",
+  "q"          : "quit",
+  "?"          : "help",
+  "I"          : "print_info",
+  "W"          : "print_warn",
+  "D"          : "print_debug",
+  "s"          : "print_state",
+ }
+
+##--|
 
 class _Instructions_m:
 
@@ -259,23 +276,12 @@ class _Stepper_m:
             case "all":
                 self._conf_types = [True]
 
+
+##--|
 @Proto(TaskRunner_i)
 @Mixin(_Instructions_m, _Stepper_m)
 class DootStepRunner(DootRunner):
     """ extends the default runner with step control """
-    _conf_prompt                              = "::- Command? (? for help): "
-    _cmd_prefix                               = "_do_"
-    _aliases              : ClassVar[dict]    = { ""  : "continue",
-                                                  "c"  : "continue",
-                                                  "n"  : "skip",
-                                                  "b"  : "break",
-                                                  "l"  : "list",
-                                                  "d"  : "down",
-                                                  "u"  : "up",
-                                                  "q"  : "quit",
-                                                  "?"  : "help",
-                                                  "I"  : "print_info",
-                                                  "W"  : "print_warn",
-                                                  "D"  : "print_debug",
-                                                  "s"  : "print_state",
-                                                 }
+    _conf_prompt                      = "::- Command? (? for help): "
+    _cmd_prefix                       = "_do_"
+    _aliases      : ClassVar[dict]    = CMDS.copy()

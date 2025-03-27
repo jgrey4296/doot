@@ -58,22 +58,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-##-- segment dicts
-TRACE_LINES           : Final[dict[str, str|tuple[str,str,str]]] = {
-    "root"            :  "┳",
-    "wait"            :  "┃",
-    "act"             :  "┼◇",
-    "branch"          : ("┣", "─▶", "╮"),
-    "resume"          : ("┣", "╌╌", "╮"),
-    "inactive"        :  "┊",
-    "begin"           :  "▼",
-    "result"          : ("┢", "◀─", "╯"),
-    "pause"           : ("┝", "╌╌", "╯"),
-    "finished"        :  "┻",
-    "fail"            :  "❌",
-    "gap"             :  "  ",
-}
 
+##-- segment dicts
 BRANCH_PARTS : Final[dict[str, str]] = {
     "branch-extend"   : "─",
     "branch-start"    : "╮",

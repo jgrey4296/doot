@@ -70,7 +70,7 @@ logging = logmod.getLogger(__name__)
 class TraceFormatter:
 
     def __init__(self):
-        self._segments         = API.TRACE_LINES.copy()
+        self._segments         = API.TRACE_LINES_ASCII.copy()
         self.line_fmt          = API.LINE_PASS_FMT
         self.msg_fmt           = API.LINE_MSG_FMT
 
