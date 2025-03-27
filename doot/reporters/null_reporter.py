@@ -61,9 +61,12 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+logging.setLevel(logmod.CRITICAL)
 ##-- end logging
 
 # Vars:
+LINE_LEN  : Final[int] = 46
+LINE_CHAR : Final[str] = "-"
 # Body:
 
 class _WorkflowReporter_m:
@@ -114,19 +117,46 @@ class _WorkflowReporter_m:
 
 class _GenReporter_m:
 
-    def set_state(self, msg, **kwargs) -> None:
-        pass
+    def set_state(self, state, **kwargs) -> None:
+        self._state_data = dict(kwargs)
+        self._state      = state
+        logging.info("Report State Set To: %s", state)
+
+
+    def gap(self) -> None:
+        self.log.user("")
+
+    def line(self, msg:Maybe[str]=None) -> None:
+        match msg:
+            case str() as x:
+                val = x.strip()
+                val = val.center(len(val) + 4, " ")
+                val = val.center(LINE_LEN, LINE_CHAR)
+                self.log.user(val, extra=self._log_extra)
+            case _:
+                self.log.user(LINE_CHAR*LINE_LEN, extra=self._log_extra)
 
     def header(self) -> None:
-        HEADER_MSG   = doot.constants.printer.doot_header
-        self.log.user(HEADER_MSG, extra={"colour": "green"})
+        self.active_level(logmod.WARN)
+        self._log_extra['colour'] = "green"
+        self.line()
+        self.line("Doot")
+        self.line()
+        # HEADER_MSG   = doot.constants.printer.doot_header
+        # self.log.user(HEADER_MSG, extra={"colour": "green"})
 
     def summary(self) -> None:
-        fail_msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
-        succ_msg = doot.config.on_fail("").shutdown.notify.success_msg()
-        self.log.user("---- %s ----", succ_msg)
+        self.active_level(logmod.WARN)
+        match self._state:
+            case "fail":
+                self._log_extra['colour'] = "red"
+                msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
+            case _:
+                msg = doot.config.on_fail("Success").shutdown.notify.success_msg()
 
-        self.log.user("---- Dooted ----")
+        self.line(msg)
+        # TODO the report
+        self.gap()
 
     def user(self, msg, *rest, **kwargs) -> None:
         self.log.warning(msg, *rest)
@@ -156,7 +186,7 @@ class NullReporter(API.Reporter_d):
     def __init__(self, *args, logger:Maybe[Logger]=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._logger            = logger
-        self._log_level         = logmod.INFO
+        self._log_level         = logmod.ERROR
         self._segments          = API.TRACE_LINES_ASCII.copy()
         self._fmt               = TraceFormatter()
         self.level              = 0
@@ -164,6 +194,7 @@ class NullReporter(API.Reporter_d):
         self._act_trace         = []
         self._state             = None
         self._state_data        = {}
+        self._log_extra         = {"colour":"blue"}
 
     @property
     def log(self) -> Logger:
@@ -178,8 +209,14 @@ class NullReporter(API.Reporter_d):
         match logger:
             case logmod.Logger():
                 self._logger = logger
+                self._logger.setLevel(self._log_level)
             case x:
                 raise TypeError(type(x))
+
+
+    def active_level(self, level:int) -> None:
+        self._log_level = level
+        self.log.setLevel(level)
 
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         pass

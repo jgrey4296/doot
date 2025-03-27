@@ -285,6 +285,7 @@ class Logging_m:
     def _setup_logging(self) -> None:
         self.log_config.setup(self.config)
         self.report.log = self.subprinter()
+        self.report.trace("Logging Setup")
 
 class WorkflowUtil_m:
     """ util methods on the overlord used when running a workflow """

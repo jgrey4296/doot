@@ -382,7 +382,7 @@ class Shutdown_m:
 
         doot.record_defaulted_config_values()
 
-        doot.report.user("")
+        doot.report.line()
         match self._errored:
             case doot.errors.DootError() as err:
                 doot.report.set_state("fail", err=err, cb=self._announce_exit)
@@ -405,6 +405,12 @@ class Shutdown_m:
                 sh.espeak(message)
             case "darwin":
                 sh.say("-v", "Moira", "-r", "50", message)
+
+    def _install_at_exit(self):
+        def goodbye(*args, **kwargs):
+            doot.report.line("Dooted")
+
+        atexit.register(goodbye)
 
 class ExitHandlers_m:
     """ Mixin for handling different errors of doot """
@@ -545,6 +551,7 @@ class DootMain:
         try:
             self._load()
             self._parse_args()
+            self._install_at_exit()
             match self._handle_cli_args():
                 case None:
                     pass
