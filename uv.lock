@@ -2,12 +2,6 @@ version = 1
 revision = 1
 requires-python = ">=3.12"
 
-[manifest]
-members = [
-    "doot",
-    "doot-examples",
-]
-
 [[package]]
 name = "alabaster"
 version = "1.0.0"
@@ -185,10 +179,10 @@ dev = [
 requires-dist = [
     { name = "boltons", specifier = ">=23.0.0" },
     { name = "jgdv", editable = "../jgdv" },
-    { name = "matplotlib" },
+    { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "myst-parser", marker = "extra == 'dev'", specifier = ">=4.0.1" },
     { name = "networkx", specifier = ">3.0" },
-    { name = "packaging" },
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pydantic", specifier = ">=2.7.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.0" },
@@ -202,17 +196,6 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = []
-
-[[package]]
-name = "doot-examples"
-version = "0.1.0"
-source = { virtual = "related_/doot-examples" }
-dependencies = [
-    { name = "doot" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "doot", editable = "." }]
 
 [[package]]
 name = "fonttools"
