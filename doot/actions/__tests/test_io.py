@@ -32,7 +32,7 @@ class TestBaseAction:
         assert(isinstance(action, DootBaseAction))
 
     def test_call_action(self, caplog, mocker):
-        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         action = DootBaseAction()
         state  = { "count" : 0  }
         spec   = mocker.Mock(spec=doot.structs.ActionSpec)
