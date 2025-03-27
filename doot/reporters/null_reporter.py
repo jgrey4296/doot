@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -28,7 +27,8 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv import Proto
+from jgdv import Proto, Mixin
+import doot
 from . import _interface as API
 from .formatter import TraceFormatter
 
@@ -64,37 +64,9 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
 # Body:
 
-@Proto(API.Reporter_p)
-class NullReporter(API.Reporter_d):
-    """ The initial reporter for prior to configuration """
-
-    def __init__(self, *args, logger:Maybe[Logger]=None, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._logger            = logger or logging
-        self._log_level         = logmod.INFO
-        self._segments          = API.TRACE_LINES_ASCII.copy()
-        self._fmt               = TraceFormatter()
-        self.level              = 0
-        self.ctx                = []
-        self.trace              = []
-
-    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
-        pass
-
-    def __enter__(self) -> Self:
-        self.level += 1
-        return self
-
-    def __exit__(self, *exc:Any) -> bool:
-        self.level -= 1
-        match exc:
-            case (None, None, None):
-                return True
-            case _:
-                return False
+class _WorkflowReporter_m:
 
     def root(self) -> None:
         self._out("root")
@@ -134,14 +106,95 @@ class NullReporter(API.Reporter_d):
     def finished(self) -> None:
         self._out("finished")
 
-    def summary(self) -> None:
-        pass
-
     def queue(self, num:int) -> None:
         pass
 
     def state_result(self, *vals:str) -> None:
         pass
+
+class _GenReporter_m:
+
+    def set_state(self, msg, **kwargs) -> None:
+        pass
+
+    def header(self) -> None:
+        HEADER_MSG   = doot.constants.printer.doot_header
+        self.log.user(HEADER_MSG, extra={"colour": "green"})
+
+    def summary(self) -> None:
+        fail_msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
+        succ_msg = doot.config.on_fail("").shutdown.notify.success_msg()
+        self.log.user("---- %s ----", succ_msg)
+
+        self.log.user("---- Dooted ----")
+
+    def user(self, msg, *rest, **kwargs) -> None:
+        self.log.warning(msg, *rest)
+
+    def trace(self, msg, *rest, **kwargs) -> None:
+        self.log.info(msg, *rest)
+
+    def failure(self, msg, *rest, **kwargs) -> None:
+        self.log.exception(msg, *rest)
+
+    def warn(self, msg, *rest, **kwargs) -> None:
+        self.log.warn(msg, *rest)
+
+    def error(self, msg, *rest, **kwargs) -> None:
+        self.log.error(msg, *rest)
+
+    def detail(self, msg, *rest, **kwargs) -> None:
+        self.log.debug(msg, *rest)
+
+
+##--|
+@Proto(API.WorkflowReporter_p, API.GeneralReporter_p)
+@Mixin(_GenReporter_m, _WorkflowReporter_m)
+class NullReporter(API.Reporter_d):
+    """ The initial reporter for prior to configuration """
+
+    def __init__(self, *args, logger:Maybe[Logger]=None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._logger            = logger
+        self._log_level         = logmod.INFO
+        self._segments          = API.TRACE_LINES_ASCII.copy()
+        self._fmt               = TraceFormatter()
+        self.level              = 0
+        self.ctx                = []
+        self._act_trace         = []
+        self._state             = None
+        self._state_data        = {}
+
+    @property
+    def log(self) -> Logger:
+        match self._logger:
+            case None:
+                return logging
+            case x:
+                return x
+
+    @log.setter
+    def log(self, logger:Logger) -> None:
+        match logger:
+            case logmod.Logger():
+                self._logger = logger
+            case x:
+                raise TypeError(type(x))
+
+    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
+        pass
+
+    def __enter__(self) -> Self:
+        self.level += 1
+        return self
+
+    def __exit__(self, *exc:Any) -> bool:
+        self.level -= 1
+        match exc:
+            case (None, None, None):
+                return True
+            case _:
+                return False
 
     def _build_ctx(self) -> str:
         return "".join(self.ctx)

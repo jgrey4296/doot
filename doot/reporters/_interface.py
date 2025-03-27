@@ -98,18 +98,21 @@ MSG_SPACING  : Final[int] = 6
 # Body:
 
 class Reporter_d:
-    level      : int
-    ctx        : list[str]
-    trace      : list
-    _fmt       : TraceFormatter_p
-    _logger    : Logger
-    _log_level : int
-    _segments  : dict
+    level           : int
+    ctx             : list[str]
+    _act_trace      : list
+    _fmt            : TraceFormatter_p
+    _logger         : Maybe[Logger]
+    _log_level      : int
+    _segments       : dict
+    _state          : Any
+    _state_data     : dict
 
 @runtime_checkable
-class Reporter_p(Protocol):
+class WorkflowReporter_p(Protocol):
     """
-    A Re-entrant ctx manager, used for reporting user-level information about a
+    A Re-entrant ctx manager,
+    used for reporting user-level information about a
     task workflow run.
 
     """
@@ -163,15 +166,35 @@ class Reporter_p(Protocol):
         # pass fmt
         pass
 
-    def summary(self) -> None:
-        pass
-
     def queue(self, num:int) -> None:
         raise NotImplementedError()
 
     def state_result(self, *vals:str) -> None:
         raise NotImplementedError()
 
+@runtime_checkable
+class GeneralReporter_p(Protocol):
+    """ Reporter Methods for general user facing messages """
+
+    def set_state(self, state, **kwargs) -> None:
+        pass
+
+    def header(self) -> None:
+        pass
+
+    def summary(self) -> None:
+        pass
+
+    def trace(self, msg, *rest) -> None:
+        pass
+
+    def failure(self, msg, *rest) -> None:
+        pass
+
+    def warn(self, msg, *rest) -> None:
+        pass
+
+@runtime_checkable
 class TraceFormatter_p(Protocol):
 
     def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str:

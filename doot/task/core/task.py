@@ -72,7 +72,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 TASK_ALISES                    = doot.aliases.task

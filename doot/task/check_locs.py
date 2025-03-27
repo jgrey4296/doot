@@ -61,8 +61,6 @@ from doot._abstract import Task_p
 
 ##-- logging
 logging   = logmod.getLogger(__name__)
-printer   = doot.subprinter()
-check_loc = doot.subprinter("check_loc")
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).startup.location_check.make_missing()
@@ -101,18 +99,18 @@ class CheckLocsTask(DootTask):
                 path = doot.locs.Current[loc]
                 match path.exists():
                     case True:
-                        check_loc.trace("Base Location Exists : %s", path)
+                        doot.report.trace("Base Location Exists : %s", path)
                     case False if make_missing:
-                        check_loc.user("Making Missing Location: %s", path)
+                        doot.report.user("Making Missing Location: %s", path)
                         path.mkdir(parents=True)
                     case False if strict:
                         errors.append(path)
                     case False:
-                        check_loc.trace("Base Location Missing: %s", path)
+                        doot.report.trace("Base Location Missing: %s", path)
             except PermissionError:
                 if strict:
                     errors.append(path)
-                check_loc.error("Base Location Permision Error: %s", loc)
+                doot.report.error("Base Location Permision Error: %s", loc)
         else:
             if strict and bool(errors):
                 raise doot.errors.ConfigError("Missing Location(s)", errors)

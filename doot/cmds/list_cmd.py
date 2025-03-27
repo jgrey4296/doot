@@ -77,9 +77,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
-help_l  = doot.subprinter("help")
-cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
 GROUP_INDENT : Final[str]       = " "*4
@@ -278,7 +275,7 @@ class _LoggerLister_m:
         result = []
 
         result.append("--- Primary Loggers:")
-        result.append("- printer  ( target= ) : For user-facing output")
+        result.append("- doot.report  ( target= ) : For user-facing output")
         result.append("- stream   ( target= )")
         result.append("- file     ( target= filename_fmt=%str ) ")
 

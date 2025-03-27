@@ -63,7 +63,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 
 ##-- end logging
 
@@ -91,59 +90,59 @@ CMDS           : Final[dict] = {
 class _Instructions_m:
 
     def _do_default(self, *args):
-        printer.info("::- Default")
+        doot.report.info("::- Default")
         return None
 
     def _do_continue(self, *args):
-        printer.info("::- Continue")
+        doot.report.info("::- Continue")
         return True
 
     def _do_skip(self, *args):
-        printer.info("::- Skipping")
+        doot.report.info("::- Skipping")
         return False
 
     def _do_help(self, *args):
-        printer.info("::- Help")
-        printer.info("::-- Available Commands: %s", " ".join([x.replace(self._cmd_prefix, "") for x in dir(self) if self._cmd_prefix in x]))
+        doot.report.info("::- Help")
+        doot.report.info("::-- Available Commands: %s", " ".join([x.replace(self._cmd_prefix, "") for x in dir(self) if self._cmd_prefix in x]))
 
-        printer.info("")
-        printer.info("::-- Aliases:")
+        doot.report.info("")
+        doot.report.info("::-- Aliases:")
         for x,y in self._aliases.items():
             if x == "":
                 continue
-            printer.info("::-- %s : %s", x, y)
+            doot.report.info("::-- %s : %s", x, y)
 
-        printer.info("")
-        printer.info("::-- Pausing on: %s", self._conf_types)
+        doot.report.info("")
+        doot.report.info("::-- Pausing on: %s", self._conf_types)
 
         return None
 
     def _do_quit(self, *args):
-        printer.info("::- Quitting Doot")
+        doot.report.info("::- Quitting Doot")
         self.tracker.clear_queue()
         if len(self.tracker.active_set) < MAX_LOG_ACTIVE:
-            printer.info("Tracker Queue: %s", self.tracker.active_set)
+            doot.report.info("Tracker Queue: %s", self.tracker.active_set)
         else:
-            printer.info("Tracker Queue: %s", len(self.tracker_set))
+            doot.report.info("Tracker Queue: %s", len(self.tracker_set))
         self._has_quit = True
         return False
 
     def _do_list(self, *args):
-        printer.info("::- Listing Trace:")
+        doot.report.info("::- Listing Trace:")
         for x in self.tracker.execution_path[:-1]:
-            printer.info("::-- %s", x)
+            doot.report.info("::-- %s", x)
 
-        printer.info("::-- Current: %s", self.tracker.execution_path[-1])
+        doot.report.info("::-- Current: %s", self.tracker.execution_path[-1])
 
         return None
 
     def _do_break(self, *args):
-        printer.info("::- Break")
+        doot.report.info("::- Break")
         breakpoint()
         pass
 
     def _do_down(self, *args):
-        printer.info("::- Down")
+        doot.report.info("::- Down")
         match self._conf_types:
             case [True]:
                 self.set_confirm_type("job")
@@ -155,10 +154,10 @@ class _Instructions_m:
                 self.set_confirm_type("all")
                 pass
 
-        printer.info("::- Stepping at: %s", self._conf_types)
+        doot.report.info("::- Stepping at: %s", self._conf_types)
 
     def _do_up(self, *args):
-        printer.info("Up")
+        doot.report.info("Up")
         match self._conf_types:
             case [structs.ActionSpec]:
                 self.set_confirm_type("task")
@@ -169,36 +168,36 @@ class _Instructions_m:
             case [True]:
                 pass
 
-        printer.info("Stepping at: %s", self._conf_types)
+        doot.report.info("Stepping at: %s", self._conf_types)
 
     def _do_print_info(self, *args):
         self._override_level = "INFO"
-        printer.warning("Overring Printer to: %s", self._override_level)
+        doot.report.warning("Overring Printer to: %s", self._override_level)
         self._set_print_level(self._override_level)
 
     def _do_print_warn(self, *args):
         self._override_level = "WARNING"
-        printer.warning("Overring Printer to: %s", self._override_level)
+        doot.report.warning("Overring Printer to: %s", self._override_level)
         self._set_print_level(self._override_level)
 
     def _do_print_debug(self, *args):
         self._override_level = "DEBUG"
-        printer.warning("Overring Printer to: %s", self._override_level)
+        doot.report.warning("Overring Printer to: %s", self._override_level)
         self._set_print_level(self._override_level)
 
     def _do_print_state(self, *args):
-        printer.info("Current State:")
-        printer.info("%20s : %s", "CLI Args", dict(doot.args))
+        doot.report.info("Current State:")
+        doot.report.info("%20s : %s", "CLI Args", dict(doot.args))
         for arg in args:
             match arg:
                 case structs.ActionSpec():
-                    printer.info("%20s : %s", "Action", str(arg.do))
-                    printer.info("%20s : %s", "Action Spec kwargs", dict(arg.kwargs))
+                    doot.report.info("%20s : %s", "Action", str(arg.do))
+                    doot.report.info("%20s : %s", "Action Spec kwargs", dict(arg.kwargs))
                 case abstract.Task_i():
-                    printer.info("%20s : %s", "Task Name", str(arg.name))
-                    printer.info("%20s : %s", "Task State", arg.state)
+                    doot.report.info("%20s : %s", "Task Name", str(arg.name))
+                    doot.report.info("%20s : %s", "Task State", arg.state)
                 case abstract.Job_i():
-                    printer.info("%20s : %s", "Job Args", arg.args)
+                    doot.report.info("%20s : %s", "Job Args", arg.args)
 
 class _Stepper_m:
 
@@ -212,19 +211,19 @@ class _Stepper_m:
         if self._pause(job):
             super()._expand_job(job)
         else:
-            printer.info("::- ...")
+            doot.report.info("::- ...")
 
     def _execute_task(self, task:abstract.Task_i) -> None:
         if self._pause(task):
             super()._execute_task(task)
         else:
-            printer.info("::- ...")
+            doot.report.info("::- ...")
 
     def _execute_action(self, count, action, task) -> None:
         if self._pause(action, task, step=f"{self.step}.{count}"):
             return super()._execute_action(count, action, task)
         else:
-            printer.info("::- ...")
+            doot.report.info("::- ...")
 
     def _pause(self, *args, step=None) -> bool:
         if self._has_quit:
@@ -244,8 +243,8 @@ class _Stepper_m:
             case structs.ActionSpec() if structs.ActionSpec not in self._conf_types:
                 return True
 
-        printer.info("")
-        printer.info( "::- Step %s: %s", (step or self.step), str(target))
+        doot.report.info("")
+        doot.report.info( "::- Step %s: %s", (step or self.step), str(target))
         result = None
         while not isinstance(result, bool):
             response = input(self._conf_prompt)

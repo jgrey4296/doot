@@ -71,16 +71,15 @@ from doot._abstract import PluginLoader_p, Task_p, Command_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
-cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
 ##-- data
 data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE)
 ##-- end data
-PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS
 
+PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS
 NL = None
+##--|
 
 class _StubDoot_m:
 
@@ -95,15 +94,15 @@ class _StubDoot_m:
         doot_toml = pl.Path("doot.toml")
         data_text = data_path.read_text()
         if doot_toml.exists():
-            cmd_l.user(data_text)
-            cmd_l.user("")
-            cmd_l.user("- doot.toml it already exists, printed to stdout instead", extra={"colour":"red"})
+            doot.report.user(data_text)
+            doot.report.user("")
+            doot.report.user("- doot.toml it already exists, printed to stdout instead", extra={"colour":"red"})
             return
 
         with doot_toml.open("a") as f:
             f.write(data_text)
 
-        cmd_l.user("doot.toml stub")
+        doot.report.user("doot.toml stub")
         return []
 
 class _StubParam_m:
@@ -242,7 +241,7 @@ class _StubTask_m:
                             original_name,
                             stub['name'].default[1:])
 
-        # Output to printer/stdout, or file
+        # Output to doot.report/stdout, or file
         if doot.args.cmd.args.out == "":
             result.append(stub.to_toml())
             return result
@@ -250,7 +249,7 @@ class _StubTask_m:
         task_file = pl.Path(doot.args.cmd.args.out)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
-        cmd_l.user("Stubbing task %s into file: %s", stub['name'], task_file)
+        doot.report.user("Stubbing task %s into file: %s", stub['name'], task_file)
         with task_file.open("a") as f:
             f.write("\n")
             f.write(stub.to_toml())
@@ -260,7 +259,7 @@ class _StubPrinter_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(name="--printer", type=bool, default=False, desc="Generate a stub printer config"),
+                self.build_param(name="--doot.report", type=bool, default=False, desc="Generate a stub doot.report config"),
                 ]
 
     def _stub_printer(self) -> list[str]:
@@ -304,7 +303,7 @@ class StubCmd(BaseCommand):
             case {"param": True}:
                 result = self._stub_cli_param()
                 self._print_text(result)
-            case {"printer": True}:
+            case {"doot.report": True}:
                 result = self._stub_printer()
                 self._print_text(result)
             case _:

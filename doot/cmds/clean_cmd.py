@@ -55,7 +55,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 clean_locs = doot.config.on_fail([], list).settings.commands.clean.locs()

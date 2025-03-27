@@ -64,9 +64,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
-cmd_l   = doot.subprinter("cmd")
-help_l  = doot.subprinter("help")
 ##-- end logging
 
 LINE_SEP        : Final[str] = "------------------------------"
@@ -275,7 +272,7 @@ class HelpCmd(BaseCommand):
                 self._print_text(result)
                 return
             case [*xs]:
-                cmd_l.error("To print help for a command, choose 1 command at a time")
+                doot.report.error("To print help for a command, choose 1 command at a time")
                 return
 
         match task_targets:

@@ -67,7 +67,6 @@ from doot._abstract import Job_p, Task_p, TaskLoader_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 
@@ -283,8 +282,8 @@ class DootTaskLoader:
             try:
                 doot.locs.Current.update(group, strict=False)
             except KeyError as err:
-                printer.warning("Locations Already Defined: %s : %s", err.args, source)
+                doot.report.warning("Locations Already Defined: %s : %s", err.args, source)
             except TypeError as err:
-                printer.warning("Location failed to validate: %s : %s", err.args, source)
+                doot.report.warning("Location failed to validate: %s : %s", err.args, source)
             except LocationError as err:
-                printer.warning("%s : %s", str(err), source)
+                doot.report.warning("%s : %s", str(err), source)

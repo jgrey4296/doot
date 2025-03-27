@@ -61,7 +61,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-cmd_l = doot.subprinter("cmd")
 ##-- end logging
 
 @Proto(Command_p, check=False)
@@ -119,11 +118,11 @@ class BaseCommand(Command_d):
         for line in text:
             match line:
                 case str():
-                    cmd_l.user(line)
+                    doot.report.user(line)
                 case (str() as s, dict() as d):
-                    cmd_l.user(s, extra=d)
+                    doot.report.user(s, extra=d)
                 case None:
-                    cmd_l.user("")
+                    doot.report.user("")
 
 
 

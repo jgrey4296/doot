@@ -25,8 +25,6 @@ from doot.task.core.task import DootTask
 from doot.actions.core.action import DootBaseAction
 
 from jgdv.logging import LogLevel_e
-printer = doot.subprinter()
-printer.propagate = True
 
 class TestBaseAction:
 

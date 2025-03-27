@@ -63,7 +63,6 @@ from doot._abstract import Command_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 runner_target            = doot.config.on_fail("step", str).settings.commands.step.runner()
@@ -98,29 +97,29 @@ class StepCmd(BaseCommand):
         assert(hasattr(runner, 'set_confirm_type')), "A Step Runner needs to have a confirm_type"
         runner.set_confirm_type(doot.args.cmd.args.type)
 
-        printer.info("- Building Task Dependency Network")
+        doot.report.info("- Building Task Dependency Network")
         for task in tasks.values():
             tracker.add_task(task)
         tracker.add_task(CheckLocsTask())
 
-        printer.info("- Task Dependency Network Built")
+        doot.report.info("- Task Dependency Network Built")
 
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
-                printer.warn("- %s specified as run target, but it doesn't exist")
+                doot.report.warn("- %s specified as run target, but it doesn't exist")
             else:
                 tracker.queue_task(target)
 
         for target in doot.args.sub.keys():
             if target not in tracker:
-                printer.warn(- "%s specified as run target, but it doesn't exist")
+                doot.report.warn(- "%s specified as run target, but it doesn't exist")
             else:
                 tracker.queue_task(target)
 
         tracker.queue_task(CheckLocsTask.task_name)
 
-        printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
-        printer.info("- Running Tasks")
+        doot.report.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
+        doot.report.info("- Running Tasks")
 
         with runner:
             runner()

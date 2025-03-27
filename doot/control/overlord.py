@@ -75,7 +75,6 @@ if TYPE_CHECKING:
     type Logger                            = logmod.Logger
     type DootError                         = DErr.DootError
 
-
 ##--|
 
 # isort: on
@@ -103,7 +102,6 @@ class Startup_m:
         if self.is_setup:
             return
 
-        self._setup_printers()
         self._load_constants()
         self._load_aliases()
 
@@ -118,7 +116,7 @@ class Startup_m:
         targets=False is for loading nothing, for testing
         """
         if self.is_setup:
-            self.overlord_l.user("doot.setup called even though doot is already set up")
+            self.report.user("doot.setup called even though doot is already set up")
 
         self._load_config(targets, prefix)
         self._setup_logging()
@@ -176,7 +174,7 @@ class Startup_m:
             case None:
                 pass
             case pl.Path() as const_file if const_file.exists():
-                self.setup_l.trace("Loading Constants")
+                self.report.trace("Loading Constants")
                 base_data = ChainGuard.load(const_file)
                 self.verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
                 self.constants = base_data.remove_prefix(API.CONSTANT_PREFIX)
@@ -191,12 +189,12 @@ class Startup_m:
                     base_data = {}
                     pass
                 case pl.Path() as source if source.exists():
-                    self.setup_l.trace("Loading Aliases: %s", source)
+                    self.report.trace("Loading Aliases: %s", source)
                     base_data = ChainGuard.load(source)
                     self.verify_config_version(base_data.on_fail(None).doot_version(), source=source)
                     base_data = base_data.remove_prefix(API.ALIAS_PREFIX)
                 case source:
-                    self.setup_l.trace("Alias File Not Found: %s", source)
+                    self.report.trace("Alias File Not Found: %s", source)
                     base_data = {}
 
             # Flatten the lists
@@ -214,7 +212,7 @@ class Startup_m:
             case None:
                 pass
             case _ if bool(data):
-                self.setup_l.trace("Updating Aliases")
+                self.report.trace("Updating Aliases")
                 base = defaultdict(dict)
                 base.update(dict(self.aliases._table()))
                 for key,eps in data.items():
@@ -226,21 +224,21 @@ class Startup_m:
     def _load_locations(self) -> None:
         """ Load and update the JGDVLocator db
         """
-        self.setup_l.trace("Loading Locations")
+        self.report.trace("Loading Locations")
         # Load Initial locations
         for loc in self.config.on_fail([]).locations():
             try:
                 for name in loc.keys():
-                    self.setup_l.trace("+ %s", name)
+                    self.report.trace("+ %s", name)
                     self.locs.update(loc, strict=False)
             except (JGDVError, ValueError) as err:
-                self.setup_l.error("Location Loading Failed: %s (%s)", loc, err)
+                self.report.error("Location Loading Failed: %s (%s)", loc, err)
 
     def _update_import_path(self, *paths:pl.Path) -> None:
         """ Add locations to the python path for task local code importing
         Modifies the global `sys.path`
         """
-        self.setup_l.trace("Updating Import Path")
+        self.report.trace("Updating Import Path")
         match paths:
             case None | []:
                 task_sources = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [self.locs[y] for y in x])
@@ -265,10 +263,10 @@ class Startup_m:
                 case x if x in sys.path:
                     continue
                 case str():
-                    self.setup_l.trace("sys.path += %s", source)
+                    self.report.trace("sys.path += %s", source)
                     sys.path.append(source_str)
         else:
-            self.setup_l.trace("Import Path Updated")
+            self.report.trace("Import Path Updated")
 
 class Logging_m:
     """
@@ -286,11 +284,7 @@ class Logging_m:
 
     def _setup_logging(self) -> None:
         self.log_config.setup(self.config)
-        self._setup_printers()
-
-    def _setup_printers(self) -> None:
-        self.overlord_l      = self.subprinter("overlord")
-        self.setup_l         = self.subprinter("setup")
+        self.report.log = self.subprinter()
 
 class WorkflowUtil_m:
     """ util methods on the overlord used when running a workflow """
@@ -313,8 +307,7 @@ class WorkflowUtil_m:
         if source is None:
             raise ValueError("Updating Global Task State must  have a source")
 
-        self.setup_l = self.subprinter("setup")
-        self.setup_l.trace("Updating Global State from: %s", source)
+        self.report.trace("Updating Global State from: %s", source)
         if not isinstance(data, dict|ChainGuard):
             raise DErr.GlobalStateMismatch("Not a dict", data)
 
@@ -342,7 +335,7 @@ class WorkflowUtil_m:
         defaulted_file : str     = self.config.on_fail("{logs}/.doot_defaults.toml", str).shutdown.defaulted_values.path()
         expanded_path  : pl.Path = self.locs[defaulted_file]
         if not expanded_path.parent.exists():
-            self.overlord_l.error("Couldn't log defaulted config values to: %s", expanded_path)
+            self.report.error("Couldn't log defaulted config values to: %s", expanded_path)
             return
 
         defaulted_toml = ChainGuard.report_defaulted()
@@ -382,11 +375,11 @@ class DootOverlord(metaclass=MLSingleton):
     args                : ChainGuard
     log_config          : JGDVLogConfig
     locs                : JGDVLocator
-    reporter            : Reporter_p
     configs_loaded_from : list[str|pl.Path]
     global_task_state   : dict
     path_ext            : list[str]
     is_setup            : bool
+    _reporter           : Reporter_p
 
     def __init__(self, **kwargs:Any):
         logging.info("Creating Overlord")
@@ -400,10 +393,22 @@ class DootOverlord(metaclass=MLSingleton):
         subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
         self.locs                             = JGDVLocator(pl.Path.cwd())
-        self.reporter                         = NullReporter(logger=logging)
+        self._reporter                        = NullReporter()
         self.configs_loaded_from              = []
         self.global_task_state                = {}
         self.path_ext                         = []
         self.is_setup                         = False
 
         self.null_setup()
+
+    @property
+    def report(self) -> Reporter_p:
+        return self._reporter
+
+    @report.setter
+    def report(self, rep:Reporter_p) -> None:
+        match rep:
+            case Reporter_p():
+                self._reporter = rep
+            case x:
+                raise TypeError(type(x))

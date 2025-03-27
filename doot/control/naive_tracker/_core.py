@@ -78,8 +78,6 @@ from doot._abstract import Task_p, TaskTracker_p
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = doot.subprinter()
-track_l    = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
@@ -237,7 +235,7 @@ class _Instantiation_m:
             case None:
                 pass
             case TaskName() as existing:
-                track_l.trace("Reusing instantiation: %s for %s", existing, name)
+                doot.report.trace("Reusing instantiation: %s for %s", existing, name)
                 return existing
 
         spec = self.specs[name]
@@ -254,7 +252,7 @@ class _Instantiation_m:
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        track_l.trace("Instantiating: %s into %s", name, instance_spec.name)
+        doot.report.trace("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -443,7 +441,7 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
         to_expand                                             = set()
 
-        track_l.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        doot.report.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
         logging.detail("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         to_expand.update(self._expand_generated_tasks(spec))
@@ -471,7 +469,7 @@ class _Expansion_m:
             assert(name in self.network.nodes)
             self.network.nodes[name][EXPANDED] = True
 
-        track_l.trace("<-- Task Expansion Complete: %s", name)
+        doot.report.trace("<-- Task Expansion Complete: %s", name)
         to_expand.update(self._expand_indirect_relations(spec))
 
         return to_expand

@@ -90,7 +90,6 @@ class TestRunner(_MockObjs_m):
         assert(isinstance(runner, TaskRunner_p))
 
     def test_expand_job(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy    = mocker.spy(runner, "_announce_entry")
         test_cond_spy         = mocker.spy(runner, "_test_conditions")
         exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
@@ -98,7 +97,6 @@ class TestRunner(_MockObjs_m):
         job                   = DootJob(spec)
         runner._expand_job(job)
 
-        announce_entry_spy.assert_called_once()
         test_cond_spy.assert_called_once()
         assert(test_cond_spy.spy_return == True)
         exec_action_group_spy.assert_called()
@@ -110,7 +108,6 @@ class TestRunner(_MockObjs_m):
             runner._expand_job(task)
 
     def test_expand_job_fails_conditions(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy      = mocker.spy(runner, "_announce_entry")
         exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
 
         orig_method = runner._test_conditions
@@ -127,7 +124,6 @@ class TestRunner(_MockObjs_m):
         exec_action_group_spy.assert_called_with(job, group="depends_on")
 
     def test_execute_task(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy    = mocker.spy(runner, "_announce_entry")
         test_cond_spy         = mocker.spy(runner, "_test_conditions")
         exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
@@ -135,7 +131,6 @@ class TestRunner(_MockObjs_m):
         task                  = DootTask(spec)
         runner._execute_task(task)
 
-        announce_entry_spy.assert_called_once()
         test_cond_spy.assert_called_once()
         assert(test_cond_spy.spy_return == True)
         exec_action_group_spy.assert_called()
@@ -147,7 +142,6 @@ class TestRunner(_MockObjs_m):
             runner._execute_task(job)
 
     def test_execute_task_fails_conditions(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy      = mocker.spy(runner, "_announce_entry")
         exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
 
         orig_method = runner._test_conditions

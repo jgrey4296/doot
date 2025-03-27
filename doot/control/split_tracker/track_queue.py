@@ -74,8 +74,6 @@ from doot._abstract import Task_p
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
-printer          = doot.subprinter()
-track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
@@ -143,11 +141,11 @@ class TrackQueue:
 
         match self._queue.pop():
             case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
-                track_l.user("Task halted due to reaching minimum priority while tracking: %s", focus)
+                doot.report.user("Task halted due to reaching minimum priority while tracking: %s", focus)
                 self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self._registry.tasks[focus].priority -= 1
-                track_l.detail("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
+                doot.report.detail("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
             case TaskArtifact() as focus:
                 focus.priority -= 1
 
