@@ -416,25 +416,25 @@ class ExitHandlers_m:
     """ Mixin for handling different errors of doot """
 
     def _early_exit(self, err:Exception) -> int:  # noqa: ARG002
-        doot.report.warning("Early Exit Triggered")
+        doot.report.warn("Early Exit Triggered")
         return API.ExitCodes.EARLY
 
     def _missing_config_exit(self, err:Exception) -> int:  # noqa: ARG002
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
         if base_target.exists():
-            doot.report.exception("Base Config Target exists but it contains no valid config: %s", base_target)
+            doot.report.error("Base Config Target exists but it contains no valid config: %s", base_target)
         else:
-            doot.report.warning("No toml config data found, create a doot.toml by calling `doot stub --config`")
+            doot.report.warn("No toml config data found, create a doot.toml by calling `doot stub --config`")
 
         return API.ExitCodes.MISSING_CONFIG
 
     def _config_error_exit(self, err:Exception) -> int:
-        doot.report.warning("Config Error: %s", err)
+        doot.report.warn("Config Error: %s", err)
         return API.ExitCodes.BAD_CONFIG
 
     def _task_failed_exit(self, err:Exception) -> int:
-        doot.report.error("Task Error : %s", err, exc_info=err)
+        logging.exception("Task Error : %s", err, exc_info=err)
         doot.report.error("Task Source: %s", err.task_source)
         return API.ExitCodes.TASK_FAIL
 
@@ -454,34 +454,34 @@ class ExitHandlers_m:
                     else:
                         doot.report.error("")
             case _:
-                doot.report.exception("Struct Load Error: %s", err, exc_info=err)
+                logging.exception("Struct Load Error: %s", err, exc_info=err)
 
         return API.ExitCodes.BAD_STRUCT
 
     def _tracking_exit(self, err:Exception) -> int:
-        doot.report.error("Tracking Failure: %s", err.args)
+        logging.exception("Tracking Failure: %s", err.args)
         return API.ExitCodes.TRACKING_FAIL
 
     def _backend_exit(self, err:Exception) -> int:
-        doot.report.exception("Backend Error: %s", err.args, exc_info=err)
+        logging.exception("Backend Error: %s", err.args, exc_info=err)
         return API.ExitCodes.BACKEND_FAIL
 
     def _frontend_exit(self, err:Exception) -> int:
-        doot.report.error("%s", err.args)
+        logging.exception("%s", err.args)
         return API.ExitCodes.FRONTEND_FAIL
 
     def _misc_doot_exit(self, err:Exception) -> int:
-        doot.report.exception("%s", err.args, exc_info=err)
+        logging.exception("%s", err.args, exc_info=err)
         return API.ExitCodes.DOOT_FAIL
 
     def _not_implemented_exit(self, err:Exception) -> int:
-        doot.report.exception("Not Implemented: %s", err.args, exc_info=err)
+        logging.exception("Not Implemented: %s", err.args, exc_info=err)
         return API.ExitCodes.NOT_IMPLEMENTED
 
     def _python_exit(self, err:Exception) -> int:
-        doot.report.exception("Python Error:", exc_info=err)
-        doot.report.exception(f"Python Error, writing to {API.LASTERR}.", exc_info=None)
+        logging.exception("Python Error:", exc_info=err)
         pl.Path(API.LASTERR).write_text(stackprinter.format())
+        doot.report.error(f"Python Error, full stacktrace written to {API.LASTERR}", exc_info=None)
         return API.ExitCodes.PYTHON_FAIL
 
 ##--|

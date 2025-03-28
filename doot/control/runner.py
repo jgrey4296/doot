@@ -69,8 +69,15 @@ from doot._abstract import (Action_p, Job_p, Task_p, TaskRunner_p, TaskTracker_p
 logging           = logmod.getLogger(__name__)
 ##-- end logging
 
-skip_msg                : Final[str] = doot.constants.printer.skip_by_condition_msg
-max_steps               : Final[int] = doot.config.on_fail(100_000).settings.tasks.max_steps()
+##--| Vars
+skip_msg                   : Final[str] = doot.constants.printer.skip_by_condition_msg
+max_steps                  : Final[int] = doot.config.on_fail(100_000).settings.tasks.max_steps()
+
+SETUP_GROUP                : Final[str] = "setup"
+ACTION_GROUP               : Final[str] = "actions"
+FAIL_GROUP                 : Final[str] = "on_fail"
+DEPENDS_GROUP              : Final[str] = "depends_on"
+
 ##--|
 
 class _ActionExecution_m:
@@ -85,7 +92,7 @@ class _ActionExecution_m:
         if not bool(actions):
             return None
 
-        doot.report.trace("Action Group %s for : %s", group, task.shortname)
+        doot.report.act("ActGroup", group)
         group_result              = ActRE.SUCCESS
         to_queue : list[TaskSpec] = []
         executed_count            = 0
@@ -103,7 +110,7 @@ class _ActionExecution_m:
                     group_result = ActRE.FAIL
                     break
                 case ActRE.SKIP:
-                    doot.report.user("------ Remaining Task Actions skipped by Action Result")
+                    doot.report.line("Remaining Task Actions skipped by Action Result", char=".")
                     group_result = ActRE.SKIP
                     break
 
@@ -164,34 +171,31 @@ class _ActionExecution_m:
         """
         result                     = None
         task.state['_action_step'] = count
-        # doot.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
-        doot.report.trace( "Action %s.%s: %s", self.step, count, action.do or action.fun)
+        # doot.report.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
+        doot.report.act(f"Action: {self.step}.{count}", action.do)
 
-        doot.report.detail("Action Executing for Task: %s", task.shortname)
-        doot.report.detail("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
+        logging.detail("Action Executing for Task: %s", task.shortname)
+        logging.detail("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
         result = action(task.state)
-        doot.report.detail("Action Result: %s", result)
-
         match result:
             case None | True:
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
-                # doot.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
+                doot.report.fail()
                 raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
+                doot.report.result(["Skip"])
                 pass
             case dict(): # update the task's state
-                doot.report.detail("Updating Task State: %s keys", len(result))
                 task.state.update({str(k):v for k,v in result.items()})
                 result = ActRE.SUCCESS
             case list() if all(isinstance(x, TaskName|TaskSpec) for x in result):
                 pass
             case _:
-                # doot.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
-        # doot.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
+        # doot.report.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
         return result
 
 ##--|
@@ -253,7 +257,7 @@ class DootRunner:
                 case x:
                     doot.report.error("Unknown Value provided to runner: %s", x)
         except doot.errors.TaskError as err:
-            # doot.reporter.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
+            # doot.report.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
             err.task = task
             self._handle_failure(err)
         except doot.errors.DootError as err:
@@ -271,56 +275,40 @@ class DootRunner:
         logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
         assert(isinstance(job, Job_p))
         try:
-            doot.report.branch(job.spec.name)
+            doot.report.branch(job.spec.name.root(), info=f"Job {self.step}")
             if not self._test_conditions(job):
-                doot.report.trace(skip_msg, self.step, job.shortname)
+                doot.report.trace(skip_msg, self.step, job.name.root())
                 return
 
-            # doot.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.INIT)
-
-            self._execute_action_group(job, group="setup")
-            self._execute_action_group(job, allow_queue=True, group="actions")
-
+            self._execute_action_group(job, group=SETUP_GROUP)
+            self._execute_action_group(job, allow_queue=True, group=ACTION_GROUP)
         except doot.errors.DootError as err:
-            self._execute_action_group(job, group="on_fail")
+            self._execute_action_group(job, group=FAIL_GROUP)
             raise
-        finally:
-            # doot.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
-            doot.report.trace("Job %s: %s", self.step, job.shortname)
 
     def _execute_task(self, task:Task_p) -> None:
         """ execute a single task's actions """
         logmod.debug("-- Expanding Task %s: %s", self.step, task.shortname)
         assert(not isinstance(task, Job_p))
-        skip_task = False
         try:
-            doot.report.branch(task.spec.name)
-            skip_task = not self._test_conditions(task)
-            if skip_task:
-                doot.report.trace(skip_msg, self.step, task.shortname)
+            doot.report.branch(task.spec.name.root(), info=f"Task {self.step}")
+            if not self._test_conditions(task):
+                doot.report.result([skip_msg, self.step, task.name.root()])
                 return
 
-            # doot.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.INIT)
 
-            self._execute_action_group(task, group="setup")
-            self._execute_action_group(task, group="actions")
-            # doot.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.SUCCEED)
+            self._execute_action_group(task, group=SETUP_GROUP)
+            self._execute_action_group(task, group=ACTION_GROUP)
         except doot.errors.DootError as err:
-            skip_task = True
-            self._execute_action_group(task, group="on_fail")
+            self._execute_action_group(task, group=FAIL_GROUP)
             raise
-        finally:
-            if skip_task:
-                doot.report.trace("(%s) Skipped Task : %s", self.step, task.shortname, extra={"colour":"red"})
-            else:
-                doot.report.trace("(%s) Task : %s", self.step, task.shortname, extra={"colour":"cyan"})
 
     def _test_conditions(self, task:Task_p) -> bool:
         """ run a task's depends_on group, coercing to a bool
         returns False if the runner should skip the rest of the task
         """
-        doot.report.trace("Testing Preconditions")
-        match self._execute_action_group(task, group="depends_on"):
+        doot.report.act(info="Check", msg="Preconditions")
+        match self._execute_action_group(task, group=DEPENDS_GROUP):
             case None:
                 return True
             case _, ActRE.SKIP | ActRE.FAIL:

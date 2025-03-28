@@ -88,22 +88,25 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        doot.report.trace("---- Starting Run Cmd")
+        doot.report.active_level(logmod.INFO)
+        doot.report.set_state("cmd")
+        doot.report.gap()
+        doot.report.line("Starting Run Cmd", char="=")
         tracker, runner = self._create_tracker_and_runner(plugins)
         interrupt       = self._choose_interrupt_handler()
 
         self._register_specs(tracker, tasks)
         self._queue_tasks(tracker)
 
-        with TimeBlock_ctx(logger=logging,
-                           enter="--- Runner Entry",
-                           exit="---- Runner Exit",
-                           level=20):
-            with runner:
-                if not self._confirm_plan(runner):
-                    return
-
-                runner(handler=interrupt)
+        with (TimeBlock_ctx(logger=logging,
+                            enter="--- Runner Entry",
+                            exit="--- Runner Exit",
+                            level=20),
+              runner,
+              ):
+            if not self._confirm_plan(runner):
+                return
+            runner(handler=interrupt)
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_i, TaskRunner_i]:
         # Note the final parens to construct:
@@ -139,19 +142,20 @@ class RunCmd(BaseCommand):
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.TrackingError as err:
-                doot.report.exception("Failed to Queue Target: %s : %s", target, err.args, exc_info=None)
+                logging.exception("Failed to Queue Target: %s : %s", target, err.args, exc_info=None)
                 return
 
     def _queue_tasks(self, tracker) -> None:
-        doot.report.trace("Queuing Initial Tasks")
+        doot.report.trace("Queuing Initial Tasks...")
+        doot.report.gap()
         for target in doot.args.on_fail([], list).cmd.args.target():
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.TrackingError as err:
                 doot.report.warn("%s specified as run target, but it doesn't exist", target)
         else:
-            doot.report.trace("%s Tasks Queued: %s", len(tracker.active_set),
-                              " ".join(str(x) for x in tracker.active_set))
+            doot.report.trace("%s Tasks Queued", len(tracker.active_set))
+
 
     def _choose_interrupt_handler(self) -> Maybe[Callable]:
         match interrupt_handler:

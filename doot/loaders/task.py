@@ -282,8 +282,8 @@ class DootTaskLoader:
             try:
                 doot.locs.Current.update(group, strict=False)
             except KeyError as err:
-                doot.report.warning("Locations Already Defined: %s : %s", err.args, source)
+                doot.report.warn("Locations Already Defined: %s : %s", err.args, source)
             except TypeError as err:
-                doot.report.warning("Location failed to validate: %s : %s", err.args, source)
+                doot.report.warn("Location failed to validate: %s : %s", err.args, source)
             except LocationError as err:
-                doot.report.warning("%s : %s", str(err), source)
+                doot.report.warn("%s : %s", str(err), source)

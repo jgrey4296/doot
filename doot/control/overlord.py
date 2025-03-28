@@ -159,7 +159,7 @@ class Startup_m:
         else:
             if existing_targets == [PYPROJ] and "doot" not in config:
                 raise DErr.MissingConfigError("Pyproject has no doot config")
-        finally:
+
             self.configs_loaded_from   += existing_targets
             self.config = config.remove_prefix(prefix)
             self.update_global_task_state(self.config, source=str(existing_targets))

@@ -195,7 +195,7 @@ class NaiveTracker(BaseTracker):
 
     def propagate_state_and_cleanup(self, name:TaskName) -> None:
         """ Propagate a task's state on to its cleanup task"""
-        logging.trace("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
+        logging.detail("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
         cleanups = [x for x in self.network.succ[name] if self.network.edges[name, x].get("cleanup", False)]
         task = self.tasks[name]
         match cleanups:
@@ -231,18 +231,19 @@ class NaiveTracker(BaseTracker):
             status : TaskStatus_e          = self.get_status(focus)
             match focus:
                 case TaskName():
-                    doot.report.detail("Tracker Head: %s (Task). State: %s, Priority: %s", focus, self.get_status(focus), self.tasks[focus].priority)
+                    logging.trace("Tracker Head: %s (Task). State: %s, Priority: %s", focus, self.get_status(focus), self.tasks[focus].priority)
                 case TaskArtifact():
-                    doot.report.detail("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
+                    logging.trace("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
 
             match status:
                 case TaskStatus_e.DEAD:
-                    doot.report.trace("Task is Dead: %s", focus)
+                    logging.detail("Task is Dead: %s", focus)
                     del self.tasks[focus]
                 case TaskStatus_e.DISABLED:
                     doot.report.user("Task Disabled: %s", focus)
+                    logging.detail("Task Disabled: %s", focus)
                 case TaskStatus_e.TEARDOWN:
-                    doot.report.trace("Tearing Down: %s", focus)
+                    logging.detail("Tearing Down: %s", focus)
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
                     self.propagate_state_and_cleanup(focus)
@@ -253,7 +254,7 @@ class NaiveTracker(BaseTracker):
                     if bool(heads):
                         self.queue_entry(heads[0])
                 case TaskStatus_e.SUCCESS:
-                    doot.report.trace("Task Succeeded: %s", focus)
+                    logging.detail("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     heads = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("job_head", False)]
@@ -262,42 +263,45 @@ class NaiveTracker(BaseTracker):
                 case TaskStatus_e.FAILED:  # propagate failure
                     self.active_set.remove(focus)
                     doot.report.user("Task Failed, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
+                    logging.detail("Task Failed, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     for succ in self.network.succ[focus]:
                         self.set_status(succ, TaskStatus_e.FAILED)
                 case TaskStatus_e.HALTED:  # remove and propagate halted status
                     doot.report.user("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
+                    logging.detail("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     for succ in self.network.succ[focus]:
                         if self.network.edges[focus, succ].get("cleanup", False):
                             continue
                         self.set_status(succ, TaskStatus_e.HALTED)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.SKIPPED:
-                    doot.report.user("Task was skipped: %s", focus)
+                    logging.user("Task was skipped: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.DEAD)
                 case TaskStatus_e.RUNNING:
-                    doot.report.trace("Waiting for Runner to update status for: %s", focus)
+                    logging.detail("Waiting for Runner to update status for: %s", focus)
                     self.queue_entry(focus)
                 case TaskStatus_e.READY:   # return the task if its ready
-                    doot.report.trace("Task Ready to run, informing runner: %s", focus)
+                    logging.detail("Task Ready to run, informing runner: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.RUNNING)
                     result = self.tasks[focus]
                 case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
-                    doot.report.trace("Checking Task Dependencies: %s", focus)
+                    logging.detail("Checking Task Dependencies: %s", focus)
                     match self.incomplete_dependencies(focus):
                         case []:
                             self.queue_entry(focus, status=TaskStatus_e.READY)
                         case [*xs]:
-                            doot.report.detail("Task Blocked: %s on : %s", focus, xs)
+                            logging.detail("Task Blocked: %s on : %s", focus, xs)
                             self.queue_entry(focus)
                             for x in xs:
                                 self.queue_entry(x)
                 case TaskStatus_e.INIT:
-                    doot.report.trace("Task Object Initialising: %s", focus)
+                    logging.detail("Task Initialising: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)
 
                 case ArtifactStatus_e.STALE:
                     doot.report.user("Artifact is Stale: %s", focus)
+                    logging.detail("Artifact is Stale: %s", focus)
                     for pred in self.network.pred[focus]:
                         self.queue_entry(pred)
                 case ArtifactStatus_e.DECLARED if bool(focus):
@@ -312,18 +316,19 @@ class NaiveTracker(BaseTracker):
                             # Returns the artifact, the runner can try to create it, then override the halt
                             result = focus
                         case [*xs]:
-                            doot.report.trace("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
+                            logging.trace("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
                             self.queue_entry(focus)
                             for x in xs:
                                 self.queue_entry(x)
                 case TaskStatus_e.DEFINED:
-                    doot.report.trace("Constructing Task Object for concrete spec: %s", focus)
+                    logging.detail("Constructing Task Object for concrete spec: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.HALTED)
                 case TaskStatus_e.DECLARED:
-                    doot.report.trace("Declared Task dequeued: %s. Instantiating into tracker network.", focus)
+                    logging.detail("Declared Task dequeued: %s. Instantiating into tracker network.", focus)
                     self.queue_entry(focus)
                 case TaskStatus_e.NAMED:
                     doot.report.user("A Name only was queued, it has no backing in the tracker: %s", focus)
+                    logging.detail("A Name only was queued, it has no backing in the tracker: %s", focus)
 
                 case x: # Error otherwise
                     raise doot.errors.TrackingError("Unknown task state: ", x)

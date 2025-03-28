@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-logging.setLevel(logmod.CRITICAL)
+logging.setLevel(logmod.WARN)
 ##-- end logging
 
 # Vars:
@@ -83,27 +83,27 @@ class _WorkflowReporter_m:
     def fail(self, info:str, msg:str) -> None:
         self._out("fail")
 
-    def branch(self, name:str) -> Self:
+    def branch(self, name:str, info:Maybe[str]=None) -> Self:
         self._out("branch")
-        self.ctx += [self._segments['inactive'], self._segments['gap']]
-        self._out("begin", info=name, msg="")
+        # self.ctx += [self._segments['inactive'], self._segments['gap']]
+        self._out("begin", info=info or "Start", msg=name)
         return self
 
     def pause (self, reason:str) -> Self:
-        self.ctx.pop()
-        self.ctx.pop()
+        # self.ctx.pop()
+        # self.ctx.pop()
         self._out("pause", msg=reason)
         return self
 
-    def result(self, state:list[str]) -> Self:
-        self.ctx.pop()
-        self.ctx.pop()
-        self._out("result", msg=state)
+    def result(self, state:list[str], info:Maybe[str]=None) -> Self:
+        # self.ctx.pop()
+        # self.ctx.pop()
+        self._out("result" , msg=",".join(state), info=info)
         return self
 
     def resume(self, name:str) -> Self:
         self._out("resume", msg=name)
-        self.ctx += [self._segments['inactive'], self._segments['gap']]
+        # self.ctx += [self._segments['inactive'], self._segments['gap']]
         return self
 
     def finished(self) -> None:
@@ -117,39 +117,32 @@ class _WorkflowReporter_m:
 
 class _GenReporter_m:
 
-    def set_state(self, state, **kwargs) -> None:
-        self._state_data = dict(kwargs)
-        self._state      = state
-        logging.info("Report State Set To: %s", state)
-
-
     def gap(self) -> None:
-        self.log.user("")
+        self.log.info("")
 
-    def line(self, msg:Maybe[str]=None) -> None:
+    def line(self, msg:Maybe[str]=None, char:Maybe[str]=None) -> None:
+        char = char or LINE_CHAR
         match msg:
             case str() as x:
                 val = x.strip()
                 val = val.center(len(val) + 4, " ")
-                val = val.center(LINE_LEN, LINE_CHAR)
-                self.log.user(val, extra=self._log_extra)
+                val = val.center(LINE_LEN, char)
+                self.log.info(val, extra=self._curr.log_extra)
             case _:
-                self.log.user(LINE_CHAR*LINE_LEN, extra=self._log_extra)
+                self.log.info(char*LINE_LEN, extra=self._curr.log_extra)
 
     def header(self) -> None:
         self.active_level(logmod.WARN)
-        self._log_extra['colour'] = "green"
+        self._curr.log_extra['colour'] = "green"
         self.line()
         self.line("Doot")
         self.line()
-        # HEADER_MSG   = doot.constants.printer.doot_header
-        # self.log.user(HEADER_MSG, extra={"colour": "green"})
 
     def summary(self) -> None:
         self.active_level(logmod.WARN)
-        match self._state:
+        match self._curr.state:
             case "fail":
-                self._log_extra['colour'] = "red"
+                self._curr.log_extra['colour'] = "red"
                 msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
             case _:
                 msg = doot.config.on_fail("Success").shutdown.notify.success_msg()
@@ -176,25 +169,33 @@ class _GenReporter_m:
     def detail(self, msg, *rest, **kwargs) -> None:
         self.log.debug(msg, *rest)
 
-
 ##--|
+
 @Proto(API.WorkflowReporter_p, API.GeneralReporter_p)
 @Mixin(_GenReporter_m, _WorkflowReporter_m)
 class NullReporter(API.Reporter_d):
-    """ The initial reporter for prior to configuration """
+    """ The initial reporter for prior to conf iguration """
 
     def __init__(self, *args, logger:Maybe[Logger]=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._logger            = logger
-        self._log_level         = logmod.ERROR
         self._segments          = API.TRACE_LINES_ASCII.copy()
         self._fmt               = TraceFormatter()
-        self.level              = 0
+        self._stack             = []
+        self._entry_count       = 0
         self.ctx                = []
         self._act_trace         = []
-        self._state             = None
-        self._state_data        = {}
-        self._log_extra         = {"colour":"blue"}
+
+        initial_entry = API.ReportStackEntry_d(state="initial",
+                                               data={},
+                                               log_extra={"colour":"blue"},
+                                               log_level=logmod.ERROR,
+                                               )
+        self._stack.append(initial_entry)
+
+    @property
+    def _curr(self) -> API.ReportStackEntry_d:
+        return self._stack[-1]
 
     @property
     def log(self) -> Logger:
@@ -209,32 +210,48 @@ class NullReporter(API.Reporter_d):
         match logger:
             case logmod.Logger():
                 self._logger = logger
-                self._logger.setLevel(self._log_level)
+                self._logger.setLevel(self._curr.log_level)
             case x:
                 raise TypeError(type(x))
 
-
     def active_level(self, level:int) -> None:
-        self._log_level = level
+        self._curr.log_level = level
         self.log.setLevel(level)
+
+    def set_state(self, state, **kwargs) -> Self:
+        new_top         = deepcopy(self._stack[-1])
+        new_top.data    = dict(kwargs)
+        new_top.state   = state
+        self._stack.append(new_top)
+        logging.info("Report State Set To: %s", state)
+        return self
+
+    def pop_state(self):
+        self._stack.pop()
 
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         pass
 
     def __enter__(self) -> Self:
-        self.level += 1
+        self._entry_count += 1
         return self
 
     def __exit__(self, *exc:Any) -> bool:
-        self.level -= 1
+        match self._entry_count:
+            case int() as x if x < 1:
+                raise ValueError("Reporter enter/exit pairs count has gone negative")
+            case int() as x if x != len(self._stack):
+                raise ValueError("Mismatch between reporter stack and enter/exit pairs")
+            case _:
+                self._entry_count -= 1
+                self.pop_state()
+
         match exc:
             case (None, None, None):
                 return True
             case _:
                 return False
 
-    def _build_ctx(self) -> str:
-        return "".join(self.ctx)
-
     def _out(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> None:
-        return None
+        result = self._fmt(key, info=info, msg=msg, ctx=self.ctx)
+        self._logger.log(self._curr.log_level, result)

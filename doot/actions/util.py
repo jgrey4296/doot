@@ -46,15 +46,15 @@ logging = logmod.getLogger(__name__)
 def action_debugger(spec, state):
     """ A Simple entry function for debugging spec and state """
     def pstate():
-        doot.report.info("Printing State:")
-        doot.report.info(state)
+        doot.report.trace("Printing State:")
+        doot.report.trace(state)
 
     def pspec():
-        doot.report.info("Printing Spec:")
-        doot.report.info(spec)
+        doot.report.trace("Printing Spec:")
+        doot.report.trace(spec)
 
-    doot.report.info("* Entering breakpoint *")
-    doot.report.info("* Call pspec() and pstate() to inspect the spec and state *")
+    doot.report.trace("* Entering breakpoint *")
+    doot.report.trace("* Call pspec() and pstate() to inspect the spec and state *")
 
     breakpoint()
 
@@ -71,7 +71,7 @@ def typecheck(spec, state):
             if target_type != fullname:
                 raise doot.errors.KeyExpansionError("Type Error: state.%s : %s != %s", key, fullname, target_type)
 
-            doot.report.debug("Type Matches: state.%s : %s", key, target_type)
+            doot.report.detail("Type Matches: state.%s : %s", key, target_type)
 
         except (AttributeError, KeyError):
             raise doot.errors.KeyAccessError("State key missing: %s", key)

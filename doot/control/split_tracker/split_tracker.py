@@ -130,8 +130,9 @@ class SplitTracker:
     def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
         self._registry.set_status(task, state)
 
-    def build_network(self) -> None:
-        self._network.build_network()
+
+    def build_network(self, *, sources:Maybe[True|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
+        self._network.build_network(sources=sources)
 
     def validate_network(self) -> None:
         self._network.validate_network()

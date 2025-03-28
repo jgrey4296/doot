@@ -201,7 +201,7 @@ class AssertInstalled(DootBaseAction):
         if not bool(failures):
             return
 
-        doot.report.exception("Required Programs were not found: %s", ", ".join(failures))
+        logging.exception("Required Programs were not found: %s", ", ".join(failures))
         return self.ActRE.FAIL
 
 class WaitAction(DootBaseAction):

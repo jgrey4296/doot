@@ -102,11 +102,11 @@ class _Registration_m:
             if spec.name in self.specs:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.detail("Ignoring Registration of disabled task: %s", spec.name.readable)
+                doot.report.detail("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
             self.specs[spec.name] = spec
-            logging.trace("Registered Spec: %s", spec.name)
+            logging.detail("Registered Spec: %s", spec.name)
 
             # Register the abstract head and cleanup tasks
             if spec.name.is_uniq():
@@ -252,7 +252,7 @@ class _Instantiation_m:
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        doot.report.trace("Instantiating: %s into %s", name, instance_spec.name)
+        logging.trace("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -441,8 +441,7 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
         to_expand                                             = set()
 
-        doot.report.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
-        logging.detail("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.detail("Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         to_expand.update(self._expand_generated_tasks(spec))
 
@@ -469,7 +468,7 @@ class _Expansion_m:
             assert(name in self.network.nodes)
             self.network.nodes[name][EXPANDED] = True
 
-        doot.report.trace("<-- Task Expansion Complete: %s", name)
+        logging.detail("Task Expansion Complete: %s", name)
         to_expand.update(self._expand_indirect_relations(spec))
 
         return to_expand
@@ -522,10 +521,10 @@ class _Expansion_m:
         assert(artifact in self.artifacts)
         assert(artifact in self.network.nodes)
         assert(not self.network.nodes[artifact].get(EXPANDED, False))
-        logging.trace("--> Expanding Artifact: %s", artifact)
+        logging.trace("Expanding Artifact: %s", artifact)
         to_expand = set()
 
-        logging.trace("-- Instantiating Artifact relevant tasks")
+        logging.trace("Instantiating Artifact relevant tasks")
         for name in self.artifacts[artifact]:
             instance = self._instantiate_spec(name)
             # Don't connect it to the network, it'll be expanded later
@@ -534,7 +533,7 @@ class _Expansion_m:
 
         match artifact.is_concrete():
             case True:
-                logging.detail("-- Connecting concrete artifact to dependenct abstracts")
+                logging.detail("Connecting concrete artifact to dependenct abstracts")
                 art_path = DKey(artifact[1:], mark=DKey.Mark.PATH)(relative=True)
                 for abstract in self._abstract_artifacts:
                     if art_path not in abstract and artifact not in abstract:
@@ -542,7 +541,7 @@ class _Expansion_m:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
-                logging.detail("-- Connecting abstract artifact to concrete predecessor artifacts")
+                logging.detail("Connecting abstract artifact to concrete predecessor artifacts")
                 for conc in self._concrete_artifacts:
                     assert(conc.is_concrete())
                     conc_path = DKey(conc[1:], mark=DKey.Mark.PATH)(relative=True)
@@ -551,7 +550,7 @@ class _Expansion_m:
                     self.connect(conc, artifact)
                     to_expand.add(conc)
 
-        logging.trace("<-- Artifact Expansion Complete: %s", artifact)
+        logging.trace("Expansion Complete: %s", artifact)
         self.network.nodes[artifact][EXPANDED] = True
         return to_expand
 

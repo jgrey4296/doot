@@ -70,20 +70,19 @@ BRANCH_PARTS : Final[dict[str, str]] = {
 }
 
 TRACE_LINES_ASCII     : Final[dict[str, str]] = {
-    "root"            : "Y",
+    "root"            : "T",
     "wait"            : "|",
-    "act"             : "| ->",
-    "branch"          : "|->=[",
+    "act"             : ("|", "   ",  "::"),
+    "branch"          : ("|", "->", "=["),
     "inactive"        : ":",
-    "begin"           :     "Y",
-    "return"          :   "=<]",
-    "pause"           :   "-<]",
-    "return-terminal" : "|",
-    "resume"          : "|->-[",
-    "result"            : "|<<<",
-    "finished"           : "o",
-    "fail"            : "X",
-    "gap"             : " ",
+    "begin"           : ("|", "...", "Y"),
+    "return"          : ("" "=",  "<]"),
+    "pause"           : ("", "-", "<]"),
+    "resume"          : ("|" "->-", "["),
+    "result"          : ("|", "<<<", "|"),
+    "finished"        : "⟘",
+    "fail"            : "X:",
+    "gap"             : "   ",
 }
 
 ##-- end segment dicts
@@ -97,16 +96,31 @@ ACT_SPACING  : Final[int] = 4
 MSG_SPACING  : Final[int] = 6
 # Body:
 
+class ReportStackEntry_d:
+    log_extra : dict
+    log_level : int
+    state     : str
+    data      : dict
+    prefix    : list
+
+    def __init__(self, **kwargs) -> None:
+        self.log_extra = kwargs.pop("log_extra")
+        self.log_level = kwargs.pop("log_level")
+        self.state     = kwargs.pop("state")
+        self.data      = kwargs.pop("data")
+        self.prefix    = kwargs.pop("prefix", [])
+        self.extra     = dict(kwargs)
+
+
 class Reporter_d:
-    level           : int
     ctx             : list[str]
     _act_trace      : list
     _fmt            : TraceFormatter_p
+    _stack          : list[ReportStackEntry_d]
+    _entry_count    : int
     _logger         : Maybe[Logger]
     _log_level      : int
     _segments       : dict
-    _state          : Any
-    _state_data     : dict
 
 @runtime_checkable
 class WorkflowReporter_p(Protocol):
@@ -116,9 +130,6 @@ class WorkflowReporter_p(Protocol):
     task workflow run.
 
     """
-
-    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
-        pass
 
     def __enter__(self) -> Self:
         # calls branch|resume
@@ -175,6 +186,9 @@ class WorkflowReporter_p(Protocol):
 @runtime_checkable
 class GeneralReporter_p(Protocol):
     """ Reporter Methods for general user facing messages """
+
+    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
+        pass
 
     def set_state(self, state, **kwargs) -> None:
         pass

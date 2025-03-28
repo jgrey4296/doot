@@ -97,12 +97,12 @@ class StepCmd(BaseCommand):
         assert(hasattr(runner, 'set_confirm_type')), "A Step Runner needs to have a confirm_type"
         runner.set_confirm_type(doot.args.cmd.args.type)
 
-        doot.report.info("- Building Task Dependency Network")
+        doot.report.trace("- Building Task Dependency Network")
         for task in tasks.values():
             tracker.add_task(task)
         tracker.add_task(CheckLocsTask())
 
-        doot.report.info("- Task Dependency Network Built")
+        doot.report.trace("- Task Dependency Network Built")
 
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
@@ -118,8 +118,8 @@ class StepCmd(BaseCommand):
 
         tracker.queue_task(CheckLocsTask.task_name)
 
-        doot.report.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
-        doot.report.info("- Running Tasks")
+        doot.report.trace("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
+        doot.report.trace("- Running Tasks")
 
         with runner:
             runner()

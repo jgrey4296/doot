@@ -122,28 +122,28 @@ class GraphCmd(BaseCommand):
             case {"draw": True}:
                 self._draw_pyplot(graph)
             case {"as-dot": True, "dot-file": loc_key} if bool(loc_key):
-                doot.report.info("Expanding Location: %s", loc_key)
+                doot.report.trace("Expanding Location: %s", loc_key)
                 loc_key = DKey(loc_key, mark=DKey.Mark.PATH)
                 loc = loc_key.expand()
-                doot.report.info("Target Location Expanded: %s", loc)
+                doot.report.trace("Target Location Expanded: %s", loc)
                 self._write_dot_image(graph, loc)
             case {"as-dot": True}:
                 dot_obj = self._to_dot(graph)
-                doot.report.info("# ---- Raw Dot: ")
-                doot.report.info(str(dot_obj))
-                doot.report.info("# ---- End of Raw Dot")
+                doot.report.trace("# ---- Raw Dot: ")
+                doot.report.trace(str(dot_obj))
+                doot.report.trace("# ---- End of Raw Dot")
 
     def _build_graph(self, tracker, tasks) -> Maybe[nx.DiGraph]:
-        doot.report.info("- Adding Tasks to temp tracker")
+        doot.report.trace("- Adding Tasks to temp tracker")
         for task in tasks.values():
             new_id = tracker.queue_entry(task)
             tracker.connect(tracker._root_node, new_id)
-        doot.report.info("- Building Dependency Network")
+        doot.report.trace("- Building Dependency Network")
         tracker.build_network(sources=True)
-        doot.report.info("- Validating Dependency Network")
+        doot.report.trace("- Validating Dependency Network")
         tracker.validate_network(strict=True)
 
-        doot.report.info("- Task Dependency Network Built")
+        doot.report.trace("- Task Dependency Network Built")
 
 
         if not bool(tracker.network.nodes) or not bool(tracker.network.edges):
@@ -166,7 +166,7 @@ class GraphCmd(BaseCommand):
             case x:
                 doot.report.error("Unknown Location Suffix: %s", x)
                 return False
-        doot.report.info("-- Dot written to: %s", loc)
+        doot.report.trace("-- Dot written to: %s", loc)
 
     def _draw_pyplot(self, graph):
         """ Actually display the graph """
@@ -179,7 +179,7 @@ class GraphCmd(BaseCommand):
 
     def _to_dot(self, graph) -> pydot.Dot:
         """ Convert a networkx graph to a Dot object"""
-        doot.report.info("Converting to a dot suitable format")
+        doot.report.trace("Converting to a dot suitable format")
         wrapped = self._relabel_node_names(graph)
         return nx.nx_pydot.to_pydot(wrapped)
 
