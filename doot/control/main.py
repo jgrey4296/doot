@@ -93,7 +93,7 @@ class Loading_m:
     """ mixin for triggering full loading  """
 
     def _load(self) -> None:
-        doot.setup()
+        doot.setup() # Loads the config
         self._set_constants()
         self._get_from_config()
         self._set_command_aliases()

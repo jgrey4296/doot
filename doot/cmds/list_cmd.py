@@ -32,7 +32,7 @@ from weakref import ref
 # ##-- 3rd party imports
 from jgdv import Proto, Mixin
 from jgdv.structs.strang import Strang
-from jgdv.logging import _interface as LogAPI
+from jgdv.logging import _interface as LogAPI  # noqa: N812
 
 # ##-- end 3rd party imports
 
@@ -55,8 +55,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Rx
@@ -70,7 +68,7 @@ if TYPE_CHECKING:
     from jgdv.cli.param_spec import ParamSpec
     from jgdv.structs.chainguard import ChainGuard
 
-    type ListVal = Maybe[str | (str, dict)]
+    type ListVal = Maybe[str|tuple[str, dict]]
 
 # isort: on
 # ##-- end types
@@ -88,11 +86,12 @@ hide_re      : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)
 ##--|
 
 class _DagLister_m:
+    build_param : Callable
 
     @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs, # type: ignore
             self.build_param(name="--dag",
                              _short="D",
                              type=bool,
@@ -104,10 +103,12 @@ class _TaskLister_m:
     """
     TODO: colour jobs
     """
+    build_param :  Callable
 
     @property
     def param_specs(self) -> list:
-        specs = [
+        return [
+            *super().param_specs, # type: ignore
             self.build_param(name="-tasks",
                              type=bool,
                              default=True,
@@ -121,12 +122,11 @@ class _TaskLister_m:
             self.build_param(name="+docstr", default=False),
             self.build_param(name="+params", default=False),
         ]
-        return [*super().param_specs, *specs]
 
     def _list_tasks(self, tasks) -> list[ListVal]:
         logging.info("---- Listing tasks")
 
-        result = []
+        result : list[ListVal] = []
         result.append(("Registered Tasks/Jobs:", {"colour":"cyan"}))
         if not bool(tasks):
             result.append(("!! No Tasks Defined", {"colour":"cyan"}))
@@ -141,7 +141,7 @@ class _TaskLister_m:
             data.append(
                 base_vars | {
                     "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0:]) + 2),
-                    "internal" : Strang.bmark_e.hide in spec.name,
+                    "internal" : Strang.bmark_e.hide in spec.name, # type: ignore
                     "disabled" : TaskMeta_e.DISABLED in spec.meta,
                     "group"  : spec.name[0:],
                     "val"    : spec.name[1:],
@@ -175,19 +175,19 @@ class _TaskLister_m:
                 pieces.append(FMT_STR)
 
         # Add docstr
-        if doot.args.on_fail(False).cmd.args.docstr():
+        if doot.args.on_fail(False).cmd.args.docstr():  # noqa: FBT003
             pieces.append(" :: {docstr}")
 
         # add source
-        if doot.args.on_fail(False).cmd.args.source():
+        if doot.args.on_fail(False).cmd.args.source():  # noqa: FBT003
             pieces.append(" :: {source}")
 
         # add params
-        if doot.args.on_fail(False).cmd.args.params():
+        if doot.args.on_fail(False).cmd.args.params():  # noqa: FBT003
             # TODO
             pass
 
-        if doot.args.on_fail(False).cmd.args.dependencies():
+        if doot.args.on_fail(False).cmd.args.dependencies():  # noqa: FBT003
             # TODO
             pass
 
@@ -195,7 +195,7 @@ class _TaskLister_m:
 
     def _filter_tasks(self, data) -> list[dict]:
         logging.info("-- Filtering: %s", len(data))
-        show_internal    = doot.args.on_fail(False).cmd.args.internal()
+        show_internal    = doot.args.on_fail(False).cmd.args.internal()  # noqa: FBT003
         no_hide_names    = bool(hide_names)
         match doot.args.on_fail(None).cmd.args.pattern.lower():
             case None | "":
@@ -203,7 +203,7 @@ class _TaskLister_m:
             case str() as x:
                 pattern = re.compile(x, flags=re.IGNORECASE)
 
-        def _filter_fn(item):
+        def _filter_fn(item:dict) -> bool:
             return all([not item['disabled'],
                         show_internal or not item['internal'],
                         pattern is None or pattern.match(item['full']),
@@ -234,11 +234,12 @@ class _TaskLister_m:
         return result
 
 class _LocationLister_m:
+    build_param : Callable
 
     @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs, # type: ignore
             self.build_param(name="--locs",
                              type=bool,
                              default=False,
@@ -247,7 +248,7 @@ class _LocationLister_m:
 
     def _list_locations(self) -> list[ListVal]:
         logging.info("---- Listing Defined Locations")
-        result = []
+        result : list[ListVal] = []
         result.append("Defined Locations: ")
 
         for x in sorted(doot.locs.Current):
@@ -257,11 +258,12 @@ class _LocationLister_m:
             return result
 
 class _LoggerLister_m:
+    build_param : Callable
 
     @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs, # type: ignore
             self.build_param(name="--loggers",
                              type=bool,
                              default=False,
@@ -272,7 +274,7 @@ class _LoggerLister_m:
         logging.info("---- Listing Logging/Printing info")
         acceptable_names    = doot.log_config._printer_children
 
-        result = []
+        result : list[ListVal] = []
 
         result.append("--- Primary Loggers:")
         result.append("- doot.report  ( target= ) : For user-facing output")
@@ -297,11 +299,12 @@ class _LoggerLister_m:
         return result
 
 class _FlagLister_m:
+    build_param : Callable
 
     @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs, # type: ignore
             self.build_param(name="--flags",
                              type=bool,
                              default=False,
@@ -310,19 +313,20 @@ class _FlagLister_m:
 
     def _list_flags(self) -> list[ListVal]:
         logging.info("---- Listing Task Flags")
-        result = []
+        result : list[ListVal] = []
         result.append("Task Flags: ")
-        for x in sorted(doot.enums.TaskMeta_e, key=lambda x: x.name):
-            result.append(f"-- {x.name}")
+        for x in sorted(doot.enums.TaskMeta_e):
+            result.append(f"-- {x}")
         else:
             return result
 
 class _ActionLister_m:
+    build_param : Callable
 
     @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs, # type: ignore
             self.build_param(name="--actions",
                              type=bool,
                              default=False,
@@ -331,7 +335,7 @@ class _ActionLister_m:
 
     def _list_actions(self, plugins) -> list[ListVal]:
         logging.info("---- Listing Available Actions")
-        result = []
+        result : list[ListVal] = []
         result.append("Available Actions:")
         name_lens = [len(x.name) for x in plugins.action]
         largest = max([0, *name_lens])
@@ -344,11 +348,12 @@ class _ActionLister_m:
         return result
 
 class _PluginLister_m:
+    build_param : Callable
 
     @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs, # type: ignore
             self.build_param(name="--plugins",
                              type=bool,
                              default=False,
@@ -357,12 +362,11 @@ class _PluginLister_m:
 
     def _list_plugins(self, plugins) -> list[ListVal]:
         logging.info("---- Listing Plugins")
-        result = []
+        result : list[ListVal] = []
         result.append(("Defined Plugins by Group:", {"colour":"cyan"}))
-        max_key = max(["", *plugins.keys()], key=len)
-        fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
-        groups  = defaultdict(list)
-        pass
+        max_key : int   = max(["", *plugins.keys()], key=len)
+        fmt_str : str   = f"{INDENT}%-{max_key}s :: %-25s"
+        groups  : dict  = defaultdict(list)
         for group_str, specs in plugins.items():
             groups[group_str] += [(spec.name, spec.value) for spec in specs]
 
@@ -384,8 +388,9 @@ class _Listings_m:
 @Proto(Command_p)
 @Mixin(_Listings_m, None, allow_inheritance=True)
 class ListCmd(BaseCommand):
-    _name      = "list"
-    _help  : ClassVar[tuple[str]]    = tuple([
+    build_param : Callable
+    _name  = "list"
+    _help  = tuple([
         "A simple command to list all loaded task heads.",
         "Set settings.commands.list.hide with a list of regexs to ignore",
     ])
@@ -404,17 +409,17 @@ class ListCmd(BaseCommand):
         result : list[Maybe[str]] = []
         match doot.args.on_fail({}).cmd.args():
             case {"flags":True}:
-                result = self._list_flags()
+                result = self._list_flags() # type: ignore
             case {"loggers":True}:
-                result = self._list_loggers()
+                result = self._list_loggers() # type: ignore
             case {"actions":True}:
-                result = self._list_actions(plugins)
+                result = self._list_actions(plugins) # type: ignore
             case {"plugins":True}:
-                result = self._list_plugins(plugins)
+                result = self._list_plugins(plugins) # type: ignore
             case {"locs": True}:
-                result = self._list_locations()
+                result = self._list_locations() # type: ignore
             case {"tasks": True}:
-                result = self._list_tasks(tasks)
+                result = self._list_tasks(tasks) # type: ignore
             case _:
                 raise doot.errors.CommandError("Bad args passed in", dict(doot.args))
 

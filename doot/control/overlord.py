@@ -2,6 +2,7 @@
 """
 
 """
+# mypy: disable-error-code="attr-defined"
 # ruff: noqa: W291, ARG002, ANN001
 
 # Imports:
@@ -59,6 +60,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from doot._abstract import (Command_p, Overlord_p)
+from doot.reporters._interface import GeneralReporter_p as Reporter_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -70,7 +72,6 @@ if TYPE_CHECKING:
 
     from jgdv import Maybe
     from doot._abstract.loader import Loader_p
-    from doot.reporters._interface import Reporter_p
 
     type Logger                            = logmod.Logger
     type DootError                         = DErr.DootError
@@ -85,13 +86,17 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-PYPROJ : Final[pl.Path] = pl.Path("pyproject.toml")
+PYPROJ    : Final[pl.Path] = pl.Path("pyproject.toml")
+ROOT_ELEM : Final[str]     = "doot"
 # Body:
 
 class Startup_m:
     """
     Overlord startup/setup methods
     """
+    is_setup            : bool
+    global_task_state   : dict
+    aliases             : ChainGuard
 
     def null_setup(self) -> None:
         """
@@ -105,7 +110,7 @@ class Startup_m:
         self._load_constants()
         self._load_aliases()
 
-    def setup(self, *, targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=API.TOOL_PREFIX) -> None:
+    def setup(self, *, targets:Maybe[list[pl.Path]]=None, prefix:Maybe[str]=API.TOOL_PREFIX) -> None:
         """
         The core requirement to call before any other doot code is run.
         loads the config files, so everything else can retrieve values when imported.
@@ -116,10 +121,10 @@ class Startup_m:
         targets=False is for loading nothing, for testing
         """
         if self.is_setup:
-            self.report.user("doot.setup called even though doot is already set up")
+            self.report.user("doot.setup called even though doot is already set up") # type: ignore
 
         self._load_config(targets, prefix)
-        self._setup_logging()
+        self._setup_logging() # type: ignore
         self._load_constants()
         self._load_aliases()
         self._load_locations()
@@ -133,15 +138,15 @@ class Startup_m:
         """ Load a specified config, or one of the defaults if it exists """
         match targets:
             case list() if bool(targets) and all([isinstance(x, pl.Path) for x in targets]):
-                targets : list[pl.Path] = [pl.Path(x) for x in targets]
+                targets : list[pl.Path] = [pl.Path(x) for x in targets] # type: ignore
             case list() if bool(targets):
                 raise TypeError("Doot Config Targets should be pathlib.Path's", targets)
             case None | []:
-                targets : list[pl.Path] = [pl.Path(x) for x in self.constants.paths.DEFAULT_LOAD_TARGETS]
+                targets : list[pl.Path] = [pl.Path(x) for x in self.constants.paths.DEFAULT_LOAD_TARGETS] # type: ignore
 
         logging.log(0, "Loading Doot Config, version: %s targets: %s", API.__version__, targets)
 
-        # Load config Files
+        assert(isinstance(targets, list))
         match [x for x in targets if x.exists()]:
             case [] if bool(targets):
                 raise DErr.MissingConfigError("No Doot data found")
@@ -152,12 +157,13 @@ class Startup_m:
             case x:
                 raise TypeError(type(x))
 
+        # Load config Files
         try:
-            config = ChainGuard.load(*existing_targets)
+            config = ChainGuard.load(*existing_targets) # type: ignore
         except OSError as err:
             raise DErr.InvalidConfigError(existing_targets, *err.args) from err
         else:
-            if existing_targets == [PYPROJ] and "doot" not in config:
+            if existing_targets == [PYPROJ] and ROOT_ELEM not in config:
                 raise DErr.MissingConfigError("Pyproject has no doot config")
 
             self.configs_loaded_from   += existing_targets
@@ -206,14 +212,14 @@ class Startup_m:
             for key,val in self.config.on_fail({}).startup.plugins().items():
                 flat[key].update(dict(val))
 
-            self.aliases = ChainGuard(flat)
+            self.aliases = ChainGuard(flat) # type: ignore
 
         match data:
             case None:
                 pass
             case _ if bool(data):
                 self.report.trace("Updating Aliases")
-                base = defaultdict(dict)
+                base : dict = defaultdict(dict)
                 base.update(dict(self.aliases._table()))
                 for key,eps in data.items():
                     update = {x.name:x.value for x in eps}
@@ -243,10 +249,11 @@ class Startup_m:
             case None | []:
                 task_sources = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [self.locs[y] for y in x])
                 task_code    = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
-                paths = set(task_sources + task_code)
+                paths = set(task_sources + task_code) # type: ignore
             case [*xs]:
-                paths = set(paths)
+                paths = set(paths) # type: ignore
 
+        assert(isinstance(paths, set))
         for source in paths:
             match source:
                 case pl.Path() as x if not x.exists():
@@ -289,6 +296,7 @@ class Logging_m:
 
 class WorkflowUtil_m:
     """ util methods on the overlord used when running a workflow """
+    args : ChainGuard
 
     def set_parsed_cli_args(self, data:ChainGuard) -> None:
         match data:
@@ -393,7 +401,7 @@ class DootOverlord(metaclass=MLSingleton):
         self.args                             = ChainGuard() # parsed arg access
         subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
-        self.locs                             = JGDVLocator(pl.Path.cwd())
+        self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
         self._reporter                        = NullReporter()
         self.configs_loaded_from              = []
         self.global_task_state                = {}

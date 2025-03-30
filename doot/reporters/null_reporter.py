@@ -20,6 +20,7 @@ import types
 import collections
 import contextlib
 import hashlib
+import sys
 from copy import deepcopy
 from uuid import UUID, uuid1
 from weakref import ref
@@ -29,7 +30,7 @@ import faulthandler
 
 from jgdv import Proto, Mixin
 import doot
-from . import _interface as API
+from . import _interface as API  # noqa: N812
 from .formatter import TraceFormatter
 
 # ##-- types
@@ -42,8 +43,6 @@ from typing import Generic, NewType, Never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -54,6 +53,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    type Logger = logmod.Logger
 ##--|
 
 # isort: on
@@ -71,6 +71,8 @@ LINE_CHAR : Final[str] = "-"
 
 class _WorkflowReporter_m:
 
+    _out : Callable
+
     def root(self) -> None:
         self._out("root")
 
@@ -80,30 +82,24 @@ class _WorkflowReporter_m:
     def act(self, info:str, msg:str) -> None:
         self._out("act", info=info, msg=msg)
 
-    def fail(self, info:str, msg:str) -> None:
+    def fail(self, info:str, msg:str) -> None:  # noqa: ARG002
         self._out("fail")
 
     def branch(self, name:str, info:Maybe[str]=None) -> Self:
         self._out("branch")
-        # self.ctx += [self._segments['inactive'], self._segments['gap']]
         self._out("begin", info=info or "Start", msg=name)
         return self
 
     def pause (self, reason:str) -> Self:
-        # self.ctx.pop()
-        # self.ctx.pop()
         self._out("pause", msg=reason)
         return self
 
     def result(self, state:list[str], info:Maybe[str]=None) -> Self:
-        # self.ctx.pop()
-        # self.ctx.pop()
-        self._out("result" , msg=",".join(state), info=info)
+        self._out("result" , msg=",".join((str(x) for x in state)), info=info)
         return self
 
     def resume(self, name:str) -> Self:
         self._out("resume", msg=name)
-        # self.ctx += [self._segments['inactive'], self._segments['gap']]
         return self
 
     def finished(self) -> None:
@@ -116,6 +112,9 @@ class _WorkflowReporter_m:
         pass
 
 class _GenReporter_m:
+    log           : Logger
+    active_level  : Callable
+    _curr         : API.ReportStackEntry_d
 
     def gap(self) -> None:
         self.log.info("")
@@ -132,7 +131,7 @@ class _GenReporter_m:
                 self.log.info(char*LINE_LEN, extra=self._curr.log_extra)
 
     def header(self) -> None:
-        self.active_level(logmod.WARN)
+        self.active_level(logmod.INFO)
         self._curr.log_extra['colour'] = "green"
         self.line()
         self.line("Doot")
@@ -151,23 +150,35 @@ class _GenReporter_m:
         # TODO the report
         self.gap()
 
-    def user(self, msg, *rest, **kwargs) -> None:
+    def user(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
         self.log.warning(msg, *rest)
 
-    def trace(self, msg, *rest, **kwargs) -> None:
+    def trace(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
         self.log.info(msg, *rest)
 
-    def failure(self, msg, *rest, **kwargs) -> None:
-        self.log.exception(msg, *rest)
-
-    def warn(self, msg, *rest, **kwargs) -> None:
-        self.log.warn(msg, *rest)
-
-    def error(self, msg, *rest, **kwargs) -> None:
-        self.log.error(msg, *rest)
-
-    def detail(self, msg, *rest, **kwargs) -> None:
+    def detail(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
         self.log.debug(msg, *rest)
+
+    def failure(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+        match doot.is_setup:
+            case False:
+                print(msg % rest, file=sys.stderr)
+            case _:
+                self.log.exception(msg, *rest)
+
+    def warn(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+        match doot.is_setup:
+            case False:
+                print(msg % rest, file=sys.stderr)
+            case _:
+                self.log.warn(msg, *rest)
+
+    def error(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+        match doot.is_setup:
+            case False:
+                print(msg % rest, file=sys.stderr)
+            case _:
+                self.log.error(msg, *rest)
 
 ##--|
 
@@ -176,7 +187,7 @@ class _GenReporter_m:
 class NullReporter(API.Reporter_d):
     """ The initial reporter for prior to conf iguration """
 
-    def __init__(self, *args, logger:Maybe[Logger]=None, **kwargs) -> None:
+    def __init__(self, *args:Any, logger:Maybe[Logger]=None, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
         self._logger            = logger
         self._segments          = API.TRACE_LINES_ASCII.copy()
@@ -186,7 +197,7 @@ class NullReporter(API.Reporter_d):
         self.ctx                = []
         self._act_trace         = []
 
-        initial_entry = API.ReportStackEntry_d(state="initial",
+        initial_entry           = API.ReportStackEntry_d(state="initial",
                                                data={},
                                                log_extra={"colour":"blue"},
                                                log_level=logmod.ERROR,
@@ -218,7 +229,7 @@ class NullReporter(API.Reporter_d):
         self._curr.log_level = level
         self.log.setLevel(level)
 
-    def set_state(self, state, **kwargs) -> Self:
+    def set_state(self, state:str, **kwargs:Any) -> Self:
         new_top         = deepcopy(self._stack[-1])
         new_top.data    = dict(kwargs)
         new_top.state   = state
@@ -226,7 +237,7 @@ class NullReporter(API.Reporter_d):
         logging.info("Report State Set To: %s", state)
         return self
 
-    def pop_state(self):
+    def pop_state(self) -> None:
         self._stack.pop()
 
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
@@ -253,5 +264,6 @@ class NullReporter(API.Reporter_d):
                 return False
 
     def _out(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> None:
+        assert(isinstance(self._logger, logmod.Logger))
         result = self._fmt(key, info=info, msg=msg, ctx=self.ctx)
         self._logger.log(self._curr.log_level, result)

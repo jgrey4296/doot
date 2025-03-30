@@ -60,25 +60,16 @@ logging = logmod.getLogger(__name__)
 # Vars:
 
 ##-- segment dicts
-BRANCH_PARTS : Final[dict[str, str]] = {
-    "branch-extend"   : "─",
-    "branch-start"    : "╮",
-    "branch-activate" : "▼",
-    "branch-return"   : "╯",
-    "branch-reduce"   : "─",
-    "branch-result"     : "◀",
-}
-
-TRACE_LINES_ASCII     : Final[dict[str, str]] = {
+TRACE_LINES_ASCII     : Final[dict[str, str|tuple]] = {
     "root"            : "T",
     "wait"            : "|",
     "act"             : ("|", "   ",  "::"),
     "branch"          : ("|", "->", "=["),
     "inactive"        : ":",
     "begin"           : ("|", "...", "Y"),
-    "return"          : ("" "=",  "<]"),
-    "pause"           : ("", "-", "<]"),
-    "resume"          : ("|" "->-", "["),
+    "return"          : ("",  "=",   "<]"),
+    "pause"           : ("",  "-", "<]"),
+    "resume"          : ("|", "->-", "["),
     "result"          : ("|", "<<<", "|"),
     "finished"        : "⟘",
     "fail"            : "X:",
@@ -87,9 +78,9 @@ TRACE_LINES_ASCII     : Final[dict[str, str]] = {
 
 ##-- end segment dicts
 
-# eg: "{┣─}{╮}"
+# eg: {┣─}{╮}
 LINE_PASS_FMT : Final[str] = "{ctx}{act}"
-# eg: "{┊ ┊ }{┃} [{blah}] : {bloo}"
+# eg: {┊ ┊ }{┃} [{blah}] : {bloo}
 LINE_MSG_FMT  : Final[str] = "{ctx}{act}{gap}[{info}]{gap2}: {detail}"
 
 ACT_SPACING  : Final[int] = 4
@@ -103,7 +94,7 @@ class ReportStackEntry_d:
     data      : dict
     prefix    : list
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs:Any) -> None:
         self.log_extra = kwargs.pop("log_extra")
         self.log_level = kwargs.pop("log_level")
         self.state     = kwargs.pop("state")
@@ -190,7 +181,7 @@ class GeneralReporter_p(Protocol):
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         pass
 
-    def set_state(self, state, **kwargs) -> None:
+    def set_state(self, state:str, **kwargs:Any) -> None:
         pass
 
     def header(self) -> None:
@@ -199,13 +190,13 @@ class GeneralReporter_p(Protocol):
     def summary(self) -> None:
         pass
 
-    def trace(self, msg, *rest) -> None:
+    def trace(self, msg:str, *rest:str) -> None:
         pass
 
-    def failure(self, msg, *rest) -> None:
+    def failure(self, msg:str, *rest:str) -> None:
         pass
 
-    def warn(self, msg, *rest) -> None:
+    def warn(self, msg:str, *rest:str) -> None:
         pass
 
 @runtime_checkable

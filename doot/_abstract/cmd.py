@@ -43,10 +43,10 @@ from doot._abstract.protocols import CLIParamProvider_p
 # ##-- end types
 
 class Command_d:
-    _name : Maybe[str]       = None # if not specified uses the class name
-    _help : Maybe[list[str]] = None
+    _name    : Maybe[str]           = None
+    _help    : Maybe[Iterable[str]] = None
 
-    _version : VerStr = "0.1"
+    _version : VerStr               = "0.1"
 
 class Command_p(CLIParamProvider_p, Protocol):
     """
