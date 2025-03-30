@@ -4,4 +4,4 @@ venv
 lsp
 py-lsp
 mypy
-# flycheck
+flycheck
