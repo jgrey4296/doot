@@ -80,10 +80,10 @@ class RunCmd(BaseCommand):
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(name="-step",      default=False, type=bool),
-            self.build_param(name="-interrupt", default=False, type=bool),
-            self.build_param(name="-dry-run",   default=False, type=bool),
-            self.build_param(name="-confirm",   default=False, type=bool),
+            self.build_param(name="--interrupt",               default=False, type=bool),
+            self.build_param(name="--step",                     default=False, type=bool),
+            self.build_param(name="--dry-run",                  default=False, type=bool),
+            self.build_param(name="--confirm",                  default=False, type=bool),
             self.build_param(name="<1>target", type=list[str], default=[]),
             ]
 
@@ -157,18 +157,21 @@ class RunCmd(BaseCommand):
             doot.report.trace("%s Tasks Queued", len(tracker.active_set))
 
 
-    def _choose_interrupt_handler(self) -> Maybe[Callable]:
+    def _choose_interrupt_handler(self) -> Maybe[bool|Callable]:
         match interrupt_handler:
             case _ if not doot.args.on_fail(False).cmd.args.interrupt():
-                interrupt = None
+                return None
             case None:
-                interrupt = None
+                return None
             case True:
                 doot.report.trace("Setting default interrupt handler")
-                interrupt = interrupt_handler
+                return True
             case str():
                 doot.report.trace("Loading custom interrupt handler")
-                interrupt = CodeReference(interrupt_handler)()
+                ref = CodeReference(interrupt_handler)
+                return ref()
+            case _:
+                return None
 
     def _confirm_plan(self, runner:TaskRunner_i) -> bool:
         """ Confirm the plan """

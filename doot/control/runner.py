@@ -26,7 +26,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from jgdv import Proto, Mixin
 import networkx as nx
-from jgdv.debugging import SignalHandler
+from jgdv.debugging import SignalHandler, NullHandler
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -225,8 +225,10 @@ class DootRunner:
           if task is a job, it is expanded and added into the tracker
           """
         match handler:
-            case None | True:
+            case True:
                 handler = SignalHandler()
+            case False:
+                handler = NullHandler()
             case type() as x:
                 handler = x()
             case x if hasattr(x, "__enter__"):
