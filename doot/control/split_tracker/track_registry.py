@@ -218,7 +218,7 @@ class _Instantiation_m:
             case None:
                 pass
             case TaskName() as existing:
-                doot.report.detail("Reusing instantiation: %s for %s", existing, name)
+                logging.detail("Reusing instantiation: %s for %s", existing, name)
                 return existing
 
         spec = self.specs[name]
@@ -234,7 +234,7 @@ class _Instantiation_m:
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        doot.report.detail("Instantiating: %s into %s", name, instance_spec.name)
+        logging.detail("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user

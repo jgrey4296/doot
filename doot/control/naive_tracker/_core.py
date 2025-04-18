@@ -441,7 +441,7 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
         to_expand                                             = set()
 
-        logging.detail("Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.detail("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         to_expand.update(self._expand_generated_tasks(spec))
 
@@ -468,7 +468,7 @@ class _Expansion_m:
             assert(name in self.network.nodes)
             self.network.nodes[name][EXPANDED] = True
 
-        logging.detail("Task Expansion Complete: %s", name)
+        logging.detail("<-- Task Expansion Complete: %s", name)
         to_expand.update(self._expand_indirect_relations(spec))
 
         return to_expand

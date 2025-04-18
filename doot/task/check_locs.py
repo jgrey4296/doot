@@ -99,18 +99,19 @@ class CheckLocsTask(DootTask):
                 path = doot.locs.Current[loc]
                 match path.exists():
                     case True:
-                        doot.report.trace("Base Location Exists : %s", path)
+                        logging.detail("Location Exists : %s", path)
                     case False if make_missing:
-                        doot.report.user("Making Missing Location: %s", path)
+                        doot.report.act(info="Check", msg=f"Making Missing Location: {path}")
                         path.mkdir(parents=True)
                     case False if strict:
                         errors.append(path)
                     case False:
-                        doot.report.trace("Base Location Missing: %s", path)
+                        doot.report.act(info="Check", msg=f"Location Missing: {path}")
             except PermissionError:
                 if strict:
                     errors.append(path)
-                doot.report.error("Base Location Permision Error: %s", loc)
+                doot.report.act("Check", "Location Permision Error: %s", loc)
+                doot.report.fail()
         else:
             if strict and bool(errors):
                 raise doot.errors.ConfigError("Missing Location(s)", errors)

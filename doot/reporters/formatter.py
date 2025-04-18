@@ -75,6 +75,7 @@ class TraceFormatter:
         self.msg_fmt           = API.LINE_MSG_FMT
 
     def _build_ctx(self, ctx:Maybe[list]) -> str:
+        """ Given a current context list, builds a prefix string for the current print call """
         match ctx:
             case None:
                 return ""
@@ -84,6 +85,9 @@ class TraceFormatter:
                 raise TypeError(type(x))
 
     def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str:
+        """ Build the formatted report line.
+
+        """
         extra        = {}
         extra['time']= datetime.datetime.now().strftime("%H:%M")  # noqa: DTZ005
         match self._segments.get(key, None):

@@ -198,10 +198,10 @@ class NullReporter(API.Reporter_d):
         self._act_trace         = []
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
-                                               data={},
-                                               log_extra={"colour":"blue"},
-                                               log_level=logmod.ERROR,
-                                               )
+                                                         data={},
+                                                         log_extra={"colour":"blue"},
+                                                         log_level=logmod.ERROR,
+                                                         )
         self._stack.append(initial_entry)
 
     @property
