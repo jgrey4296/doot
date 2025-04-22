@@ -57,7 +57,7 @@ A general access point for what you can do with ``doot``.
 
     ------------------------------
     Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help
-   
+
 ------------------
 The Help Parameter
 ------------------

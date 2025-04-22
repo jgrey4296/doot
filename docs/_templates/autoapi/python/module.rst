@@ -1,19 +1,21 @@
+{# module.rst -*- mode: Jinja2 -*- #}
+{% import "python/debug_obj.rst.jinja" as jgdb %}
 
 .. _{{obj.name}}:
 
 {% if obj.display %}
-   {% if is_own_page %}
+{% if is_own_page %}
 {{ obj.id }}
 {{ "=" * obj.id|length }}
 
 .. py:module:: {{ obj.name }}
 
-      {% if obj.docstring %}
+{% if obj.docstring %}
 .. autoapi-nested-parse::
 
    {{ obj.docstring|indent(3) }}
 
-      {% endif %}
+{% endif %}
 
       {% block submodules %}
          {% set visible_subpackages = obj.subpackages|selectattr("display")|list %}
@@ -36,102 +38,17 @@ Submodules
       {% block content %}
          {% set visible_children = obj.children|selectattr("display")|list %}
          {% if visible_children %}
-            {% set visible_attributes = visible_children|selectattr("type", "equalto", "data")|list %}
-            {% if visible_attributes %}
-               {% if "attribute" in own_page_types or "show-module-summary" in autoapi_options %}
-Attributes
-----------
-
-                  {% if "attribute" in own_page_types %}
-.. toctree::
-   :hidden:
-
-                     {% for attribute in visible_attributes %}
-   {{ attribute.include_path }}
-                     {% endfor %}
-
-                  {% endif %}
-.. autoapisummary::
-
-                  {% for attribute in visible_attributes %}
-   {{ attribute.id }}
-                  {% endfor %}
-               {% endif %}
-
-
-            {% endif %}
-            {% set visible_exceptions = visible_children|selectattr("type", "equalto", "exception")|list %}
-            {% if visible_exceptions %}
-               {% if "exception" in own_page_types or "show-module-summary" in autoapi_options %}
-Exceptions
-----------
-
-                  {% if "exception" in own_page_types %}
-.. toctree::
-   :hidden:
-
-                     {% for exception in visible_exceptions %}
-   {{ exception.include_path }}
-                     {% endfor %}
-
-                  {% endif %}
-.. autoapisummary::
-
-                  {% for exception in visible_exceptions %}
-   {{ exception.id }}
-                  {% endfor %}
-               {% endif %}
-
-
-            {% endif %}
+            {% set visible_data    = visible_children|selectattr("type", "equalto", "data")|list %}
             {% set visible_classes = visible_children|selectattr("type", "equalto", "class")|list %}
-            {% if visible_classes %}
-               {% if "class" in own_page_types or "show-module-summary" in autoapi_options %}
-Classes
--------
 
-                  {% if "class" in own_page_types %}
-.. toctree::
-   :hidden:
+            {% include "python/vis_types.rst.jinja"   %}
+            {% include "python/vis_enums.rst.jinja"   %}
+            {% include "python/vis_protos.rst.jinja"  %}
+            {% include "python/vis_attrs.rst.jinja"   %}
+            {% include "python/vis_excs.rst.jinja"    %}
+            {% include "python/vis_funcs.rst.jinja"   %}
+            {% include "python/vis_classes.rst.jinja" %}
 
-                     {% for klass in visible_classes %}
-   {{ klass.include_path }}
-                     {% endfor %}
-
-                  {% endif %}
-.. autoapisummary::
-
-                  {% for klass in visible_classes %}
-   {{ klass.id }}
-                  {% endfor %}
-               {% endif %}
-
-
-            {% endif %}
-            {% set visible_functions = visible_children|selectattr("type", "equalto", "function")|list %}
-            {% if visible_functions %}
-               {% if "function" in own_page_types or "show-module-summary" in autoapi_options %}
-Functions
----------
-
-                  {% if "function" in own_page_types %}
-.. toctree::
-   :hidden:
-
-                     {% for function in visible_functions %}
-   {{ function.include_path }}
-                     {% endfor %}
-
-                  {% endif %}
-.. autoapisummary::
-
-                  {% for function in visible_functions %}
-   {{ function.id }}
-                  {% endfor %}
-               {% endif %}
-
-
-            {% endif %}
             {% set this_page_children = visible_children|rejectattr("type", "in", own_page_types)|list %}
             {% if this_page_children %}
 {{ obj.type|title }} Contents

@@ -1,0 +1,27 @@
+
+{% block vis_excs %}
+{% set visible_exceptions = visible_children|selectattr("type", "equalto", "exception")|list %}
+
+{% if visible_exceptions %}
+   {% if "exception" in own_page_types or "show-module-summary" in autoapi_options %}
+Exceptions
+----------
+
+   {% if "exception" in own_page_types %}
+.. toctree::
+   :hidden:
+
+      {% for exception in visible_exceptions %}
+   {{ exception.include_path }}
+      {% endfor %}
+
+   {% endif %}
+.. autoapisummary::
+
+      {% for exception in visible_exceptions %}
+   {{ exception.id }}
+      {% endfor %}
+   {% endif %}
+{% endif %}
+
+{% endblock vis_excs %}

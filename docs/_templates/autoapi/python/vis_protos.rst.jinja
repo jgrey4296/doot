@@ -1,0 +1,17 @@
+
+{% block vis_protos %}
+{% set visible_protos  = visible_classes|selectattr("obj.bases", "contains", "Protocol")|list %}
+
+{% if visible_protos %}
+
+Protocols
+---------
+
+.. autoapisummary::
+
+      {% for proto in visible_protos %}
+   {{ proto.id }}
+      {% endfor %}
+
+{% endif %}
+{% endblock vis_protos %}

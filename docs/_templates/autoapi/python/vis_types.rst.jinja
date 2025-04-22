@@ -1,0 +1,17 @@
+
+{% block vis_types %}
+
+{% set visible_types = visible_data|selectattr("obj.annotation", "equalto", "TypeAlias")|list %}
+
+{% if visible_types %}
+Type Aliases
+------------
+
+.. autoapisummary::
+
+      {% for vtype in visible_types %}
+   {{ vtype.id }}
+      {% endfor %}
+
+{% endif %}
+{% endblock vis_types %}

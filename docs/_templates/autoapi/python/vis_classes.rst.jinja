@@ -1,0 +1,29 @@
+
+{% block vis_classes %}
+
+{% set viable_classes = visible_classes|rejectattr("obj.bases", "contains", "enum", "Protocol")|list %}
+
+{% if viable_classes %}
+    {% if "class" in own_page_types or "show-module-summary" in autoapi_options %}
+Classes
+-------
+
+    {% if "class" in own_page_types %}
+.. toctree::
+   :hidden:
+
+        {% for klass in viable_classes %}
+   {{ klass.include_path }}
+        {% endfor %}
+
+    {% endif %}
+.. autoapisummary::
+
+        {% for klass in viable_classes %}
+   {{ klass.id }}
+        {% endfor %}
+    {% endif %}
+
+
+{% endif %}
+{% endblock vis_classes %}
