@@ -2,12 +2,6 @@ version = 1
 revision = 1
 requires-python = ">=3.12"
 
-[manifest]
-members = [
-    "doot",
-    "doot-examples",
-]
-
 [[package]]
 name = "alabaster"
 version = "1.0.0"
@@ -202,17 +196,6 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = []
-
-[[package]]
-name = "doot-examples"
-version = "0.1.0"
-source = { virtual = "related_/doot-examples" }
-dependencies = [
-    { name = "doot" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "doot", editable = "." }]
 
 [[package]]
 name = "fonttools"

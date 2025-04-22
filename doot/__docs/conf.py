@@ -30,6 +30,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.extlinks',
+    "sphinx.ext.graphviz",
+    "sphinx.ext.duration",
     'sphinx_rtd_theme',
     'myst_parser',
     "autoapi.extension",
@@ -38,14 +40,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     ]
-
-def setup(app):
-    app.events.connect("builder-inited", add_jinja_ext, 1)
-    app.add_directive('jgdir', JGDirective)
-    # app.add_transform
-
-def add_jinja_ext(app):
-    app.builder.templates.environment.add_extension('jinja2.ext.debug')
 
 # -- Path setup --------------------------------------------------------------
 
@@ -70,40 +64,14 @@ master_doc                    = "index"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['**/flycheck_*.py', "**/__tests/*", '/obsolete/*', "README.md"]
+exclude_patterns = [
+    '**/flycheck_*.py',
+    "**/__tests/*",
+    "_docs/_templates/*",
+    "README.md",
+]
 
 # suppress_warnings = ["autoapi", "docutils"]
-
-# -- Sphinx and Jina configuration ------------------------------------------
-
-class JGDirective(SphinxDirective):
-
-    has_content               = True
-    required_arguments        = 0
-    optional_arguments        = 1
-    option_spec               = { "caption": str }
-
-    def run(self) -> list[nodes.Node]:
-        self.content = StringList("""
-    .. code-block:: python
-
-        print('will be inside a jgdir with an addition')
-        """.split("\n"))
-        if not bool(self.content):
-            raise self.error("No Content")
-
-        # caption = nodes.Element(self.options.get('caption'))
-        # self.state.nested_parse([self.options.get('caption')], 0, caption)
-
-        content_node = nodes.container(rawsource="\n".join(self.content))
-        self.state.nested_parse(self.content, self.content_offset, content_node)
-        return [content_node]
-
-class JGTransform(Transform):
-
-    def apply(self):
-        pass
-
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -138,21 +106,76 @@ html_theme_options.update({
 
 # -- Extension Options -------------------------------------------------
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
+autoapi_keep_files        = False
 autoapi_generate_api_docs = True
-autoapi_add_toctree_entry = True
+autoapi_add_toctree_entry = False
 autoapi_type              = "python"
-autoapi_template_dir      = "_templates/autoapi"
-autoapi_root              = "autoapi"
-autoapi_dirs              = ['../doot']
+autoapi_template_dir      = "_docs/_templates/autoapi"
+autoapi_root              = "_docs/autoapi"
+autoapi_dirs              = ['.']
 autoapi_file_patterns     = ["*.py", "*.pyi"]
-autoapi_ignore            = exclude_patterns
+autoapi_ignore            = [*exclude_patterns, "*_docs/conf.py"]
+autoapi_member_order      = "groupwise"
 autoapi_options           = [
-    'imported-members',
+    # 'imported-members',
+    # "inherited-members",
+    # 'show-inheritance-diagram',
     'members',
     'undoc-members',
     'private-members',
     'special_members',
     'show-inheritance',
-    # 'show-inheritance-diagram',
     'show-module-summary',
 ]
+
+def filter_contains(val:list|str, *needles:str) -> bool:
+    match val:
+        case str():
+            return any(x in val for x in needles)
+        case list():
+            joined = " ".join(val)
+            return any(x in joined for x in needles)
+        case _:
+            return False
+
+def autoapi_prepare_jinja_env(jinja_env: jinja2.Environment) -> None:
+    jinja_env.add_extension("jinja2.ext.debug")
+    jinja_env.tests['contains'] = filter_contains
+
+# -- Sphinx and Jina configuration ------------------------------------------
+
+class JGDirective(SphinxDirective):
+
+    has_content               = True
+    required_arguments        = 0
+    optional_arguments        = 1
+    option_spec               = { "caption": str }
+
+    def run(self) -> list[nodes.Node]:
+        self.content = StringList("""
+    .. code-block:: python
+
+        print('will be inside a jgdir with an addition')
+        """.split("\n"))
+        if not bool(self.content):
+            raise self.error("No Content")
+
+        # caption = nodes.Element(self.options.get('caption'))
+        # self.state.nested_parse([self.options.get('caption')], 0, caption)
+
+        content_node = nodes.container(rawsource="\n".join(self.content))
+        self.state.nested_parse(self.content, self.content_offset, content_node)
+        return [content_node]
+
+class JGTransform(Transform):
+
+    def apply(self):
+        pass
+
+def setup(app):
+    app.events.connect("builder-inited", add_jinja_ext, 1)
+    app.add_directive('jgdir', JGDirective)
+    # app.add_transform
+
+def add_jinja_ext(app):
+    app.builder.templates.environment.add_extension('jinja2.ext.debug')
