@@ -1,0 +1,27 @@
+
+{% block vis_attrs %}
+{% set visible_attributes = visible_data|rejectattr("obj.annotation", "equalto", "TypeAlias")|list %}
+
+{% if visible_attributes %}
+   {% if "attribute" in own_page_types or "show-module-summary" in autoapi_options %}
+Attributes
+----------
+
+   {% if "attribute" in own_page_types %}
+.. toctree::
+   :hidden:
+
+   {% for attr in visible_attributes %}
+   {{ attr.include_path }}
+   {% endfor %}
+
+   {% endif %}
+.. autoapisummary::
+
+   {% for attr in visible_attributes %}
+   {{ attr.id }}
+   {% endfor %}
+   {% endif %}
+
+{% endif %}
+{% endblock vis_attrs %}

@@ -1,91 +1,40 @@
 ## docs.toml -*- mode: toml -*-
 doot-version = "1.0"
 
-[[state]]
+[[global]]
 address     = "127.0.0.1"
 port        = "8000"
 doc_builder = "html"
 env_name    = "doot-dev312"
 
 [[locations]]
-doc_src = "docs"
-doc_out = "{temp}/docs"
-autodoc = "{doc_src}/_api"
+doc_conf = "docs"
+doc_src  = "{src}"
+doc_out  = "{temp}/docs"
+# autodoc  = "{doc_conf}/_api"
 
-[[tasks.docs]]
-name    = "server"
-doc     = ["run a simple server in the built docs directory"]
-actions = [
-    {do="dootle.actions.shell:ShellAction", args=["python", "-m", "http.server", "--directory", "{doc_out!p}", "--bind", "{address}", "{port}"], background=true}
-]
 
 [[tasks.docs]]
 name        = "build"
 doc         = ["build sphinx project documentation"]
-# depends_on  = ["docs::_.api.gen"]
 setup       = [
-    { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
-    { do="installed?", args=["sphinx-build"], env_="env"},
-    { do="installed?", args=["sphinx-apidoc"], env_="env"},
-    { do="exists?", args=["{doc_src!p}/conf.py"] },
+    { do="installed?", args=["sphinx-build"]},
+    { do="installed?", args=["sphinx-apidoc"]},
+    { do="exists?",    args=["{doc_conf!p}/conf.py"] },
 ]
 actions = [
     # --conf-dir {!p} : directory for conf.py
     { do="dootle.actions.shell:ShellAction", args=[
     "sphinx-build",
-    # "-a",
-    "--nitpicky",
-    "--warning-file",
-    "{logs!p}/sphinx.log",
-    "--builder",
-    "{doc_builder}",
+    # "--verbose",
+    "--quiet",
+    # "--silent",
+    "--conf-dir", "{doc_conf!p}",
+    # "--write-all",
+    # "--nitpicky",
+    "--warning-file", "{logs!p}/sphinx.log",
+    "--builder", "{doc_builder}",
     "{doc_src!p}",
-    "{doc_out!p}"
-    ]},
+    "{doc_out!p}"], errlimit=0},
 ]
 cleanup = []
-
-[[tasks.docs]]
-disabled = true
-name    = "_.api.gen"
-doc     = [ "https://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html"]
-depth   = 6
-actions = [
-    { do="dootle.actions.shell:ShellAction", args=[
-    "sphinx-apidoc",
-    "--maxdepth", "{depth}", "--module-first",
-    "--private",
-    "--ext-viewcode",
-    "--templatedir", "{doc_src!p}/_templates",
-    "-o", "{autodoc!p}", "{src!p}",
-    # Exclude:
-    "*__tests"
-    ]}
-]
-
-[[tasks.docs]]
-disabled = true
-name    = "_.autogen"
-doc     = ["https://www.sphinx-doc.org/en/master/man/sphinx-autogen.html"]
-actions = [
-    { do="dootle.actions.shell:ShellAction", args=["sphinx-autogen", "-o", "{autodoc!p}", "{doc_src!p}/api.rst"] },
-]
-
-
-[[tasks.docs]]
-disabled = true
-name        = "test"
-doc         = ["run sphinx doctest"]
-doc_builder = "doctest"
-env_name    = "distributor"
-setup       = [
-    { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
-    { do="installed?", args=["sphinx-build"], env_="env"},
-    { do="exists?", args=["{doc_src!p}/conf.py"] },
-]
-actions = [
-    # --conf-dir {!p} : directory for conf.py
-    { do="dootle.actions.shell:ShellAction", args=["sphinx-build", "--warning-file", "{logs!p}/sphinx.log", "--builder", "{doc_builder}", "{doc_src!p}", "{doc_out!p}"] },
-
-
-]

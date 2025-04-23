@@ -161,19 +161,21 @@ When you find a bug, bother me, unsurprisingly, on the `issue tracker <https://g
    :maxdepth: 3
    :hidden:
 
-   getting_started
-   cli
+   __docs/getting_started
+   __docs/cli
+   __docs/examples/overview
+   __docs/architecture/overview
+   __docs/reference/reference
+   __docs/misc/overview
+   FAQ <__docs/faq>
+   __docs/license
+   __docs/glossary
+   __docs/rst_tests
 
-   examples/overview
-   architecture/overview
-   reference/reference
-   misc/overview
-   FAQ <faq>
    genindex
    modindex
-   license
-   glossary
-   rst_tests
+   API Reference <autoapi/doot/index>
+
 
 .. .. Links
 .. _doit: https://pydoit.org/contents.html

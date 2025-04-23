@@ -25,8 +25,6 @@ from doot.task.core.task import DootTask
 from doot.actions.core.action import DootBaseAction
 
 from jgdv.logging import LogLevel_e
-printer = doot.subprinter()
-printer.propagate = True
 
 class TestBaseAction:
 
@@ -42,7 +40,7 @@ class TestBaseAction:
         assert("blah" in caplog.messages)
 
     def test_call_action(self, caplog, mocker):
-        caplog.set_level(logmod.DEBUG, logger=doot.subprinter().name)
+        caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         action = DootBaseAction()
         state  = { "count" : 0  }
         spec   = mocker.Mock(spec=doot.structs.ActionSpec)

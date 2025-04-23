@@ -28,13 +28,11 @@ import doot
 
 # ##-- end 1st party imports
 
-
 # ##-- 1st party imports
 from doot.control.runner import DootRunner
 from doot.enums import TaskStatus_e
 from doot.structs import ActionSpec, TaskSpec, DKey, TaskName
 from doot.control.naive_tracker import NaiveTracker
-from doot.reporters.core.reporter import BaseReporter
 from doot.task import DootTask, DootJob
 
 # ##-- end 1st party imports
@@ -78,8 +76,7 @@ class _MockObjs_m:
     @pytest.fixture(scope="function")
     def runner(self, ctor, mocker):
         tracker  = NaiveTracker()
-        reporter = BaseReporter()
-        runner   = ctor(tracker=tracker, reporter=reporter)
+        runner   = ctor(tracker=tracker)
         return runner
 
 @pytest.mark.parametrize("ctor", [DootRunner])
@@ -93,19 +90,15 @@ class TestRunner(_MockObjs_m):
         assert(isinstance(runner, TaskRunner_p))
 
     def test_expand_job(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy    = mocker.spy(runner, "_announce_entry")
         test_cond_spy         = mocker.spy(runner, "_test_conditions")
-        add_trace_spy         = mocker.spy(runner.reporter, "add_trace")
         exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
         spec                  = TaskSpec.build("basic::job")
         job                   = DootJob(spec)
         runner._expand_job(job)
 
-        announce_entry_spy.assert_called_once()
         test_cond_spy.assert_called_once()
         assert(test_cond_spy.spy_return == True)
-        add_trace_spy.assert_called()
         exec_action_group_spy.assert_called()
 
     def test_expand_job_with_a_task_errors(self, ctor, mocker, setup_config, runner):
@@ -114,10 +107,7 @@ class TestRunner(_MockObjs_m):
         with pytest.raises(AssertionError):
             runner._expand_job(task)
 
-
     def test_expand_job_fails_conditions(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy      = mocker.spy(runner, "_announce_entry")
-        add_trace_spy           = mocker.spy(runner.reporter, "add_trace")
         exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
 
         orig_method = runner._test_conditions
@@ -134,21 +124,16 @@ class TestRunner(_MockObjs_m):
         exec_action_group_spy.assert_called_with(job, group="depends_on")
 
     def test_execute_task(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy    = mocker.spy(runner, "_announce_entry")
         test_cond_spy         = mocker.spy(runner, "_test_conditions")
-        add_trace_spy         = mocker.spy(runner.reporter, "add_trace")
         exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
         spec                  = TaskSpec.build("basic::job")
         task                  = DootTask(spec)
         runner._execute_task(task)
 
-        announce_entry_spy.assert_called_once()
         test_cond_spy.assert_called_once()
         assert(test_cond_spy.spy_return == True)
-        add_trace_spy.assert_called()
         exec_action_group_spy.assert_called()
-
 
     def test_execute_task_with_a_job_errors(self, ctor, mocker, setup_config, runner):
         spec                  = TaskSpec.build("basic::job")
@@ -156,10 +141,7 @@ class TestRunner(_MockObjs_m):
         with pytest.raises(AssertionError):
             runner._execute_task(job)
 
-
     def test_execute_task_fails_conditions(self, ctor, mocker, setup_config, runner):
-        announce_entry_spy      = mocker.spy(runner, "_announce_entry")
-        add_trace_spy           = mocker.spy(runner.reporter, "add_trace")
         exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
 
         orig_method = runner._test_conditions

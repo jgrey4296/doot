@@ -59,7 +59,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 @Mixin(PathManip_m, allow_inheritance=True)
@@ -89,7 +88,7 @@ class AppendAction(IOBase):
                 if not arg:
                     continue
 
-                printer.info("Appending %s chars to %s", len(arg), loc)
+                doot.report.act("Append", "%s chars to %s" % (len(arg), loc))
                 f.write(sep)
                 f.write(arg)
 
@@ -117,22 +116,22 @@ class WriteAction(IOBase):
 
         match data:
             case None:
-                printer.info("No Data to Write")
+                doot.report.act("Write", "Nothing to Write")
             case _ if not bool(data):
-                printer.info("No Data to Write")
+                doot.report.act("Write", "Nothing to Write")
             case [*xs]:
                 text = "\n".join(xs)
-                printer.info("Writing %s chars to %s", len(text), loc)
                 loc.write_text(text)
+                doot.report.act("Write", "%s chars to %s" % (len(text), loc))
             case bytes():
-                printer.info("Writing %s bytes to %s", len(data), loc)
+                doot.report.act("Write", "%s bytes to %s" % (len(data), loc))
                 loc.write_bytes(data)
             case str():
-                printer.info("Writing %s chars to %s", len(data), loc)
+                doot.report.act("Write", "%s chars to %s" % (len(data), loc))
                 loc.write_text(data)
             case _:
                 as_str = str(data)
-                printer.info("Writing %s chars to %s", len(as_str), loc)
+                doot.report.act("Write", "%s chars to %s" % (len(as_str), loc))
                 loc.write_text(as_str)
 
         return None
@@ -151,7 +150,7 @@ class ReadAction(IOBase):
         loc = _from
         read_binary = as_bytes
         read_lines  = _type
-        printer.info("Reading from %s into %s", loc, _update)
+        doot.report.act("Read", "%s into %s" % (loc, _update))
         if read_binary:
             with loc.open("rb") as f:
                 return { _update : f.read() }
@@ -255,14 +254,14 @@ class DeleteAction(IOBase):
                 raise LocationError("Tried to write a protected location", loc)
 
             if not loc.exists():
-                printer.info("Not Deleting Due to non-existence: %s", loc)
+                doot.report.act("Delete", "Does Not Exist: %s" % loc)
                 continue
 
             if loc.is_dir() and rec:
-                printer.info("Deleting Directory: %s", loc)
+                doot.report.act("Delete", "Directory: %s" % loc)
                 shutil.rmtree(loc)
             else:
-                printer.info("Deleting File: %s", loc)
+                doot.report.act("Delete", "File: %s" % loc)
                 loc.unlink(missing_ok=lax)
 
 class BackupAction(IOBase):
@@ -296,8 +295,7 @@ class BackupAction(IOBase):
         if dest_loc.exists() and ((not source_newer) or below_tolerance):
             return None
 
-        printer.info("Backing up : %s", source_loc)
-        printer.debug("Destination: %s", dest_loc)
+        doot.report.act("Backup", "%s -> %s" % (source_loc, dest_loc))
         shutil.copy2(source_loc,dest_loc)
         return None
 
@@ -312,7 +310,7 @@ class EnsureDirectory(IOBase):
         for arg in args:
             loc = DKey(arg, mark=DKey.Mark.PATH).expand(spec, state)
             if not loc.exists():
-                printer.info("Building Directory: %s", loc)
+                doot.report.act("MkDir", str(loc))
             loc.mkdir(parents=True, exist_ok=True)
 
 class UserInput(IOBase):
@@ -387,19 +385,19 @@ class LinkAction(IOBase):
         y_path = y_key.expand(spec, state)
         # TODO when py3.12: use follow_symlinks=False
         if (x_path.exists() or x_path.is_symlink()) and not force:
-            printer.warning("SKIP: A Symlink already exists: %s -> %s", x_path, x_path.resolve())
+            logging.warn("SKIP: A Symlink already exists: %s -> %s", x_path, x_path.resolve())
             return
         if not y_path.exists():
             raise doot.errors.ActionError("Link target does not exist", y_path)
         if force and x_path.is_symlink():
-            printer.warning("Forcing New Symlink")
+            logging.warn("Forcing New Symlink: %s", x_path)
             x_path.unlink()
         if hard:
-            printer.info("Hard Linking: %s -> %s", x_path, y_path)
             x_path.hardlink_to(y_path)
+            doot.report.act("Link", "Hard: %s -> %s" % (x_path, y_path))
         else:
-            printer.info("SymLinking: %s -> %s", x_path, y_path)
             x_path.symlink_to(y_path)
+            doot.report.act("Link", "Symbolic: %s -> %s" % (x_path, y_path))
 
 class ListFiles(IOBase):
     """ add a list of all files in a path (recursively) to the state """
@@ -413,5 +411,5 @@ class ListFiles(IOBase):
         result = sh.fdfind("--color", "never", "-t", "f", "--base-directory",  str(base), ".", target, _return_cmd=True)
         filelist = result.stdout.decode().split("\n")
 
-        printer.info("%s files in %s", len(filelist), target)
+        doot.report.act("List", "%s files in %s" % (len(filelist), target))
         return { _update : filelist }

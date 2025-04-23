@@ -73,8 +73,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
-printer          = doot.subprinter()
-track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
@@ -214,7 +212,6 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
         to_expand                                             = set()
 
-        track_l.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
         logging.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         # Connect Relations
@@ -243,7 +240,7 @@ class _Expansion_m:
 
         to_expand.update(self._generate_node_subtasks(spec))
         to_expand.update(self._generate_successor_edges(spec))
-        track_l.trace("<-- Task Expansion Complete: %s", name)
+        logging.detail("<-- Task Expansion Complete: %s", name)
         return to_expand
 
     def _generate_successor_edges(self, spec:Concrete[TaskSpec]) -> set[Concrete[TaskName]|TaskArtifact]:

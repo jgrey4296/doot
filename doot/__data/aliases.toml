@@ -13,8 +13,6 @@ graph     = "doot.cmds.graph_cmd:GraphCmd"
 
 [[doot.aliases.reporter]]
 # Map {alias} -> CodeRef String
-summary = "doot.reporters.summary_manager:DootReportManagerSummary"
-stack   = "doot.reporters.stack_manager:DootReportManagerStack"
 
 [[doot.aliases.report-line]]
 # Map {alias} -> CodeRef String

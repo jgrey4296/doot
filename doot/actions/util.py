@@ -41,21 +41,20 @@ from doot.structs import DKey
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 def action_debugger(spec, state):
     """ A Simple entry function for debugging spec and state """
     def pstate():
-        printer.info("Printing State:")
-        printer.info(state)
+        doot.report.trace("Printing State:")
+        doot.report.trace(state)
 
     def pspec():
-        printer.info("Printing Spec:")
-        printer.info(spec)
+        doot.report.trace("Printing Spec:")
+        doot.report.trace(spec)
 
-    printer.info("* Entering breakpoint *")
-    printer.info("* Call pspec() and pstate() to inspect the spec and state *")
+    doot.report.trace("* Entering breakpoint *")
+    doot.report.trace("* Call pspec() and pstate() to inspect the spec and state *")
 
     breakpoint()
 
@@ -72,7 +71,7 @@ def typecheck(spec, state):
             if target_type != fullname:
                 raise doot.errors.KeyExpansionError("Type Error: state.%s : %s != %s", key, fullname, target_type)
 
-            printer.debug("Type Matches: state.%s : %s", key, target_type)
+            doot.report.detail("Type Matches: state.%s : %s", key, target_type)
 
         except (AttributeError, KeyError):
             raise doot.errors.KeyAccessError("State key missing: %s", key)

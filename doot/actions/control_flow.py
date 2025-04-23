@@ -68,7 +68,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 class PredicateCheck(DootBaseAction):
@@ -173,9 +172,7 @@ class LogAction(DootBaseAction):
     @DKeyed.formats("target", fallback="task")
     def __call__(self, spec, state, level, msg, target):
         assert(msg is not None), "msg"
-        logger = doot.subprinter(target)
-        level  = logmod.getLevelName(level)
-        logger.log(level, msg)
+        doot.report.user(msg)
 
 class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """
@@ -204,7 +201,7 @@ class AssertInstalled(DootBaseAction):
         if not bool(failures):
             return
 
-        printer.exception("Required Programs were not found: %s", ", ".join(failures))
+        logging.exception("Required Programs were not found: %s", ", ".join(failures))
         return self.ActRE.FAIL
 
 class WaitAction(DootBaseAction):

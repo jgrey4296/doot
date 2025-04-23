@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ##-- 1st party imports
 import doot.errors
-from doot.enums import Report_f
+from . import _interface as API
 
 # ##-- end 1st party imports
 
@@ -49,7 +49,7 @@ class TraceRecord(BaseModel):
     Container for tracking what happened in doot, where, and why
     """
     message : str
-    flags   : Report_f
+    flags   : API.Report_f
     args    : list[Any]                = []
     time    : datetime.datetime        = Field(default_factory=datetime.datetime.now)
 
@@ -57,10 +57,10 @@ class TraceRecord(BaseModel):
     def _valdiate_flags(cls, val):
         match val:
             case None:
-                return Report_f.default
+                return API.Report_f.default
             case str() | list():
-                return Report_f.build(val)
-            case Report_f():
+                return API.Report_f.build(val)
+            case API.Report_f():
                 return val
             case _:
                 raise ValueError("Bad flags for TraceRecord", val)
@@ -74,10 +74,10 @@ class TraceRecord(BaseModel):
             case _:
                 return str(self.message)
 
-    def __contains__(self, other:Report_f) -> bool:
+    def __contains__(self, other:API.Report_f) -> bool:
         return all([x in self.flags for x in other])
 
-    def __eq__(self, other:Report_f) -> bool:
+    def __eq__(self, other:API.Report_f) -> bool:
         return self.flags == other
 
     def some(self, other:reportPositionEnum) -> bool:

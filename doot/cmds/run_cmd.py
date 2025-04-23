@@ -61,15 +61,11 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
-cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
 # TODO make a decorator to register these onto the cmd
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
-reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
-report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
 interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
 ##--|
 @Proto(Command_p)
@@ -77,51 +73,45 @@ class RunCmd(BaseCommand):
     _name                        = "run"
     _help : ClassVar[tuple[str]] = tuple(["Will perform the tasks/jobs targeted.",
                                           "Can be parameterized in a commands.run block with:",
-                                          "tracker(str), runner(str), reporter(str), report_lines(str)",
+                                          "tracker(str), runner(str)",
                                           ])
 
     @property
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(name="-step",      default=False, type=bool),
-            self.build_param(name="-interrupt", default=False, type=bool),
-            self.build_param(name="-dry-run",   default=False, type=bool),
-            self.build_param(name="-confirm",   default=False, type=bool),
+            self.build_param(name="--interrupt",               default=False, type=bool),
+            self.build_param(name="--step",                     default=False, type=bool),
+            self.build_param(name="--dry-run",                  default=False, type=bool),
+            self.build_param(name="--confirm",                  default=False, type=bool),
             self.build_param(name="<1>target", type=list[str], default=[]),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        cmd_l.trace("---- Starting Run Cmd")
+        doot.report.active_level(logmod.INFO)
+        doot.report.set_state("cmd")
+        doot.report.gap()
+        doot.report.line("Starting Run Cmd", char="=")
         tracker, runner = self._create_tracker_and_runner(plugins)
         interrupt       = self._choose_interrupt_handler()
 
         self._register_specs(tracker, tasks)
         self._queue_tasks(tracker)
 
-        with TimeBlock_ctx(logger=logging,
-                           enter="--- Runner Entry",
-                           exit="---- Runner Exit",
-                           level=20):
-            with runner:
-                if not self._confirm_plan(runner):
-                    return
-
-                runner(handler=interrupt)
+        with (TimeBlock_ctx(logger=logging,
+                            enter="--- Runner Entry",
+                            exit="--- Runner Exit",
+                            level=20),
+              runner,
+              ):
+            if not self._confirm_plan(runner):
+                return
+            runner(handler=interrupt)
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_i, TaskRunner_i]:
         # Note the final parens to construct:
-        reporters = plugins.on_fail([], list).reporter()
         trackers  = plugins.on_fail([], list).tracker()
         runners   = plugins.on_fail([], list).runner()
-
-        match plugin_selector(reporters, target=reporter_target):
-            case type() as x:
-                available_lines = plugins.on_fail([], list).report_line()
-                report_lines    = [plugin_selector(available_lines, target=x)() for x in report_line_targets]
-                reporter        = x(report_lines)
-            case x:
-                raise TypeError(type(x))
 
         match plugin_selector(trackers, target=tracker_target):
             case type() as x:
@@ -131,14 +121,14 @@ class RunCmd(BaseCommand):
 
         match plugin_selector(runners, target=runner_target):
             case type() as x:
-                runner = x(tracker=tracker, reporter=reporter)
+                runner = x(tracker=tracker)
             case x:
                 raise TypeError(type(x))
 
         return tracker, runner
 
     def _register_specs(self, tracker, tasks) -> None:
-        cmd_l.trace("Registering Task Specs: %s", len(tasks))
+        doot.report.trace("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
             tracker.register_spec(task)
 
@@ -152,32 +142,36 @@ class RunCmd(BaseCommand):
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.TrackingError as err:
-                cmd_l.exception("Failed to Queue Target: %s : %s", target, err.args, exc_info=None)
+                logging.exception("Failed to Queue Target: %s : %s", target, err.args, exc_info=None)
                 return
 
     def _queue_tasks(self, tracker) -> None:
-        cmd_l.trace("Queuing Initial Tasks")
+        doot.report.trace("Queuing Initial Tasks...")
+        doot.report.gap()
         for target in doot.args.on_fail([], list).cmd.args.target():
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.TrackingError as err:
-                cmd_l.warn("%s specified as run target, but it doesn't exist", target)
+                doot.report.warn("%s specified as run target, but it doesn't exist", target)
         else:
-            cmd_l.trace("%s Tasks Queued: %s", len(tracker.active_set),
-                        " ".join(str(x) for x in tracker.active_set))
+            doot.report.trace("%s Tasks Queued", len(tracker.active_set))
 
-    def _choose_interrupt_handler(self) -> Maybe[Callable]:
+
+    def _choose_interrupt_handler(self) -> Maybe[bool|Callable]:
         match interrupt_handler:
             case _ if not doot.args.on_fail(False).cmd.args.interrupt():
-                interrupt = None
+                return None
             case None:
-                interrupt = None
+                return None
             case True:
-                cmd_l.trace("Setting default interrupt handler")
-                interrupt = interrupt_handler
+                doot.report.trace("Setting default interrupt handler")
+                return True
             case str():
-                cmd_l.trace("Loading custom interrupt handler")
-                interrupt = CodeReference(interrupt_handler)()
+                doot.report.trace("Loading custom interrupt handler")
+                ref = CodeReference(interrupt_handler)
+                return ref()
+            case _:
+                return None
 
     def _confirm_plan(self, runner:TaskRunner_i) -> bool:
         """ Confirm the plan """
@@ -187,11 +181,11 @@ class RunCmd(BaseCommand):
         tracker = runner.tracker
         plan = tracker.generate_plan()
         for i,(depth,node,desc) in enumerate(plan):
-            cmd_l.user("Step %-4s: %s",i, node)
+            doot.report.trace("Step %-4s: %s",i, node)
         else:
             match input("Confirm Execution Plan (Y/*): "):
                 case "Y":
                     return True
                 case _:
-                    cmd_l.user("Cancelling")
+                    doot.report.trace.user("Cancelling")
                     return False

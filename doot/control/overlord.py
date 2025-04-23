@@ -2,6 +2,7 @@
 """
 
 """
+# mypy: disable-error-code="attr-defined"
 # ruff: noqa: W291, ARG002, ANN001
 
 # Imports:
@@ -44,6 +45,7 @@ from jgdv.structs.locator import JGDVLocator
 # ##-- 1st party imports
 import doot._interface as API#  noqa: N812
 import doot.errors as DErr  # noqa: N812
+from doot.reporters import NullReporter
 # ##-- end 1st party imports
 
 # ##-- types
@@ -58,6 +60,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from doot._abstract import (Command_p, Overlord_p)
+from doot.reporters._interface import GeneralReporter_p as Reporter_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -67,9 +70,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from doot._abstract.loader import Loader_p
-    from doot._abstract import Reporter_p
     from jgdv import Maybe
+    from doot._abstract.loader import Loader_p
 
     type Logger                            = logmod.Logger
     type DootError                         = DErr.DootError
@@ -84,13 +86,17 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-PYPROJ : Final[pl.Path] = pl.Path("pyproject.toml")
+PYPROJ    : Final[pl.Path] = pl.Path("pyproject.toml")
+ROOT_ELEM : Final[str]     = "doot"
 # Body:
 
 class Startup_m:
     """
     Overlord startup/setup methods
     """
+    is_setup            : bool
+    global_task_state   : dict
+    aliases             : ChainGuard
 
     def null_setup(self) -> None:
         """
@@ -101,11 +107,10 @@ class Startup_m:
         if self.is_setup:
             return
 
-        self._setup_printers()
         self._load_constants()
         self._load_aliases()
 
-    def setup(self, *, targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=API.TOOL_PREFIX) -> None:
+    def setup(self, *, targets:Maybe[list[pl.Path]]=None, prefix:Maybe[str]=API.TOOL_PREFIX) -> None:
         """
         The core requirement to call before any other doot code is run.
         loads the config files, so everything else can retrieve values when imported.
@@ -116,10 +121,10 @@ class Startup_m:
         targets=False is for loading nothing, for testing
         """
         if self.is_setup:
-            self.overlord_l.user("doot.setup called even though doot is already set up")
+            self.report.user("doot.setup called even though doot is already set up") # type: ignore
 
         self._load_config(targets, prefix)
-        self._setup_logging()
+        self._setup_logging() # type: ignore
         self._load_constants()
         self._load_aliases()
         self._load_locations()
@@ -133,15 +138,15 @@ class Startup_m:
         """ Load a specified config, or one of the defaults if it exists """
         match targets:
             case list() if bool(targets) and all([isinstance(x, pl.Path) for x in targets]):
-                targets : list[pl.Path] = [pl.Path(x) for x in targets]
+                targets : list[pl.Path] = [pl.Path(x) for x in targets] # type: ignore
             case list() if bool(targets):
                 raise TypeError("Doot Config Targets should be pathlib.Path's", targets)
             case None | []:
-                targets : list[pl.Path] = [pl.Path(x) for x in self.constants.paths.DEFAULT_LOAD_TARGETS]
+                targets : list[pl.Path] = [pl.Path(x) for x in self.constants.paths.DEFAULT_LOAD_TARGETS] # type: ignore
 
         logging.log(0, "Loading Doot Config, version: %s targets: %s", API.__version__, targets)
 
-        # Load config Files
+        assert(isinstance(targets, list))
         match [x for x in targets if x.exists()]:
             case [] if bool(targets):
                 raise DErr.MissingConfigError("No Doot data found")
@@ -152,14 +157,15 @@ class Startup_m:
             case x:
                 raise TypeError(type(x))
 
+        # Load config Files
         try:
-            config = ChainGuard.load(*existing_targets)
+            config = ChainGuard.load(*existing_targets) # type: ignore
         except OSError as err:
             raise DErr.InvalidConfigError(existing_targets, *err.args) from err
         else:
-            if existing_targets == [PYPROJ] and "doot" not in config:
+            if existing_targets == [PYPROJ] and ROOT_ELEM not in config:
                 raise DErr.MissingConfigError("Pyproject has no doot config")
-        finally:
+
             self.configs_loaded_from   += existing_targets
             self.config = config.remove_prefix(prefix)
             self.update_global_task_state(self.config, source=str(existing_targets))
@@ -174,7 +180,7 @@ class Startup_m:
             case None:
                 pass
             case pl.Path() as const_file if const_file.exists():
-                self.setup_l.trace("Loading Constants")
+                self.report.trace("Loading Constants")
                 base_data = ChainGuard.load(const_file)
                 self.verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
                 self.constants = base_data.remove_prefix(API.CONSTANT_PREFIX)
@@ -189,12 +195,12 @@ class Startup_m:
                     base_data = {}
                     pass
                 case pl.Path() as source if source.exists():
-                    self.setup_l.trace("Loading Aliases: %s", source)
+                    self.report.trace("Loading Aliases: %s", source)
                     base_data = ChainGuard.load(source)
                     self.verify_config_version(base_data.on_fail(None).doot_version(), source=source)
                     base_data = base_data.remove_prefix(API.ALIAS_PREFIX)
                 case source:
-                    self.setup_l.trace("Alias File Not Found: %s", source)
+                    self.report.trace("Alias File Not Found: %s", source)
                     base_data = {}
 
             # Flatten the lists
@@ -206,14 +212,14 @@ class Startup_m:
             for key,val in self.config.on_fail({}).startup.plugins().items():
                 flat[key].update(dict(val))
 
-            self.aliases = ChainGuard(flat)
+            self.aliases = ChainGuard(flat) # type: ignore
 
         match data:
             case None:
                 pass
             case _ if bool(data):
-                self.setup_l.trace("Updating Aliases")
-                base = defaultdict(dict)
+                self.report.trace("Updating Aliases")
+                base : dict = defaultdict(dict)
                 base.update(dict(self.aliases._table()))
                 for key,eps in data.items():
                     update = {x.name:x.value for x in eps}
@@ -224,29 +230,30 @@ class Startup_m:
     def _load_locations(self) -> None:
         """ Load and update the JGDVLocator db
         """
-        self.setup_l.trace("Loading Locations")
+        self.report.trace("Loading Locations")
         # Load Initial locations
         for loc in self.config.on_fail([]).locations():
             try:
                 for name in loc.keys():
-                    self.setup_l.trace("+ %s", name)
+                    self.report.trace("+ %s", name)
                     self.locs.update(loc, strict=False)
             except (JGDVError, ValueError) as err:
-                self.setup_l.error("Location Loading Failed: %s (%s)", loc, err)
+                self.report.error("Location Loading Failed: %s (%s)", loc, err)
 
     def _update_import_path(self, *paths:pl.Path) -> None:
         """ Add locations to the python path for task local code importing
         Modifies the global `sys.path`
         """
-        self.setup_l.trace("Updating Import Path")
+        self.report.trace("Updating Import Path")
         match paths:
             case None | []:
                 task_sources = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [self.locs[y] for y in x])
                 task_code    = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
-                paths = set(task_sources + task_code)
+                paths = set(task_sources + task_code) # type: ignore
             case [*xs]:
-                paths = set(paths)
+                paths = set(paths) # type: ignore
 
+        assert(isinstance(paths, set))
         for source in paths:
             match source:
                 case pl.Path() as x if not x.exists():
@@ -263,11 +270,10 @@ class Startup_m:
                 case x if x in sys.path:
                     continue
                 case str():
-                    self.setup_l.trace("sys.path += %s", source)
+                    self.report.trace("sys.path += %s", source)
                     sys.path.append(source_str)
         else:
-            self.setup_l.trace("Import Path Updated")
-
+            self.report.trace("Import Path Updated")
 
 class Logging_m:
     """
@@ -285,14 +291,12 @@ class Logging_m:
 
     def _setup_logging(self) -> None:
         self.log_config.setup(self.config)
-        self._setup_printers()
-
-    def _setup_printers(self) -> None:
-        self.overlord_l      = self.subprinter("overlord")
-        self.setup_l         = self.subprinter("setup")
+        self.report.log = self.subprinter()
+        self.report.trace("Logging Setup")
 
 class WorkflowUtil_m:
     """ util methods on the overlord used when running a workflow """
+    args : ChainGuard
 
     def set_parsed_cli_args(self, data:ChainGuard) -> None:
         match data:
@@ -312,8 +316,7 @@ class WorkflowUtil_m:
         if source is None:
             raise ValueError("Updating Global Task State must  have a source")
 
-        self.setup_l = self.subprinter("setup")
-        self.setup_l.trace("Updating Global State from: %s", source)
+        self.report.trace("Updating Global State from: %s", source)
         if not isinstance(data, dict|ChainGuard):
             raise DErr.GlobalStateMismatch("Not a dict", data)
 
@@ -341,7 +344,7 @@ class WorkflowUtil_m:
         defaulted_file : str     = self.config.on_fail("{logs}/.doot_defaults.toml", str).shutdown.defaulted_values.path()
         expanded_path  : pl.Path = self.locs[defaulted_file]
         if not expanded_path.parent.exists():
-            self.overlord_l.error("Couldn't log defaulted config values to: %s", expanded_path)
+            self.report.error("Couldn't log defaulted config values to: %s", expanded_path)
             return
 
         defaulted_toml = ChainGuard.report_defaulted()
@@ -381,11 +384,11 @@ class DootOverlord(metaclass=MLSingleton):
     args                : ChainGuard
     log_config          : JGDVLogConfig
     locs                : JGDVLocator
-    reporter            : Reporter_p
     configs_loaded_from : list[str|pl.Path]
     global_task_state   : dict
     path_ext            : list[str]
     is_setup            : bool
+    _reporter           : Reporter_p
 
     def __init__(self, **kwargs:Any):
         logging.info("Creating Overlord")
@@ -398,11 +401,23 @@ class DootOverlord(metaclass=MLSingleton):
         self.args                             = ChainGuard() # parsed arg access
         subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
-        self.locs                             = JGDVLocator(pl.Path.cwd())
-        # self.reporter                         =  NullReporter()
+        self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
+        self._reporter                        = NullReporter()
         self.configs_loaded_from              = []
         self.global_task_state                = {}
         self.path_ext                         = []
         self.is_setup                         = False
 
         self.null_setup()
+
+    @property
+    def report(self) -> Reporter_p:
+        return self._reporter
+
+    @report.setter
+    def report(self, rep:Reporter_p) -> None:
+        match rep:
+            case Reporter_p():
+                self._reporter = rep
+            case x:
+                raise TypeError(type(x))

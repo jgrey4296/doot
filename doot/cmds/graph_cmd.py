@@ -72,9 +72,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
-cmd_l   = doot.subprinter("cmd")
-fail_l  = doot.subprinter("fail")
 ##-- end logging
 
 INDENT         : Final[str]        = " "*8
@@ -112,12 +109,12 @@ class GraphCmd(BaseCommand):
         self._print_text("-- Starting to Graph Jobs/Tasks Network")
         tracker = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         if not hasattr(tracker, "network"):
-            fail_l.error("Can't get a dep_graph for the tracker")
+            doot.report.error("Can't get a dep_graph for the tracker")
             return False
 
         match self._build_graph(tracker, tasks):
             case None:
-                fail_l.error("Graph Could not be build")
+                doot.report.error("Graph Could not be build")
             case nx.DiGraph() as x:
                 graph = x
 
@@ -125,32 +122,32 @@ class GraphCmd(BaseCommand):
             case {"draw": True}:
                 self._draw_pyplot(graph)
             case {"as-dot": True, "dot-file": loc_key} if bool(loc_key):
-                cmd_l.info("Expanding Location: %s", loc_key)
+                doot.report.trace("Expanding Location: %s", loc_key)
                 loc_key = DKey(loc_key, mark=DKey.Mark.PATH)
                 loc = loc_key.expand()
-                cmd_l.info("Target Location Expanded: %s", loc)
+                doot.report.trace("Target Location Expanded: %s", loc)
                 self._write_dot_image(graph, loc)
             case {"as-dot": True}:
                 dot_obj = self._to_dot(graph)
-                cmd_l.info("# ---- Raw Dot: ")
-                cmd_l.info(str(dot_obj))
-                cmd_l.info("# ---- End of Raw Dot")
+                doot.report.trace("# ---- Raw Dot: ")
+                doot.report.trace(str(dot_obj))
+                doot.report.trace("# ---- End of Raw Dot")
 
     def _build_graph(self, tracker, tasks) -> Maybe[nx.DiGraph]:
-        cmd_l.info("- Adding Tasks to temp tracker")
+        doot.report.trace("- Adding Tasks to temp tracker")
         for task in tasks.values():
             new_id = tracker.queue_entry(task)
             tracker.connect(tracker._root_node, new_id)
-        cmd_l.info("- Building Dependency Network")
+        doot.report.trace("- Building Dependency Network")
         tracker.build_network(sources=True)
-        cmd_l.info("- Validating Dependency Network")
+        doot.report.trace("- Validating Dependency Network")
         tracker.validate_network(strict=True)
 
-        cmd_l.info("- Task Dependency Network Built")
+        doot.report.trace("- Task Dependency Network Built")
 
 
         if not bool(tracker.network.nodes) or not bool(tracker.network.edges):
-            fail_l.error("Graph is Empty")
+            doot.report.error("Graph is Empty")
             return None
 
         return tracker.network
@@ -167,9 +164,9 @@ class GraphCmd(BaseCommand):
             case ".dot":
                 loc.write_text(str(dot_obj))
             case x:
-                fail_l.error("Unknown Location Suffix: %s", x)
+                doot.report.error("Unknown Location Suffix: %s", x)
                 return False
-        cmd_l.info("-- Dot written to: %s", loc)
+        doot.report.trace("-- Dot written to: %s", loc)
 
     def _draw_pyplot(self, graph):
         """ Actually display the graph """
@@ -182,7 +179,7 @@ class GraphCmd(BaseCommand):
 
     def _to_dot(self, graph) -> pydot.Dot:
         """ Convert a networkx graph to a Dot object"""
-        cmd_l.info("Converting to a dot suitable format")
+        doot.report.trace("Converting to a dot suitable format")
         wrapped = self._relabel_node_names(graph)
         return nx.nx_pydot.to_pydot(wrapped)
 

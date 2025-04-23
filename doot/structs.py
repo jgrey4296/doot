@@ -14,5 +14,4 @@ from doot._structs.artifact import TaskArtifact
 from doot._structs.stub import TaskStub, TaskStubPart
 from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
-from doot._structs.trace import TraceRecord
 from doot._structs.inject_spec import InjectSpec

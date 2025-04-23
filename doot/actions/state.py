@@ -57,11 +57,6 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
-##-- logging
-
-printer = doot.subprinter()
-
-##-- end logging
 
 @Proto(Action_p)
 class AddStateAction:

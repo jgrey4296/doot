@@ -47,7 +47,7 @@ from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
                                       StubStruct_p)
 from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
-from doot.enums import QueueMeta_e, Report_f, TaskMeta_e
+from doot.enums import QueueMeta_e, TaskMeta_e
 
 # ##-- end 1st party imports
 

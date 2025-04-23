@@ -1,5 +1,9 @@
 
-.. _{{obj.name}}
+{% if obj.name[0] == "_" %}
+.. {{obj.name}}:
+{% else %}
+.. _{{obj.name}}:
+{% endif %}
 
 {% if obj.display %}
    {% if is_own_page %}

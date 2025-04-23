@@ -30,7 +30,7 @@ from jgdv.debugging import SignalHandler
 import doot
 import doot.errors
 from doot.enums import ActionResponse_e as ActRE
-from doot.enums import Report_f, TaskStatus_e
+from doot.enums import TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskSpec
 
 # ##-- end 1st party imports
@@ -62,21 +62,13 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = doot.subprinter()
-setup_l    = doot.subprinter("setup")
-taskloop_l = doot.subprinter("task_loop")
-report_l   = doot.subprinter("report")
-success_l  = doot.subprinter("success")
-fail_l     = doot.subprinter("fail")
-sleep_l    = doot.subprinter("sleep")
-artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-dry_run              : Final[bool]           = doot.args.on_fail(False).cmd.args.dry_run()  # noqa: FBT003
-max_steps            : Final[int]            = doot.config.on_fail(100_000).startup.max_steps()
-fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
-loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
-loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
+dry_run              : Final[bool]            = doot.args.on_fail(False).cmd.args.dry_run()  # noqa: FBT003
+max_steps            : Final[int]             = doot.config.on_fail(100_000).startup.max_steps()
+fail_prefix          : Final[str]             = doot.constants.printer.fail_prefix
+loop_entry_msg       : Final[str]             = doot.constants.printer.loop_entry
+loop_exit_msg        : Final[str]             = doot.constants.printer.loop_exit
 
 DEFAULT_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 ##--|
@@ -92,22 +84,26 @@ class _RunnerCtx_m:
         self._signal_failure = None
 
     def __enter__(self) -> Self:
-        setup_l.info("Building Task Network...")
+        logging.trace("Entering Runner Control")
+        doot.report.trace("Building Task Network...")
+        doot.report.gap()
         self.tracker.build_network()
-        setup_l.info("Task Network Built. %s Nodes, %s Edges, %s Edges from Root.",
-                     len(self.tracker.network.nodes), len(self.tracker.network.edges), len(self.tracker.network.pred[self.tracker._root_node]))
-        setup_l.info("Validating Task Network...")
+        doot.report.trace("Task Network Built.")
+        doot.report.detail("Network Composition: %s Nodes, %s Edges, %s Edges from Root.",
+                           len(self.tracker.network.nodes),
+                           len(self.tracker.network.edges),
+                           len(self.tracker.network.pred[self.tracker._root_node]))
+        doot.report.trace("Validating Task Network...")
+        doot.report.gap()
         self.tracker.validate_network()
-        setup_l.info("Validation Complete")
-        taskloop_l.info(self._enter_msg, extra={"colour" : "green"})
+        doot.report.trace("Validation Complete.")
+        doot.report.line(self._enter_msg)
+        doot.report.root()
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> Literal[False]:
-        logging.info("---- Exiting Runner Control")
+        logging.trace("Exiting Runner Control")
         # TODO handle exc_types?
-        printer.setLevel("INFO")
-        taskloop_l.info("")
-        taskloop_l.info(self._exit_msg, extra={"colour":"green"})
         self._finish()
         return False
 
@@ -115,12 +111,15 @@ class _RunnerCtx_m:
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
-        logging.info("---- Running Completed")
+        logging.trace("Running Completed")
         if self.step >= max_steps:
-            report_l.warning("Runner Hit the Step Limit: %s", max_steps)
+            doot.report.warn("Runner Hit the Step Limit: %s", max_steps)
 
-        report_l.info("Final Summary: ")
-        report_l.info(str(self.reporter), extra={"colour":"magenta"})
+        doot.report.finished()
+        doot.report.gap()
+        doot.report.line(self._exit_msg)
+        # doot.report.line("Final Summary: ")
+        # doot.report.trace(str(doot.report), extra={"colour":"magenta"})
         match self._signal_failure:
             case None:
                 return
@@ -131,11 +130,11 @@ class _RunnerHandlers_m:
 
     def _handle_task_success(self, task:Maybe[Task_p|TaskArtifact]):
         """ The basic success handler. just informs the tracker of the success """
-        success_l.debug("(Task): %s", task)
         match task:
             case None:
                 pass
             case _:
+                doot.report.result([task.name.root()], info="Success")
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
@@ -156,7 +155,7 @@ class _RunnerHandlers_m:
                 pass
             case doot.errors.TaskFailed() as err:
                 self._signal_failure = err
-                fail_l.warning("%s Halting: %s", fail_prefix, err)
+                doot.report.warn("%s Halting: %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.TaskError() as err:
                 self._signal_failure = err
@@ -170,13 +169,13 @@ class _RunnerHandlers_m:
                 raise err
             case err:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
-                fail_l.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
+                doot.report.error("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
 
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
-        artifact_l.info("---- Artifact: %s", art)
-        self.reporter.add_trace(art, flags=Report_f.ARTIFACT)
+        doot.report.result(["Artifact: %s", art])
+        # doot.reporter.add_trace(art, flags=Report_f.ARTIFACT)
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
 class _RunnerSleep_m:
@@ -193,5 +192,5 @@ class _RunnerSleep_m:
                 return
 
         sleep_len = task.spec.extra.on_fail(DEFAULT_SLEEP_LENGTH, int|float).sleep()
-        sleep_l.debug("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
+        doot.report.detail("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
         time.sleep(sleep_len)

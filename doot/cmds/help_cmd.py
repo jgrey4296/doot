@@ -64,9 +64,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
-cmd_l   = doot.subprinter("cmd")
-help_l  = doot.subprinter("help")
 ##-- end logging
 
 LINE_SEP        : Final[str] = "------------------------------"
@@ -94,7 +91,7 @@ class _HelpCmd_m:
         cmd_class    = cmd.load()
         cmd_instance = cmd_class()
         result += cmd_instance.help
-        result += self._cmd_param_assignments(cmd_instance)
+        # result += self._cmd_param_assignments(cmd_instance)
         return result
 
 
@@ -105,7 +102,7 @@ class _HelpCmd_m:
 
         max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, cmd.param_specs)), 0)
         fmt_str       = f"> %{max_param_len}s : (%-5s) : %s "
-        args = doot.args.cmd.args.args
+        args = doot.args.cmd.args
         last_prefix = None
         for param in sorted([x for x in cmd.param_specs], key=ParamSpec.key_func):
             if last_prefix and last_prefix != param.prefix:
@@ -267,6 +264,7 @@ class HelpCmd(BaseCommand):
 
 
         logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
+        doot.report.active_level(logmod.INFO)
         match cmd_targets:
             case []:
                 pass
@@ -275,7 +273,7 @@ class HelpCmd(BaseCommand):
                 self._print_text(result)
                 return
             case [*xs]:
-                cmd_l.error("To print help for a command, choose 1 command at a time")
+                doot.report.error("To print help for a command, choose 1 command at a time")
                 return
 
         match task_targets:
