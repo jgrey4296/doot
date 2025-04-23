@@ -60,7 +60,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-__version__ : Final[str] = "1.0.4"
+__version__ : Final[str] = "1.1.0"
 
 # -- data
 data_path      = files("doot.__data")

@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.1.0] - 2025-04-23
+
+### Features
+
+- Log msg guard
+- Atexit handler and reporter controls
+- Merge branch 'in.tree.docs'
+
+### Bug Fixes
+
+- Write action
+- Tracking of abstract artifacts
+- Split tracker
+- Codereference usage
+- Tests
+- Caplog test targets
+- Bumpver target for docs conf.py
+
+### Dependencies
+
+- Submodules
+- Version 1.0.4 -> 1.1.0
+
+### Refactoring
+
+- Statemachine tracker to dootle
+- New reporter interface
+- Printers -> reporter
+- Logging/reporting
+- Run cmd interrupt control
+- Docs to be in-tree
+- Docs to in-tree
+
+### Testing
+
+- Path dkeys
+
 ## [1.0.4] - 2025-03-02
 
 ### Bug Fixes
