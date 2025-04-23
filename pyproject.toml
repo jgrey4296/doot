@@ -120,7 +120,7 @@ tag                = false
 ]
 "doot/_interface.py"         = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
 "README.md"                  = ["^Version : {version}  "]
-"docs/conf.py"               = ['^release\s+=\s+"{version}"']
+"doot/__docs/conf.py"         = ['^release\s+=\s+"{version}"']
 
 ##-- end bumpver
 
