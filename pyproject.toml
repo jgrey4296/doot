@@ -6,10 +6,10 @@ version         = "1.0.4"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
 requires-python = ">=3.12"
-license         = {file = "LICENSE"}
+license-files   = ["LICENSE"]
 keywords        = ["toml","taskrunner"]
 authors         = [
-  {email = "jgrey.n.plus.one@gmail.com", name  = "jgrey"}
+  {email        = "jgrey.n.plus.one@gmail.com", name  = "jgrey"}
 ]
 classifiers     = [
   "Programming Language :: Python",
