@@ -118,9 +118,14 @@ tag                = false
                    '^version\s+=\s+"{version}"',
                    '^current_version\s+=\s+"{version}"'
 ]
-"doot/_interface.py"         = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
-"README.md"                  = ["^Version : {version}  "]
+"doot/_interface.py"          = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
+"README.md"                   = ["^Version : {version}  "]
 "doot/__docs/conf.py"         = ['^release\s+=\s+"{version}"']
+"doot/__data/aliases.toml"    = ['^doot_version\s+=\s+"{version}"']
+"doot/__data/constants.toml"  = ['^doot_version\s+=\s+"{version}"']
+"doot/__templates/basic_config_toml"  = ['^doot_version\s+=\s+"{version}"']
+"doot/__templates/tasks_toml"  = ['^doot_version\s+=\s+"{version}"']
+
 
 ##-- end bumpver
 

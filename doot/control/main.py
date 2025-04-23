@@ -244,7 +244,8 @@ class CLIArgParsing_m:
             doot.log_config.set_level("NOTSET")
 
         if doot.args.on_fail(False).head.args.version():  # noqa: FBT003
-            doot.report.user(self.version_template, API.__version__)
+            # doot.report.user(self.version_template, API.__version__)
+            print(self.version_template % API.__version__)
             return API.ExitCodes.SUCCESS
 
         if doot.args.on_fail(False).head.args.help():  # noqa: FBT003

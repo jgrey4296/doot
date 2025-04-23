@@ -1,5 +1,5 @@
 ## version.toml -*- mode: toml -*-
-doot-version = "1.0"
+doot-version = "1.1.0"
 
 [[locations]]
 changelog    = "file::>CHANGELOG.md"

@@ -1,11 +1,11 @@
 # -*- mode:toml; -*-
-doot_version = "0.13"
+doot_version = "1.0.0"
 
 # reminders:
 # action = [{do= "basic", args=[]}]
 # cli    = [{}]
 
-[[state]] # global state updates
+[[global]] # global state updates
 
 
 [[locations]] # Location keys
