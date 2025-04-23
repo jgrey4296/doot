@@ -32,10 +32,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        m pip install build
+        pip install build
     - name: Build package
       run: |
-        mkdir .temp/egg-info
+        mkdir --parents .temp/egg-info
         python -m build
     - name: Store dist packages
       uses: actions/upload-artifact@v4
