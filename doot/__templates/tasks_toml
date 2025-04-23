@@ -1,5 +1,5 @@
 # -*- mode:toml; -*-
-doot_version = "1.0.0"
+doot_version = "1.1.1"
 
 # reminders:
 # action = [{do= "basic", args=[]}]

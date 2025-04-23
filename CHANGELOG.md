@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.1.1] - 2025-04-23
+
+### Dependencies
+
+- Bumpver targets
+- Version 1.1.0 -> 1.1.1
+
 ## [1.1.0] - 2025-04-23
 
 ### Features
