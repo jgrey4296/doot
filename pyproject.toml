@@ -66,14 +66,21 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 
 [tool.setuptools.packages.find]
-namespaces = true
+namespaces = false
 where      = ["."]
 include    = ["doot*"]
+exclude    = ["bibble._docs*"]
 
 [tool.setuptools.package-data]
 "*" = ["*"]
+"doot.__data" = ["*.so"]
 
 [tool.setuptools.exclude-package-data]
+doot = ["**.rst"]
+
+[tool.distutils.egg_info]
+# from https://github.com/pypa/setuptools/discussions/3347#discussioncomment-6556887
+egg_base = ".temp/egg-info"
 
 ##-- end build system
 
