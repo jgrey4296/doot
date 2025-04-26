@@ -68,9 +68,13 @@ logging = logmod.getLogger(__name__)
 
 @Proto(API.TraceFormatter_p)
 class TraceFormatter:
+    """ TraceFormatter abstracts the logic of creating a contextual message.
 
-    def __init__(self):
-        self._segments         = API.TRACE_LINES_ASCII.copy()
+
+    """
+
+    def __init__(self, *, segments:Maybe[dict]=None):
+        self._segments         = (segments or API.TRACE_LINES_ASCII).copy()
         self.line_fmt          = API.LINE_PASS_FMT
         self.msg_fmt           = API.LINE_MSG_FMT
 

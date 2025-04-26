@@ -72,6 +72,17 @@ class TestNullReporter:
             case x:
                 assert(False), x
 
+
+    def test_message(self, caplog):
+        logger = logmod.getLogger("simple")
+        with caplog.at_level(logmod.DEBUG):
+            rep = NullReporter(logger=logger)
+            rep.active_level(logmod.DEBUG)
+            rep._out("wait", info="blah", msg="bloo")
+
+        assert("[blah]" in caplog.text)
+        assert("bloo" in caplog.text)
+
     ##--|
 
     @pytest.mark.skip

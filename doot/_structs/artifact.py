@@ -19,7 +19,6 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -31,7 +30,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe, TimeDelta
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey
 from jgdv.structs.locator import Location
@@ -42,6 +40,9 @@ from jgdv.structs.locator import Location
 import doot
 import doot.errors
 from doot._abstract.task import ArtifactStatus_e
+
+if TYPE_CHECKING:
+    from jgdv import Maybe, TimeDelta
 
 # ##-- end 1st party imports
 
@@ -67,7 +68,7 @@ class TaskArtifact(Location):
         return self.exists()
 
     @property
-    def parent(self):
+    def parent(self) -> pl.Path:
         return self.path.parent
 
     def is_stale(self, *, delta:Maybe[TimeDelta]=None) -> bool:
@@ -125,11 +126,11 @@ class TaskArtifact(Location):
         match self.stem, other.stem:
             case None, None:
                 pass
-            case None, y:
+            case None, str() as y:
                 stem = y
-            case x, None:
+            case str() as x, None:
                 stem = x
-            case x, y if x == y:
+            case str() as x, str() as y if x == y:
                 stem = x
             case (xa, ya), (xb, yb) if xa == xb and ya == yb:
                 stem = ya
@@ -150,11 +151,11 @@ class TaskArtifact(Location):
                 ext = x
             case None, (_, y):
                 ext = y
-            case x, None:
+            case str() as x, None:
                 ext = x
-            case None, y:
+            case None, str() as y:
                 ext = y
-            case x, y if x == y:
+            case str() as x, str() as y if x == y:
                 ext = x
             case _, _:
                 return None
@@ -174,6 +175,7 @@ class TaskArtifact(Location):
             return True
         try:
             _ = doot.locs.expand(self)
-            return True
         except KeyError:
             return False
+        else:
+            return True

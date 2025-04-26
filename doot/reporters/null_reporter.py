@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """
+The Basic implementation of a reporter.
+
+_WorkflowReporter_m implements WorkflowReporter_p methods,
+while _GenReporter_m implements GeneralReporter_p methods.
+
 
 """
 # ruff: noqa:
@@ -74,17 +79,21 @@ class _WorkflowReporter_m:
 
     _out : Callable
 
-    def root(self) -> None:
+    def root(self) -> Self:
         self._out("root")
+        return self
 
-    def wait(self) -> None:
+    def wait(self) -> Self:
         self._out("wait")
+        return self
 
-    def act(self, info:str, msg:str) -> None:
+    def act(self, info:str, msg:str) -> Self:
         self._out("act", info=info, msg=msg)
+        return self
 
-    def fail(self, info:str, msg:str) -> None:  # noqa: ARG002
-        self._out("fail")
+    def fail(self, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Self:
+        self._out("fail", info=info, msg=msg)
+        return self
 
     def branch(self, name:str, info:Maybe[str]=None) -> Self:
         self._out("branch")
@@ -103,24 +112,26 @@ class _WorkflowReporter_m:
         self._out("resume", msg=name)
         return self
 
-    def finished(self) -> None:
+    def finished(self) -> Self:
         self._out("finished")
+        return self
 
-    def queue(self, num:int) -> None:
-        pass
+    def queue(self, num:int) -> Self:
+        raise NotImplementedError()
 
-    def state_result(self, *vals:str) -> None:
-        pass
+    def state_result(self, *vals:str) -> Self:
+        raise NotImplementedError()
 
 class _GenReporter_m:
     log           : Logger
     active_level  : Callable
     _curr         : API.ReportStackEntry_d
 
-    def gap(self) -> None:
+    def gap(self) -> Self:
         self.log.info("")
+        return self
 
-    def line(self, msg:Maybe[str]=None, char:Maybe[str]=None) -> None:
+    def line(self, msg:Maybe[str]=None, char:Maybe[str]=None) -> Self:
         char = char or LINE_CHAR
         match msg:
             case str() as x:
@@ -131,14 +142,17 @@ class _GenReporter_m:
             case _:
                 self.log.info(char*LINE_LEN, extra=self._curr.log_extra)
 
-    def header(self) -> None:
+        return self
+
+    def header(self) -> Self:
         self.active_level(logmod.INFO)
         self._curr.log_extra['colour'] = "green"
         self.line()
         self.line("Doot")
         self.line()
+        return self
 
-    def summary(self) -> None:
+    def summary(self) -> Self:
         self.active_level(logmod.WARN)
         match self._curr.state:
             case "fail":
@@ -150,49 +164,58 @@ class _GenReporter_m:
         self.line(msg)
         # TODO the report
         self.gap()
+        return self
 
-    def user(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+    def user(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
         self.log.warning(msg, *rest)
+        return self
 
-    def trace(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+    def trace(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
         self.log.info(msg, *rest)
+        return self
 
-    def detail(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+    def detail(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
         self.log.debug(msg, *rest)
+        return self
 
-    def failure(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+    def failure(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
         match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
                 self.log.exception(msg, *rest)
 
-    def warn(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+        return self
+
+    def warn(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
         match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
                 self.log.warn(msg, *rest)
 
-    def error(self, msg:str, *rest:str, **kwargs:str) -> None:  # noqa: ARG002
+        return self
+
+    def error(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
         match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
                 self.log.error(msg, *rest)
 
+        return self
+
 ##--|
 
 @Proto(API.WorkflowReporter_p, API.GeneralReporter_p)
 @Mixin(_GenReporter_m, _WorkflowReporter_m)
 class NullReporter(API.Reporter_d):
-    """ The initial reporter for prior to conf iguration """
+    """ The initial reporter for prior to configuration """
 
     def __init__(self, *args:Any, logger:Maybe[Logger]=None, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
         self._logger            = logger
-        self._segments          = API.TRACE_LINES_ASCII.copy()
-        self._fmt               = TraceFormatter()
+        self._fmt               = TraceFormatter(segments=API.TRACE_LINES_ASCII)
         self._stack             = []
         self._entry_count       = 0
         self.ctx                = []
@@ -268,6 +291,9 @@ class NullReporter(API.Reporter_d):
                 return False
 
     def _out(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> None:
+        """ The reporter delegates all actual logging to this method
+
+        """
         assert(isinstance(self._logger, logmod.Logger))
         result = self._fmt(key, info=info, msg=msg, ctx=self.ctx)
         self._logger.log(self._curr.log_level, result)

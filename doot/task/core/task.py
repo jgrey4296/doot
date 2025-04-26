@@ -266,7 +266,7 @@ class DootTask(Task_d):
         for line in lines:
             logging.log(level, prefix + str(line))
 
-    def get_action_group(self, group_name:str) -> list:
+    def get_action_group(self, group_name:str) -> list[ActionSpec]:
         if not bool(group_name):
             raise TaskError("Tried to retrieve an empty groupname")
         if hasattr(self, group_name):

@@ -45,9 +45,9 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from doot._abstract import Task_p
 
 if TYPE_CHECKING:
-    from doot._abstract import Task_p
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -77,7 +77,7 @@ class _RunnerCtx_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
         self._enter_msg      = loop_entry_msg
         self._exit_msg       = loop_exit_msg
@@ -101,7 +101,7 @@ class _RunnerCtx_m:
         doot.report.root()
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> Literal[False]:
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> Literal[False]:  # noqa: ANN001
         logging.trace("Exiting Runner Control")
         # TODO handle exc_types?
         self._finish()
@@ -115,11 +115,7 @@ class _RunnerCtx_m:
         if self.step >= max_steps:
             doot.report.warn("Runner Hit the Step Limit: %s", max_steps)
 
-        doot.report.finished()
-        doot.report.gap()
-        doot.report.line(self._exit_msg)
-        # doot.report.line("Final Summary: ")
-        # doot.report.trace(str(doot.report), extra={"colour":"magenta"})
+        doot.report.finished().gap().line(self._exit_msg)
         match self._signal_failure:
             case None:
                 return
@@ -128,12 +124,16 @@ class _RunnerCtx_m:
 
 class _RunnerHandlers_m:
 
-    def _handle_task_success(self, task:Maybe[Task_p|TaskArtifact]):
+    _signal_failure : Maybe[doot.errors.DootError]
+
+    def _handle_task_success[T:Maybe[Task_p|TaskArtifact]](self, task:T) -> T:
         """ The basic success handler. just informs the tracker of the success """
         match task:
             case None:
                 pass
-            case _:
+            case TaskArtifact() as art:
+                doot.report.result([art.path], info="Success")
+            case Task_p():
                 doot.report.result([task.name.root()], info="Success")
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
@@ -148,7 +148,6 @@ class _RunnerHandlers_m:
 
           the tracker handle's clearing itself and shutting down
         """
-        self._signal_failure : Maybe[doot.errors.DootError]
         match failure:
             case doot.errors.Interrupt():
                 breakpoint()
@@ -158,16 +157,20 @@ class _RunnerHandlers_m:
                 doot.report.warn("%s Halting: %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.TaskError() as err:
+                doot.report.fail()
                 self._signal_failure = err
                 self.tracker.set_status(err.task, TaskStatus_e.FAILED)
                 raise err
             case doot.errors.TrackingError() as err:
+                doot.report.fail()
                 self._signal_failure = err
                 raise err
             case doot.errors.DootError() as err:
+                doot.report.fail()
                 self._signal_failure = err
                 raise err
             case err:
+                doot.report.fail()
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
                 doot.report.error("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
@@ -175,13 +178,12 @@ class _RunnerHandlers_m:
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         doot.report.result(["Artifact: %s", art])
-        # doot.reporter.add_trace(art, flags=Report_f.ARTIFACT)
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
 class _RunnerSleep_m:
     """ An incomplete implementation for runners to extend """
 
-    def _sleep(self, task):
+    def _sleep(self, task:Maybe[Task_p|TaskArtifact]) -> None:
         """
           The runner's sleep method, which spaces out tasks
         """

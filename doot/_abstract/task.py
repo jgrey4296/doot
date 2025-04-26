@@ -64,8 +64,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
 
-    type ActionSpec = Any
-    type TaskName   = str
+    from doot._structs.action_spec import ActionSpec
+    from doot._structs.task_name import TaskName
     type ActionReturn = Maybe[dict|bool|ActionResponse_e]
 
 # isort: on
@@ -105,17 +105,17 @@ class TaskStatus_e(enum.Enum):
 
     default         = NAMED
 
-    @classmethod
+    @classmethod # type: ignore
     @property
     def pre_set(cls) -> set:
         return {cls.NAMED, cls.DECLARED, cls.DEFINED}
 
-    @classmethod
+    @classmethod # type: ignore
     @property
     def success_set(cls) -> set:
         return {cls.SUCCESS, cls.TEARDOWN, cls.DEAD}
 
-    @classmethod
+    @classmethod # type: ignore
     @property
     def fail_set(cls) -> set:
         return {cls.SKIPPED, cls.HALTED, cls.FAILED}
@@ -173,7 +173,7 @@ class Task_p(Protocol):
         """ Task A < Task B iff A ∈ B.run_after   """
         pass
 
-    def __eq__(self, other:Task_d) -> bool:
+    def __eq__(self, other:object) -> bool:
         pass
 
     def add_execution_record(self, arg:Any) -> None:
@@ -190,6 +190,9 @@ class Task_p(Protocol):
         pass
 
     def name(self) -> TaskName:
+        pass
+
+    def get_action_group(self, group_name:str) -> list[ActionSpec]:
         pass
 
 @runtime_checkable

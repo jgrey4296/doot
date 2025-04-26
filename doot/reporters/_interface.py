@@ -111,7 +111,6 @@ class Reporter_d:
     _entry_count    : int
     _logger         : Maybe[Logger]
     _log_level      : int
-    _segments       : dict
 
 @runtime_checkable
 class WorkflowReporter_p(Protocol):

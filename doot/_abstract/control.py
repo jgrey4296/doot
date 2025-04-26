@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
-    from typing import TypeGuard
+    from typing import TypeGuard, ContextManager
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
@@ -78,7 +78,7 @@ class EdgeType_e(EnumBuilder_m, enum.Enum):
 
     default           = TASK
 
-    @classmethod
+    @classmethod # type: ignore
     @property
     def artifact_edge_set(cls) -> set[enum.Enum]:
         return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
@@ -93,9 +93,9 @@ class QueueMeta_e(EnumBuilder_m, enum.Enum):
     """
 
     default      = enum.auto()
-    onRegister   = enum.auto()
+    onRegister   = enum.auto()  # noqa: N815
     reactive     = enum.auto()
-    reactiveFail = enum.auto()
+    reactiveFail = enum.auto()  # noqa: N815
     auto         = onRegister
 
 class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
@@ -160,7 +160,7 @@ class TaskRunner_p(Protocol):
         pass
 
     @abstractmethod
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:  # noqa: ANN001
         pass
 
     @abstractmethod
@@ -168,5 +168,5 @@ class TaskRunner_p(Protocol):
         pass
 
     @abstractmethod
-    def __call__(self, *tasks:str) -> bool:
+    def __call__(self, *tasks:str, handler:Maybe[ContextManager]=None) -> bool:
         pass

@@ -62,6 +62,7 @@ if TYPE_CHECKING:
 
 ##--|
 from doot._abstract import (Action_p, Job_p, Task_p, TaskRunner_p, TaskTracker_p)
+from typing import ContextManager
 # isort: on
 # ##-- end types
 
@@ -83,7 +84,7 @@ DEPENDS_GROUP              : Final[str] = "depends_on"
 class _ActionExecution_m:
     """ Covers the nuts and bolts of executing an action group """
 
-    def _execute_action_group(self, task:Task_p, *, allow_queue:bool=False, group:Maybe[str]=None) -> Maybe[tuple[int, ActRE]]:
+    def _execute_action_group(self, task:Task_p, *, allow_queue:bool=False, group:str) -> Maybe[tuple[int, ActRE]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
@@ -162,7 +163,7 @@ class _ActionExecution_m:
 
         return None
 
-    def _execute_action(self, count:int, action:Action_p, task:Task_p) -> ActRE|list:
+    def _execute_action(self, count:int, action:ActionSpec, task:Task_p) -> ActRE|list:
         """ Run the given action of a specific task.
 
           returns either a list of specs to (potentially) queue,
@@ -171,7 +172,6 @@ class _ActionExecution_m:
         """
         result                     = None
         task.state['_action_step'] = count
-        # doot.report.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
         doot.report.act(f"Action: {self.step}.{count}", action.do)
 
         logging.detail("Action Executing for Task: %s", task.shortname)
@@ -181,7 +181,6 @@ class _ActionExecution_m:
             case None | True:
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
-                doot.report.fail()
                 raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
@@ -195,7 +194,6 @@ class _ActionExecution_m:
             case _:
                 raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
-        # doot.report.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
         return result
 
 ##--|
@@ -215,7 +213,7 @@ class DootRunner:
         self.tracker       = tracker
         self.teardown_list = [] # list of tasks to teardown
 
-    def __call__(self, *tasks:str, handler:Maybe[Callable]=None): #noqa: ARG002
+    def __call__(self, *tasks:str, handler:Maybe[ContextManager]=None): #noqa: ARG002
         """ tasks are initial targets to run.
           so loop on the tracker, getting the next task,
           running its actions,
@@ -236,6 +234,7 @@ class DootRunner:
             case _:
                 handler = nullcontext()
 
+        assert(isinstance(handler, ContextManager))
         with handler:
             while bool(self.tracker) and self.step < max_steps:
                 self._run_next_task()
@@ -259,12 +258,12 @@ class DootRunner:
                 case x:
                     doot.report.error("Unknown Value provided to runner: %s", x)
         except doot.errors.TaskError as err:
-            # doot.report.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
             err.task = task
             self._handle_failure(err)
         except doot.errors.DootError as err:
             self._handle_failure(err)
         except Exception as err:
+            doot.report.fail()
             self.tracker.clear_queue()
             raise
         else:
@@ -297,7 +296,6 @@ class DootRunner:
             if not self._test_conditions(task):
                 doot.report.result([skip_msg, self.step, task.name.root()])
                 return
-
 
             self._execute_action_group(task, group=SETUP_GROUP)
             self._execute_action_group(task, group=ACTION_GROUP)
