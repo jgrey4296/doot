@@ -65,8 +65,9 @@ logging.setLevel(logmod.WARN)
 ##-- end logging
 
 # Vars:
-LINE_LEN  : Final[int] = 46
-LINE_CHAR : Final[str] = "-"
+LINE_LEN   : Final[int] = 46
+LINE_CHAR  : Final[str] = "-"
+INIT_LEVEL : Final[int] = logmod.INFO + 1
 # Body:
 
 class _WorkflowReporter_m:
@@ -95,7 +96,7 @@ class _WorkflowReporter_m:
         return self
 
     def result(self, state:list[str], info:Maybe[str]=None) -> Self:
-        self._out("result" , msg=",".join((str(x) for x in state)), info=info)
+        self._out("result" , msg=",".join(str(x) for x in state), info=info)
         return self
 
     def resume(self, name:str) -> Self:
@@ -200,7 +201,7 @@ class NullReporter(API.Reporter_d):
         initial_entry           = API.ReportStackEntry_d(state="initial",
                                                          data={},
                                                          log_extra={"colour":"blue"},
-                                                         log_level=logmod.ERROR,
+                                                         log_level=INIT_LEVEL,
                                                          )
         self._stack.append(initial_entry)
 
@@ -224,6 +225,9 @@ class NullReporter(API.Reporter_d):
                 self._logger.setLevel(self._curr.log_level)
             case x:
                 raise TypeError(type(x))
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} : {self.log.name} : {self.log.level} >"
 
     def active_level(self, level:int) -> None:
         self._curr.log_level = level
