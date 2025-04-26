@@ -152,7 +152,7 @@ wheels = [
 
 [[package]]
 name = "doot"
-version = "1.0.4"
+version = "1.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "boltons" },
@@ -251,7 +251,7 @@ wheels = [
 
 [[package]]
 name = "jgdv"
-version = "1.0.1"
+version = "1.1.0"
 source = { editable = "../jgdv" }
 dependencies = [
     { name = "networkx" },
