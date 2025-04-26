@@ -1,8 +1,8 @@
 # -*- mode:toml; -*-
 [startup]
-doot_version         = "1.1.1"
+# The version this config file works with:
+doot_version         = "1.1"
 loaders              = { commands="default", task="default", parser="default" }
-location_check       = { make_missing=true }
 sources              = { tasks=[".tasks"], code=[] }
 sleep                = { task=0.2, subtask=1, batch=1 }
 max_steps            = 100_000
@@ -10,32 +10,37 @@ skip_default_plugins = false
 skip_plugin_search   = false
 empty_cmd            = "list"
 implicit_task_cmd    = "run"
-# default_task       = ""
 # constants_file     = ""
 # aliases_file       = ""
 
 [startup.plugins]
 # Allows for defining aliases
-command        = { tasks="doot.cmds.list_cmd:ListCmd"}
+command        = { tasks="doot.cmds.list_cmd:ListCmd" }
 
 [shutdown]
 notify           = { speak=false } # success_msg="", fail_msg=""
 defaulted_values = { write=false, path=".defaulted_values.toml" }
+# exit_on_load_failures = true
 
 [settings.commands]
+# Set command specific values, and aliases
 [settings.commands.run]
-tracker     = "default"
-runner      = "default"
-reporter    = "default"
-report-line = []
+tracker         = "default"
+runner          = "default"
+reporter        = "default"
+location_check  = { active=true, make_missing=false, strict=true}
+report-line     = []
+stepper = {break_on="job"}
 
 [settings.commands.list]
 hide = []
-aliases = { tasks=[] }
+aliases = { tasks=[], plugins=["--plugins"] }
 
 [logging]
+# Setup output stream, file logging, and printing
+# See jgdv.logging for details
 [logging.stream]
-level = "user"
+level  = "user"
 filter = []
 target = "stdout"
 format="{levelname:<8} : {message}"
@@ -64,6 +69,7 @@ action_exec   = {level="user",  colour="cyan"}
 [logging.extra]
 
 [[locations]]
+# Locations as structured strings. See jgdv.structs.strang
 src     = "src"
 codegen = "clean::{src}/_codegen"
 temp    = "clean::.temp"
