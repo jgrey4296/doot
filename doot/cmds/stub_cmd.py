@@ -160,7 +160,10 @@ class _StubAction_m:
                 case []:
                     result.append("-- No Declared Kwargs")
                 case [*xs]:
-                    result.append("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
+                    result += [
+                        "-- Declared kwargs for action:",
+                        *(f"---- {repr(x)}" for x in sorted(xs, key=lambda x: repr(x)))
+                    ]
 
         result.append(NL)
         result.append("-- Toml Form of an action: ")

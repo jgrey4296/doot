@@ -91,6 +91,9 @@ class AppendAction(IOBase):
                 doot.report.act("Append", "%s chars to %s" % (len(arg), loc))
                 f.write(sep)
                 f.write(arg)
+            else:
+                # Done
+                pass
 
 class WriteAction(IOBase):
     """
