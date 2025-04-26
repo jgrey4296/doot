@@ -82,7 +82,7 @@ class BaseCommand(Command_d):
     @property
     def help(self) -> list[str]:
         help_lines : list[str] = [
-            "", f"Command: {self.name} v{self._version}", "",
+            "", f"Command: {self.name}", "",
             *list(self._help or []),
         ]
 
@@ -99,9 +99,9 @@ class BaseCommand(Command_d):
         """ get just the first line of the help text """
         match self._help:
             case [x, *_]:
-                return f" {self.name: <10} v{self._version:>5} : {x}"
+                return f" {self.name: <10} : {x}"
             case _:
-                return f" {self.name: <10} v{self._version:>5} :"
+                return f" {self.name: <10} :"
 
     @property
     def param_specs(self) -> list[ParamStruct_p]:
@@ -122,6 +122,7 @@ class BaseCommand(Command_d):
                 pass
             case x:
                  raise doot.errors.CommandError("Unknown type tried to be printed")
+
         for line in text:
             match line:
                 case str():

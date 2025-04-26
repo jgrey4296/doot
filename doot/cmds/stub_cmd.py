@@ -177,8 +177,8 @@ class _StubTask_m:
     @property
     def param_specs(self) -> list:
         return [*super().param_specs,
-                self.build_param(name="--task", type=bool),
-                self.build_param(name="-out",   type=str, default=""),
+                self.build_param(name="--task", type=bool, desc="Stub a Task Specification"),
+                self.build_param(name="-out",   type=str, default="", desc="If set, append the stub to this file"),
 
                 self.build_param(name="<1>name", type=str, default=None,    desc="The Name of the new task"),
                 self.build_param(name="<2>ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),

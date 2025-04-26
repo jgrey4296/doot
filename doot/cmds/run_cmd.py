@@ -30,7 +30,7 @@ from doot._abstract import Command_p
 from doot.cmds.core.cmd import BaseCommand
 from doot.task.check_locs import CheckLocsTask
 from jgdv.util.plugins.selector import plugin_selector
-
+from doot.control.step_runner import DootStepRunner
 
 # ##-- end 1st party imports
 
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from jgdv.structs.chainguard import ChainGuard
-    from doot._abstract import TaskRunner_i, TaskTracker_i
+    from doot._abstract import TaskRunner_p, TaskTracker_p
 
 # isort: on
 # ##-- end types
@@ -67,6 +67,8 @@ logging = logmod.getLogger(__name__)
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
 interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
+check_locs               = doot.config.on_fail(False).settings.commands.run.location_check.active()
+
 ##--|
 @Proto(Command_p)
 class RunCmd(BaseCommand):
@@ -80,10 +82,10 @@ class RunCmd(BaseCommand):
     def param_specs(self) -> list:
         return [
             *super().param_specs,
-            self.build_param(name="--interrupt",               default=False, type=bool),
-            self.build_param(name="--step",                     default=False, type=bool),
-            self.build_param(name="--dry-run",                  default=False, type=bool),
-            self.build_param(name="--confirm",                  default=False, type=bool),
+            self.build_param(name="--interrupt", default=False, type=bool, desc="Activate interrupt handler"),
+            self.build_param(name="--step",      default=False, type=bool, desc="Interrupt between workflow step"),
+            self.build_param(name="--dry-run",   default=False, type=bool, desc="Don't perform actions"),
+            self.build_param(name="--confirm",   default=False, type=bool, desc="Confirm the expected workflow plan"),
             self.build_param(name="<1>target", type=list[str], default=[]),
             ]
 
@@ -108,7 +110,7 @@ class RunCmd(BaseCommand):
                 return
             runner(handler=interrupt)
 
-    def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_i, TaskRunner_i]:
+    def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_p, TaskRunner_p]:
         # Note the final parens to construct:
         trackers  = plugins.on_fail([], list).tracker()
         runners   = plugins.on_fail([], list).runner()
@@ -120,6 +122,8 @@ class RunCmd(BaseCommand):
                 raise TypeError(type(x))
 
         match plugin_selector(runners, target=runner_target):
+            case _ if doot.args.on_fail(False).cmd.args.step():
+                runner = DootStepRunner(tracker=tracker)
             case type() as x:
                 runner = x(tracker=tracker)
             case x:
@@ -133,7 +137,7 @@ class RunCmd(BaseCommand):
             tracker.register_spec(task)
 
         match CheckLocsTask():
-            case x if bool(x.spec.actions):
+            case x if bool(x.spec.actions) and check_locs:
                 tracker.queue_entry(CheckLocsTask(), from_user=True)
             case _:
                 pass
@@ -173,8 +177,8 @@ class RunCmd(BaseCommand):
             case _:
                 return None
 
-    def _confirm_plan(self, runner:TaskRunner_i) -> bool:
-        """ Confirm the plan """
+    def _confirm_plan(self, runner:TaskRunner_p) -> bool:
+        """ Generate and Confirm the plan from the tracker"""
         if not doot.args.on_fail(False).cmd.args.confirm():
             return True
 

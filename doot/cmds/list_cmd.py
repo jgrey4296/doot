@@ -337,15 +337,14 @@ class _ActionLister_m:
         logging.info("---- Listing Available Actions")
         result : list[ListVal] = []
         result.append("Available Actions:")
-        name_lens = [len(x.name) for x in plugins.action]
-        largest = max([0, *name_lens])
+        largest = len(max((x.name for x in plugins.action), key=len, default=""))
         for action in sorted(plugins.action, key=lambda x: x.name):
             result.append(f"-- {action.name:<25} : {action.value}")
-
-        result.append(None)
-        result.append("- For Custom Python Actions, implement the following in the .tasks directory")
-        result.append("def custom_action(spec:ActionSpec, task_state:dict) -> Maybe[bool|dict]:...")
-        return result
+        else:
+            result.append(None)
+            result.append("- For Custom Python Actions, implement the following in the .tasks directory")
+            result.append("def custom_action(spec:ActionSpec, task_state:dict) -> Maybe[bool|dict]:...")
+            return result
 
 class _PluginLister_m:
     build_param : Callable
@@ -364,13 +363,15 @@ class _PluginLister_m:
         logging.info("---- Listing Plugins")
         result : list[ListVal] = []
         result.append(("Defined Plugins by Group:", {"colour":"cyan"}))
-        max_key : int   = max(["", *plugins.keys()], key=len)
+        max_key : int   = len(max(plugins.keys(), key=len, default=""))
         fmt_str : str   = f"{INDENT}%-{max_key}s :: %-25s"
         groups  : dict  = defaultdict(list)
         for group_str, specs in plugins.items():
             groups[group_str] += [(spec.name, spec.value) for spec in specs]
 
         for group, items in groups.items():
+            if not bool(items):
+                continue
             result.append((f"*   {group}::", {"colour":"magenta"}))
             for plugin in items:
                 result.append(fmt_str % plugin)
