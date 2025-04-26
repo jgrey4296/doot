@@ -2,7 +2,6 @@
 [startup]
 doot_version         = "1.1.0"
 loaders              = { commands="default", task="default", parser="default" }
-location_check       = { make_missing=true }
 sources              = { tasks=[".tasks"], code=[] }
 sleep                = { task=0.2, subtask=1, batch=1 }
 max_steps            = 100_000
@@ -18,17 +17,19 @@ command        = { tasks="doot.cmds.list_cmd:ListCmd"}
 [shutdown]
 notify           = { speak=false } # success_msg="", fail_msg=""
 defaulted_values = { write=false, path=".defaulted_values.toml" }
+exit_on_load_failures = false
 
 [settings.commands]
 [settings.commands.run]
-tracker     = "default"
-runner      = "default"
-reporter    = "default"
-report-line = []
+tracker        = "default"
+runner         = "default"
+reporter       = "default"
+report-line    = []
+location_check = { make_missing=true, strict=true }
 
 [settings.commands.list]
 hide = []
-aliases = { tasks=[] }
+aliases = { tasks=[], plugins=["--plugins"] }
 
 [logging]
 [logging.stream]
@@ -38,7 +39,7 @@ target = "stdout"
 format="{levelname:<8} : {message}"
 
 [logging.file]
-level        = "trace"
+level        = "NOTSET"
 filter       = ["jgdv"]
 target       = "rotate"
 format       = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"

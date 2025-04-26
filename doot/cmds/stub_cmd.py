@@ -94,10 +94,10 @@ class _StubDoot_m:
         doot_toml = pl.Path("doot.toml")
         data_text = data_path.read_text()
         if doot_toml.exists():
-            doot.report.user(data_text)
-            doot.report.user("")
-            doot.report.user("- doot.toml it already exists, printed to stdout instead", extra={"colour":"red"})
-            return
+            return [
+                data_text,
+                "# doot.toml it already exists, printed to stdout instead"
+            ]
 
         with doot_toml.open("a") as f:
             f.write(data_text)
@@ -214,7 +214,7 @@ class _StubTask_m:
         except TypeError as err:
             logging.exception(err.args[0].replace("\n", ""))
             task_mro = []
-            return
+            return []
 
         for cls in reversed(task_mro):
             try:
@@ -253,6 +253,9 @@ class _StubTask_m:
         with task_file.open("a") as f:
             f.write("\n")
             f.write(stub.to_toml())
+
+        return []
+
 
 class _StubPrinter_m:
 

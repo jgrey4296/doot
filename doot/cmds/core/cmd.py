@@ -121,7 +121,7 @@ class BaseCommand(Command_d):
             case [*_]:
                 pass
             case x:
-                 raise doot.errors.CommandError("Unknown type tried to be printed")
+                 raise doot.errors.CommandError("Unknown type tried to be printed", x)
 
         for line in text:
             match line:
