@@ -60,7 +60,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from doot._abstract import (Command_p, Overlord_p)
-from doot.reporters._interface import GeneralReporter_p as Reporter_p
+from doot.reporters._interface import WorkflowReporter_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -291,8 +291,6 @@ class Logging_m:
 
     def _setup_logging(self) -> None:
         self.log_config.setup(self.config)
-        self.report.log = self.subprinter()
-        self.report.trace("Logging Setup")
 
 class WorkflowUtil_m:
     """ util methods on the overlord used when running a workflow """
@@ -352,9 +350,14 @@ class WorkflowUtil_m:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")
 
-    def verify_config_version(self, ver:Maybe[str], source:str|pl.Path) -> None:
-        "Ensure the config file is compatible with doot"
-        doot_ver = Version(API.__version__)
+    def verify_config_version(self, ver:Maybe[str], source:str|pl.Path, *, override:Maybe[str]=None) -> None:
+        """Ensure the config file is compatible with doot
+
+        Compatibility is based on MAJOR.MINOR and discards PATCH
+
+        Raises a VersionMismatchError otherwise if they aren't compatible
+        """
+        doot_ver = Version(override or API.__version__)
         test_ver = SpecifierSet(f"~={doot_ver.major}.{doot_ver.minor}.0")
         match ver:
             case str() as x if x in test_ver:
@@ -388,7 +391,7 @@ class DootOverlord(metaclass=MLSingleton):
     global_task_state   : dict
     path_ext            : list[str]
     is_setup            : bool
-    _reporter           : Reporter_p
+    _reporter           : WorkflowReporter_p
 
     def __init__(self, **kwargs:Any):
         logging.info("Creating Overlord")
@@ -402,7 +405,8 @@ class DootOverlord(metaclass=MLSingleton):
         subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
         self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
-        self._reporter                        = NullReporter()
+        # TODO fix this:
+        self._reporter                        = NullReporter() # type: ignore
         self.configs_loaded_from              = []
         self.global_task_state                = {}
         self.path_ext                         = []
@@ -411,13 +415,13 @@ class DootOverlord(metaclass=MLSingleton):
         self.null_setup()
 
     @property
-    def report(self) -> Reporter_p:
+    def report(self) -> WorkflowReporter_p:
         return self._reporter
 
     @report.setter
-    def report(self, rep:Reporter_p) -> None:
+    def report(self, rep:WorkflowReporter_p) -> None:
         match rep:
-            case Reporter_p():
+            case WorkflowReporter_p():
                 self._reporter = rep
             case x:
                 raise TypeError(type(x))

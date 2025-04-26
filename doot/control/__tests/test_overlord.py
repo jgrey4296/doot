@@ -112,13 +112,33 @@ class TestOverlordStartup:
         do.setup()
         assert(bool(do.locs))
 
-
 class TestOverlordLogging:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-class TestOverlordWorkflowUtil:
+class TestOverlordVersionCheck:
+    """
+    Test the version checking used for config file and task specs
+    """
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    @pytest.mark.parametrize("ver", ["1.1.0", "1.1.5", "1.1.15"])
+    def test_with_override(self, ver):
+        target = "1.1"
+        do = DootOverlord()
+        do.verify_config_version(ver, None, override=target)
+        assert(True)
+
+    @pytest.mark.parametrize("ver", ["1.0.0", "1.0.5", "1.0.15"])
+    def test_with_override_fail(self, ver):
+        target = "1.1"
+        do = DootOverlord()
+        with pytest.raises(doot.errors.VersionMismatchError):
+            do.verify_config_version(ver, None, override=target)
+
 
     def test_verify_config_version(self):
         do = DootOverlord()
@@ -129,6 +149,11 @@ class TestOverlordWorkflowUtil:
         do = DootOverlord()
         with pytest.raises(doot.errors.VersionMismatchError):
             do.verify_config_version("0.1.1", "test")
+
+class TestOverlordWorkflowUtil:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_update_global_task_state_default(self):
         do = DootOverlord(force_new=True)

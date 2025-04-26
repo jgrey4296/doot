@@ -45,7 +45,7 @@ from typing import TYPE_CHECKING, cast, assert_type, assert_never
 from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
-from doot._abstract import TaskRunner_i
+from doot._abstract import TaskRunner_p
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
@@ -84,6 +84,8 @@ CMDS           : Final[dict] = {
   "D"          : "print_debug",
   "s"          : "print_state",
  }
+
+break_on : str = doot.config.on_fail("job").settings.commands.run.stepper.break_on()
 
 ##--|
 
@@ -274,13 +276,19 @@ class _Stepper_m:
                 self._conf_types = [structs.ActionSpec]
             case "all":
                 self._conf_types = [True]
+            case x:
+                raise ValueError("Unrecognized Step Runner Breakpoint", x)
 
 
 ##--|
-@Proto(TaskRunner_i)
+@Proto(TaskRunner_p)
 @Mixin(_Instructions_m, _Stepper_m)
 class DootStepRunner(DootRunner):
     """ extends the default runner with step control """
     _conf_prompt                      = "::- Command? (? for help): "
     _cmd_prefix                       = "_do_"
     _aliases      : ClassVar[dict]    = CMDS.copy()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.set_confim_type(break_on)

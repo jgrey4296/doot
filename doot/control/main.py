@@ -160,6 +160,9 @@ class Loading_m:
             case x:
                 raise TypeError(type(x))
 
+        doot.report.log = doot.subprinter()
+        logging.trace("Logging Setup")
+
 
     def _load_commands(self) -> None:
         """ Select Commands from the discovered plugins,
@@ -245,15 +248,17 @@ class CLIArgParsing_m:
 
         if doot.args.on_fail(False).head.args.version():  # noqa: FBT003
             # doot.report.user(self.version_template, API.__version__)
-            print(self.version_template % API.__version__)
-            return API.ExitCodes.SUCCESS
-
-        if doot.args.on_fail(False).head.args.help():  # noqa: FBT003
-            doot.report.user(self.help())
+            doot.report.user(self.version_template, API.__version__)
             return API.ExitCodes.SUCCESS
 
         if not doot.args.on_fail(False).cmd.args.suppress_header():  # noqa: FBT003
-            doot.report.header()
+             doot.report.header()
+
+        if doot.args.on_fail(False).head.args.help():  # noqa: FBT003
+            helptxt = self.help()
+            doot.report.user(helptxt)
+            return API.ExitCodes.SUCCESS
+
 
         if doot.args.on_fail(False).head.args.debug():  # noqa: FBT003
             doot.report.user("Pausing for debugging")
@@ -269,7 +274,7 @@ class CLIArgParsing_m:
         params = self.param_specs
         if bool(params):
             help_lines += ["", "Params:"]
-            help_lines += sorted(str(x) for x in self.param_specs)
+            help_lines += (x.help_str() for x in self.param_specs)
 
         help_lines.append("")
         help_lines.append("Commands: ")
@@ -533,12 +538,12 @@ class DootMain:
     def param_specs(self) -> list[ParamSpec]:
         """ The cli parameters of the main doot program. """
         return [
-            LiteralParam(name=self.prog_name),
-            self.build_param(name="--version" , type=bool),
-            self.build_param(name="--help"    , type=bool),
+            LiteralParam(name=self.prog_name, desc="The Program Name"),
+            self.build_param(name="--version" , type=bool, desc="Print the version number"),
+            self.build_param(name="--help"    , type=bool, desc="Print this help"),
 
-            self.build_param(name="--verbose" , type=bool),
-            self.build_param(name="--debug",    type=bool),
+            self.build_param(name="--verbose" , type=bool, desc="Increase Verbosity"),
+            self.build_param(name="--debug",    type=bool, desc="Activate breakpoints"),
         ]
 
     def main(self) -> None:  # noqa: PLR0912

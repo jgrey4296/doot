@@ -83,6 +83,7 @@ class TestTaskLoader:
         specs['tasks']['basic'].append({"name"  : "test", "ctor" : job_ctor_str})
         specs['tasks']['basic'].append({"name"  : "test", "ctor": job_ctor_str})
         basic = task.DootTaskLoader()
+        basic.exit_on_load_failures = True
         mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
         assert(not bool(basic.tasks))
@@ -128,6 +129,7 @@ class TestTaskLoader:
         specs = {"tasks": { "basic" : []}}
         specs['tasks']['basic'].append({"name"  : "test", "ctor": bad_alias_str})
         basic = task.DootTaskLoader()
+        basic.exit_on_load_failures = True
         mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
 
@@ -179,6 +181,7 @@ class TestTaskLoader:
 
         plugins      = ChainGuard({"job": [mock_ep]})
         basic        = task.DootTaskLoader()
+        basic.exit_on_load_failures = True
         mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup(plugins, ChainGuard(specs))
 

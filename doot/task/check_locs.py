@@ -63,8 +63,8 @@ from doot._abstract import Task_p
 logging   = logmod.getLogger(__name__)
 ##-- end logging
 
-make_missing = doot.config.on_fail(False).startup.location_check.make_missing()
-strict       = doot.config.on_fail(True).startup.location_check.strict()
+make_missing = doot.config.on_fail(False).settings.commands.run.location_check.make_missing()
+strict       = doot.config.on_fail(True).settings.commands.run.location_check.strict()
 ##--|
 @Proto(Task_p)
 class CheckLocsTask(DootTask):

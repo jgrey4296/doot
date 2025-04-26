@@ -69,6 +69,7 @@ from doot._abstract import Job_p, Task_p, TaskLoader_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+exit_on_load_failures = doot.config.on_fail(False).shutdown.exit_on_load_failures()
 
 def apply_group_and_source(group, source, x): # noqa: ANN201, ANN001
     """ insert the group and source  into a task definition dict
@@ -102,11 +103,13 @@ class DootTaskLoader:
     """
     load toml defined tasks, and create doot.structs.TaskSpecs of them
     """
-    tasks         : ClassVar[dict[str, tuple(dict, Job_p)]]   = {}
-    failures      : ClassVar[dict[str, list]]                 = defaultdict(list)
-    cmd_names     : ClassVar[set[str]]                        = set()
-    task_builders : ClassVar[dict[str,Any]]                   = dict()
-    extra         : ClassVar[Maybe[ChainGuard]]               = None
+    tasks                 : ClassVar[dict[str, tuple(dict, Job_p)]]   = {}
+    failures              : ClassVar[dict[str, list]]                 = defaultdict(list)
+    cmd_names             : ClassVar[set[str]]                        = set()
+    task_builders         : ClassVar[dict[str,Any]]                   = dict()
+    extra                 : ClassVar[Maybe[ChainGuard]]               = None
+
+    exit_on_load_failures : bool                                      = exit_on_load_failures
 
     def setup(self, plugins:ChainGuard, extra:Maybe[ChainGuard]=None) -> Self:
         logging.debug("---- Registering Task Builders")
@@ -165,8 +168,24 @@ class DootTaskLoader:
             for path in task_sources:
                 self._load_specs_from_path(path)
 
-        if bool(self.failures):
-            raise doot.errors.StructLoadError("Loading Tasks Failed", self.failures)
+
+        match self.failures:
+            case dict() if bool(self.failures) and self.exit_on_load_failures:
+                # After everything is loaded, raise a total failure if necessary
+                raise doot.errors.StructLoadError("Loading Tasks Failed", self.failures)
+            case dict() if bool(self.failures):
+                doot.report.user("!!!! Loading Tasks Failed: %s", len(self.failures))
+                doot.report.user("")
+                for x,msgs in self.failures.items():
+                    doot.report.user("- %s:",  x)
+                    for y in msgs:
+                        doot.report.user("-- %s", y)
+                    else:
+                        doot.report.user("")
+                else:
+                    doot.report.user("Continuing...")
+
+
 
         logging.debug("Task List Size: %s", len(self.tasks))
         logging.debug("Task List Names: %s", list(self.tasks.keys()))
@@ -206,6 +225,7 @@ class DootTaskLoader:
                 self.failures[task_file].append(str(err))
             except doot.errors.VersionMismatchError as err:
                 if "startup" not in data:
+                    # startup designates a config file, which is handled in main
                     self.failures[task_file].append("Version mismatch")
             else:
                 doot.update_global_task_state(data, source=task_file)

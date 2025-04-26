@@ -44,7 +44,7 @@ class TestCmdLoader(unittest.TestCase):
         basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd"),
-                EntryPoint(name="run", group="doot.command", value="doot.cmds.run_cmd:RunCmd"),
+                EntryPoint(name="run",  group="doot.command", value="doot.cmds.run_cmd:RunCmd"),
 
         ]}))
         result = basic.load()
