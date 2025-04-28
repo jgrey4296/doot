@@ -66,6 +66,7 @@ logging = logmod.getLogger(__name__)
 # TODO make a decorator to register these onto the cmd
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
+reporter_target          = doot.config.on_fail(None, str|None).settings.commands.run.reporter()
 interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
 check_locs               = doot.config.on_fail(False).settings.commands.run.location_check.active()
 
@@ -90,6 +91,8 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
+        self._set_reporter(plugins)
+
         doot.report.active_level(logmod.INFO)
         doot.report.set_state("cmd")
         doot.report.gap()
@@ -109,6 +112,21 @@ class RunCmd(BaseCommand):
             if not self._confirm_plan(runner):
                 return
             runner(handler=interrupt)
+
+    def _set_reporter(self, plugins) -> None:
+        match reporter_target:
+            case None:
+                return
+            case _:
+                pass
+
+        reporters = plugins.on_fail([], list).reporter()
+        match plugin_selector(reporters, target=reporter_target):
+            case type() as x:
+                doot.set_reporter(x(logger=doot.report.log))
+            case x:
+                raise TypeError(type(x))
+
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_p, TaskRunner_p]:
         # Note the final parens to construct:
