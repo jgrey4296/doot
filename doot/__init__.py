@@ -7,6 +7,7 @@ Doot : An Opinionated refactor of the Doit Task Runner.
 # Imports:
 from __future__ import annotations
 
+import sys
 import logging as logmod
 from ._interface import __version__
 from .control.overlord import DootOverlord
@@ -18,12 +19,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 match getattr(__main__, "doot_setup", False):
+    # Initialises the overlord as the 'doot' module
     case False:
-        _overlord = DootOverlord()
+        sys.modules[__name__].__class__ = DootOverlord
+        sys.modules[__name__].__init__(__name__)
         setattr(__main__, "doot_setup", True)
     case True:
         pass
-
-def __getattr__(name):
-    """ Use the DootOverlord object for the main global vars and setup """
-    return getattr(_overlord, name)

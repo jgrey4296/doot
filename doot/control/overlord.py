@@ -316,7 +316,7 @@ class WorkflowUtil_m:
         if source is None:
             raise ValueError("Updating Global Task State must  have a source")
 
-        self.report.trace("Updating Global State from: %s", source)
+        self.report.detail("Updating Global State from: %s", source)
         if not isinstance(data, dict|ChainGuard):
             raise DErr.GlobalStateMismatch("Not a dict", data)
 
@@ -372,7 +372,7 @@ class WorkflowUtil_m:
 
 @Proto(Overlord_p)
 @Mixin(Startup_m, Logging_m, WorkflowUtil_m)
-class DootOverlord(metaclass=MLSingleton):
+class DootOverlord(types.ModuleType):
     """
     The main control point of Doot
     The setup logic of doot.
@@ -380,6 +380,7 @@ class DootOverlord(metaclass=MLSingleton):
     As Doot uses loaded config data throughout, using the doot.config.on_fail... pattern,
     the top-level package 'doot', uses a module getattr to offload attribute access to this class.
 
+    Adapted from https://stackoverflow.com/questions/880530
     """
     __version__         : str
     config              : ChainGuard
@@ -395,7 +396,8 @@ class DootOverlord(metaclass=MLSingleton):
     is_setup            : bool
     _reporter           : WorkflowReporter_p
 
-    def __init__(self, **kwargs:Any):
+    def __init__(self, *args:Any, **kwargs:Any):
+        super().__init__(*args, **kwargs)
         logging.info("Creating Overlord")
         self.__version__                      = API.__version__
         self.config                           = ChainGuard()
@@ -422,8 +424,13 @@ class DootOverlord(metaclass=MLSingleton):
 
     @report.setter
     def report(self, rep:WorkflowReporter_p) -> None:
+        self.set_reporter(rep)
+
+    def set_reporter(self, rep:WorkflowReporter_p) -> None:
+        curr_logger = self._reporter.log
         match rep:
             case WorkflowReporter_p():
                 self._reporter = rep
+                self._reporter.log = curr_logger
             case x:
                 raise TypeError(type(x))
