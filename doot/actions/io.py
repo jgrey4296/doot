@@ -75,7 +75,14 @@ class AppendAction(IOBase):
     @DKeyed.types("sep", fallback=None)
     @DKeyed.paths("to")
     def __call__(self, spec, state, args, sep, to):
-        sep          = sep or AppendAction.sep
+        match sep:
+            case None:
+                sep = AppendAction.sep
+            case False:
+                sep = None
+            case _:
+                pass
+
         loc          = to
         args_keys    = [DKey(x) for x in args]
         exp_args     = [k.expand(spec, state, fallback=None) for k in args_keys]
@@ -85,11 +92,18 @@ class AppendAction(IOBase):
 
         with loc.open('a') as f:
             for arg in exp_args:
-                if not arg:
-                    continue
+                match arg:
+                    case None:
+                        continue
+                    case str():
+                        pass
+                    case _:
+                        arg = str(arg)
 
                 doot.report.act("Append", "%s chars to %s" % (len(arg), loc))
-                f.write(sep)
+                if sep:
+                    f.write(sep)
+
                 f.write(arg)
             else:
                 # Done

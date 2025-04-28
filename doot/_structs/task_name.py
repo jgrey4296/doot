@@ -92,5 +92,5 @@ class TaskName(_TaskNameOps_m, Strang):
         ie: elide uuids as just <UUID>
         """
         group = self[0:]
-        tail = self._subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.body()])
+        tail = self._subseparator.join([x if "<uuid" not in x else "<UUID>" for x in self.body()])
         return "{}{}{}".format(group, self._separator, tail)

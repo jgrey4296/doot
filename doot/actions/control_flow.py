@@ -167,12 +167,18 @@ class RelativeCheck(DootBaseAction):
 class LogAction(DootBaseAction):
     """ A Basic log/print action  """
 
-    @DKeyed.types("level", check=str, fallback="user")
+    @DKeyed.types("level", check=str|int, fallback="user")
     @DKeyed.formats("msg")
     @DKeyed.formats("target", fallback="task")
-    def __call__(self, spec, state, level, msg, target):
+    @DKeyed.formats("prefix", fallback=None)
+    def __call__(self, spec, state, level, msg, target, prefix):
         assert(msg is not None), "msg"
-        doot.report.user(msg)
+        match level:
+            case int():
+                pass
+            case str():
+                level = logmod._nameToLevel.get(level, 0)
+        doot.report.act(info=prefix, msg=msg, level=level)
 
 class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """

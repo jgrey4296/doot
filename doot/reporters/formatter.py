@@ -77,6 +77,32 @@ class TraceFormatter:
         self._segments         = (segments or API.TRACE_LINES_ASCII).copy()
         self.line_fmt          = API.LINE_PASS_FMT
         self.msg_fmt           = API.LINE_MSG_FMT
+        self._process_segments()
+
+    def _process_segments(self):
+        """ Ensure all needed segments exist and are the right size
+
+        if any are missing, use doot.reporters._interface.TRACE_LINES_ASCII's values
+        """
+        processed = {}
+        for x,y in API.TRACE_LINES_ASCII.items():
+            processed.setdefault(x, y)
+        else:
+            start_i, mid_i, end_i = API.SEGMENT_SIZES
+            just_char = self._segments.get("just_char", API.TRACE_LINES_ASCII["just_char"])
+        for x,y in self._segments.items():
+            match y:
+                case str():
+                    processed[x] = y
+                case start, mid, end:
+                    processed[x] = (start.ljust(start_i, just_char),
+                                    mid.ljust(mid_i, just_char),
+                                    end.ljust(end_i, just_char))
+                case other:
+                    raise ValueError("Unexpected segment", other)
+
+        else:
+            self._segments = processed
 
     def _build_ctx(self, ctx:Maybe[list]) -> str:
         """ Given a current context list, builds a prefix string for the current print call """
@@ -93,7 +119,7 @@ class TraceFormatter:
 
         """
         extra        = {}
-        extra['time']= datetime.datetime.now().strftime("%H:%M")  # noqa: DTZ005
+        extra['time']= datetime.datetime.now().strftime(API.TIME_FMT) # noqa: DTZ005
         match self._segments.get(key, None):
             case str() if key in self._segments:
                 extra['act'] = self._segments[key]
@@ -108,14 +134,14 @@ class TraceFormatter:
         match msg:
             case None:
                 fmt = self.line_fmt
-            case str():
-                fmt           = self.msg_fmt
-                extra['info'] = info or ""
+            case str() if not bool(msg) and not bool(info):
+                fmt = self.line_fmt
+            case _:
+                fmt              = self.msg_fmt
+                extra['info']    = str(info or "")
+                extra['detail']  = str(msg)
                 # Ensure the same gap between the end of the info, and start of the msg
                 extra['gap2'] = " "*max(1, (API.MSG_SPACING - len(extra['info'])))
-                extra['detail']  = msg
-            case x:
-                raise TypeError(type(x))
 
         extra['ctx'] = self._build_ctx(ctx)
         result : str = fmt.format_map(extra)

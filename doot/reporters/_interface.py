@@ -58,33 +58,36 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+SEGMENT_SIZES : Final[tuple[int,int,int]] = (1, 3, 1)
+GAP      : Final[str] = " "*SEGMENT_SIZES[1]
 ##-- segment dicts
 TRACE_LINES_ASCII     : Final[dict[str, str|tuple]] = {
     "root"            : "T",
     "wait"            : "|",
-    "act"             : ("|", "   ",  "::"),
-    "branch"          : ("|", "->", "=["),
+    "branch"          : ("|", "->=", "["),
+    "act"             : ("|", "",  "::"),
     "inactive"        : ":",
     "begin"           : ("|", "...", "Y"),
     "return"          : ("",  "=",   "<]"),
     "pause"           : ("",  "-", "<]"),
     "resume"          : ("|", "->-", "["),
-    "result"          : ("|", "<<<", "|"),
+    "result"          : ("|", "<<<", "]"),
+    "fail"            : ("|", "...", "X:"),
     "finished"        : "⟘",
-    "fail"            : "X:",
-    "gap"             : "   ",
+    "gap"             : (" "*SEGMENT_SIZES[1]),
+    "just_char"       : " ",
 }
 
 ##-- end segment dicts
 
 # eg: {┣─}{╮}
-LINE_PASS_FMT : Final[str] = "{ctx}{act}"
+LINE_PASS_FMT            : Final[str] = "{ctx}{act}"
 # eg: {┊ ┊ }{┃} [{blah}] : {bloo}
-LINE_MSG_FMT  : Final[str] = "{ctx}{act}{gap}[{info}]{gap2}: {detail}"
+LINE_MSG_FMT             : Final[str] = "{ctx}{act}{gap}[{info}]{gap2}: {detail}"
+TIME_FMT                 : Final[str] = "%H:%M"
 
-ACT_SPACING  : Final[int] = 4
-MSG_SPACING  : Final[int] = 6
+ACT_SPACING              : Final[int] = 4
+MSG_SPACING              : Final[int] = 6
 # Body:
 
 class ReportStackEntry_d:

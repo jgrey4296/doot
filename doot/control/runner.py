@@ -93,7 +93,6 @@ class _ActionExecution_m:
         if not bool(actions):
             return None
 
-        doot.report.act("ActGroup", group)
         group_result              = ActRE.SUCCESS
         to_queue : list[TaskSpec] = []
         executed_count            = 0
@@ -102,7 +101,7 @@ class _ActionExecution_m:
             if self._skip_relation_specs(action):
                 continue
 
-            match self._execute_action(executed_count, action, task):
+            match self._execute_action(executed_count, action, task, group=group):
                 case True | None:
                     continue
                 case list() as result:
@@ -163,7 +162,7 @@ class _ActionExecution_m:
 
         return None
 
-    def _execute_action(self, count:int, action:ActionSpec, task:Task_p) -> ActRE|list:
+    def _execute_action(self, count:int, action:ActionSpec, task:Task_p, group:Maybe[str]=None) -> ActRE|list:
         """ Run the given action of a specific task.
 
           returns either a list of specs to (potentially) queue,
@@ -172,7 +171,11 @@ class _ActionExecution_m:
         """
         result                     = None
         task.state['_action_step'] = count
-        doot.report.act(f"Action: {self.step}.{count}", action.do)
+        match group:
+            case str():
+                doot.report.act(f"Action: {self.step}.{group}.{count}", action.do)
+            case None:
+                doot.report.act(f"Action: {self.step}.{count}", action.do)
 
         logging.detail("Action Executing for Task: %s", task.shortname)
         logging.detail("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
@@ -276,7 +279,7 @@ class DootRunner:
         logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
         assert(isinstance(job, Job_p))
         try:
-            doot.report.branch(job.spec.name.root(), info=f"Job {self.step}")
+            doot.report.branch(job.spec.name.readable, info=f"Job {self.step}")
             if not self._test_conditions(job):
                 doot.report.trace(skip_msg, self.step, job.name.root())
                 return
@@ -292,7 +295,7 @@ class DootRunner:
         logmod.debug("-- Expanding Task %s: %s", self.step, task.shortname)
         assert(not isinstance(task, Job_p))
         try:
-            doot.report.branch(task.spec.name.root(), info=f"Task {self.step}")
+            doot.report.branch(task.spec.name.readable, info=f"Task {self.step}")
             if not self._test_conditions(task):
                 doot.report.result([skip_msg, self.step, task.name.root()])
                 return
@@ -307,7 +310,6 @@ class DootRunner:
         """ run a task's depends_on group, coercing to a bool
         returns False if the runner should skip the rest of the task
         """
-        doot.report.act(info="Check", msg="Preconditions")
         match self._execute_action_group(task, group=DEPENDS_GROUP):
             case None:
                 return True
