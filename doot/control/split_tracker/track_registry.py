@@ -265,7 +265,7 @@ class _Instantiation_m:
         target_spec               = self.specs[rel.target]
         successful_matches        = []
         try:
-            match InjectSpec.build(rel, sources=[control_spec]):
+            match InjectSpec.build(rel.inject, sources=[control_spec]):
                 case None:
                     extra = {}
                 case x:
@@ -289,7 +289,7 @@ class _Instantiation_m:
             case []: # No matches, instantiate, with injected values
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-                    raise doot.errors.TrackingError("Failed to build task matching constraints")
+                    raise doot.errors.TrackingError("Failed to build task matching constraints", control_spec, rel)
                 logging.detail("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it

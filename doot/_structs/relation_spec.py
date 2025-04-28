@@ -45,6 +45,8 @@ from doot._structs.task_name import TaskName
 
 # ##-- end 1st party imports
 
+from .inject_spec import InjectSpec
+
 # ##-- types
 # isort: off
 if TYPE_CHECKING:
@@ -56,8 +58,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-INJECT_KEYS : Final[list[str]] = doot.constants.misc.INJECT_KEYS
 
 class RelationMeta_e(enum.Enum):
     """
@@ -100,7 +100,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     # constraints on spec field equality
     object        : Maybe[TaskName|TaskArtifact]                     = None
     constraints   : bool|list|dict[str, str]                         = False
-    inject        : Maybe[str|dict]                                  = None
+    inject        : Maybe[str|dict|InjectSpec]                       = None
     _meta         : dict()                                           = {} # Misc metadata
 
     @classmethod
@@ -159,14 +159,14 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                  raise TypeError("Unknown constraints type", val)
 
     @field_validator("inject", mode="before")
-    def _validate_inject(cls, val) -> Maybe[str|dict]:
+    def _validate_inject(cls, val) -> Maybe[str|InjectSpec]:
         match val:
             case None:
                 return None
             case str():
                 return val
-            case ChainGuard() | dict() if all(k in INJECT_KEYS for k in val.keys()):
-                return val
+            case dict() | ChainGuard():
+                return InjectSpec.build(val)
             case _:
                 raise TypeError("Unknown injection type", val)
 

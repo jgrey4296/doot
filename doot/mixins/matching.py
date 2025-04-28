@@ -17,13 +17,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -36,9 +30,37 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 from doot._structs.relation_spec import RelationSpec
-from doot.structs import DKey, TaskSpec
+from doot.structs import DKey, TaskSpec, InjectSpec
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    type Data = dict
+##--|
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -65,18 +87,9 @@ class TaskMatcher_m:
 
         constraints, injections = self._get_relation_data(relation, control)
         assert(constraints is not None)
-        assert(injections is not None)
-        target_keys, source_keys = self._get_sum_injection_keys(injections)
         source_data, target_data = control.extra, target.extra
 
         # Check constraints match
-        match injections.get('suffix', None):
-            case None:
-                pass
-            case str() as suffix if suffix not in target.name:
-                logging.debug("Suffix %s not found in %s", suffix, target.name)
-                return False
-
         for targ_k,source_k in constraints.items():
             if source_k not in source_data:
                 continue
@@ -84,7 +97,15 @@ class TaskMatcher_m:
                 logging.debug("Constraint does not match: %s(%s) : %s(%s)", targ_k, targ_v, source_k, source_v)
                 return False
 
-        target_keys, source_keys = self._get_sum_injection_keys(injections)
+        match injections:
+            case None:
+                return True
+            case InjectSpec(suffix=str() as suffix) if suffix not in target.name:
+                logging.debug("Suffix %s not found in %s", suffix, target.name)
+                return False
+            case InjectSpec():
+                target_keys, source_keys = injections.flatten()
+
         # Check injections. keys must be available, but not necessarily the same
         if bool(source_keys - source_data.keys()):
             logging.debug("source key/data mismatch: %s", source_keys - source_data.keys())
@@ -96,14 +117,15 @@ class TaskMatcher_m:
 
         return True
 
-    def _get_relation_data(self, relation:Maybe[RelationSpec], control:TaskSpec) -> tuple[Data, Data]:
+    def _get_relation_data(self, relation:Maybe[RelationSpec], control:TaskSpec) -> tuple[Data, Maybe[InjectSpec]]:
         """ Extract the relevant relation constraints and injections  """
         match relation:
             case None:
                 constraint_d = True
-                inject_d     = {}
+                inject_d     = None
             case RelationSpec(constraints=constraint_d, inject=inject_d):
                 pass
+
 
         match constraint_d:
             case False:
@@ -117,32 +139,17 @@ class TaskMatcher_m:
 
         match inject_d:
             case None:
-                inject_d = {}
-            case [*xs]:
-                inject_d = { x:x for x in xs }
+                pass
+            case InjectSpec():
+                pass
             case str() as key_s:
                 key      = DKey(key_s, check=dict|ChainGuard, implicit=True)
-                inject_d = key(control)
-            case dict() | ChainGuard():
-                pass
+                inject_d = InjectSpec.build(key(control))
 
         assert(isinstance(constraint_d, dict))
-        assert(isinstance(inject_d, dict))
+        assert(isinstance(inject_d, InjectSpec|None)), breakpoint()
         return constraint_d, inject_d
 
-    def _get_sum_injection_keys(self, injections) -> tuple[set[str], set[str]]:
-        """ Get the target : source keys for injection """
-        source_keys, target_keys= set(), set()
-        for k,y in injections.items():
-            match y:
-                case [*xs]:
-                    source_keys.update(xs)
-                    target_keys.update(xs)
-                case dict():
-                    source_keys.update({y2 for y2 in y.values() if isinstance(y2, DKey)})
-                    target_keys.update(y.keys())
-
-        return target_keys, source_keys
 
     def match_edge(self, rel:RelationSpec, edges:list[TaskName], *, exclude:None|list=None) -> bool:
         """ Given a list of existing edges,

@@ -116,13 +116,20 @@ class SplitTracker:
     def register_spec(self, *specs:TaskSpec)-> None:
         self._registry.register_spec(*specs)
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
-        # Register
-        # Instantiate
-        # Make Task
-        # Insert into Network
-        # Queue
-        return self._queue.queue_entry(name, from_user=from_user, status=status)
+    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, parent:Maybe[TaskName]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
+        queued : TaskName = self._queue.queue_entry(name, from_user=from_user, status=status)
+        if not parent:
+            return queued
+        if '__on_queue' not in self._registry.specs[queued].extra:
+            return queued
+
+        parent_task = self._registry.tasks[parent]
+        task        = self._registry.tasks[queued]
+        for x,y in task.state['__on_queue'].items():
+            task.state[x] = y(parent_task.state)
+        else:
+            return queued
+
 
     def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
         return self._registry.get_status(task)
@@ -234,10 +241,10 @@ class SplitTracker:
                         case []:
                             self.queue_entry(focus, status=TaskStatus_e.READY)
                         case [*xs]:
-                            logging.user("Task Blocked: %s on : %s", focus, xs)
+                            logging.trace("Task Blocked: %s on : %s", focus, xs)
                             self.queue_entry(focus)
                             for x in xs:
-                                self.queue_entry(x)
+                                self.queue_entry(x, parent=focus)
                 case TaskStatus_e.INIT:
                     logging.trace("Task Object Initialising: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)

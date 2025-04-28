@@ -30,8 +30,6 @@ from jgdv.cli import ParamSpec
 import doot
 import doot.errors
 from doot._structs.dkey import DKey
-from doot._structs.task_spec import  TaskSpec
-from doot._structs.relation_spec import RelationSpec
 
 # ##-- end 1st party imports
 
@@ -47,9 +45,9 @@ from typing import Protocol, runtime_checkable
 from typing import TYPE_CHECKING, no_type_check, final, override, overload
 # from dataclasses import InitVar, dataclass, field
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from jgdv import Maybe
 
-if TYPE_CHECKING or True:
-   from jgdv import Maybe
+if TYPE_CHECKING:
    from typing import Final
    from typing import ClassVar, Tuple, Any, LiteralString
    from typing import Never, Self, Literal
@@ -57,6 +55,7 @@ if TYPE_CHECKING or True:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+   from doot._structs.task_spec import  TaskSpec
    type ConstraintData = TaskSpec | dict | ChainGuard
 
 # isort: on
@@ -79,8 +78,9 @@ class InjectSpec(BaseModel):
     """A ConstraintData representation of an injection.
 
     Injections fall into three groups:
-    - now    : immediate key expansions
-    - delay  : l1 expansions, ready to expand fully later
+    - now    : immediate key expansions, on spec build
+    - queue  : when the  task is queued
+    - delay  : l1 expansions, ready to expand fully later, expanded on target run
     - insert : literal values to inject
 
     They can be of the form:
@@ -91,6 +91,7 @@ class InjectSpec(BaseModel):
 
     """
     now          : dict       = Field(default_factory=dict)
+    on_queue     : dict       = Field(default_factory=dict)
     delay        : dict       = Field(default_factory=dict)
     insert       : dict       = Field(default_factory=dict)
     suffix       : Maybe[str] = Field(default=None)
@@ -100,14 +101,14 @@ class InjectSpec(BaseModel):
         """ builds an InjectSpec from basic data """
         logging.trace("Building Injection: %s", data)
         match data:
-            case None | RelationSpec(inject=None):
+            case None:
                 return None
-            case dict() | ChainGuard():
-                pass
-            case RelationSpec(inject=str() as base_s):
+            case InjectSpec():
+                return data
+            case str() as base_s:
                 base_k = DKey(base_s, implicit=True, check=dict|ChainGuard)
                 data   = base_k(*sources)
-            case RelationSpec(inject=dict() as data):
+            case dict() | ChainGuard():
                 pass
             case _:
                 raise doot.errors.InjectionError("Unknown injection base type", data)
@@ -124,7 +125,6 @@ class InjectSpec(BaseModel):
         result.initial_expansion(sources)
         result.set_insertion(insertion)
         result._validate_constraints(constraint)
-
         return result
 
     @staticmethod
@@ -150,6 +150,10 @@ class InjectSpec(BaseModel):
     def _validate_now(cls, val:Any) -> dict:
         return cls._prep_keys(val)
 
+    @field_validator("on_queue", mode="before")
+    def _validate_on_queue(cls, val:Any) -> dict:
+        return cls._prep_keys(val)
+
     @field_validator("delay", mode="before")
     def _validate_delay(cls, val:Any) -> dict:
         return cls._prep_keys(val)
@@ -162,6 +166,7 @@ class InjectSpec(BaseModel):
         return (bool(self.now)
                 | bool(self.delay)
                 | bool(self.insert)
+                | bool(self.on_queue)
                 | (self.suffix is not None))
 
     def initial_expansion(self, sources:Maybe[Iterable]) -> None:
@@ -179,6 +184,8 @@ class InjectSpec(BaseModel):
             self.insert[k] = self.insert[k] or insertion
 
     def as_dict(self, *, constraint:Maybe[ConstraintData]=None, insertion=None) -> dict:
+        """ coerce the injections for insertion into a task spec
+        """
         match self._validate_constraints(constraint):
             case  None:
                 constraint_base, cli= {}, {}
@@ -198,6 +205,9 @@ class InjectSpec(BaseModel):
                 insert = {k:x for k in self.insert.keys()}
 
         injection   = {} | self.delay | self.now | insert | suffix
+        if bool(self.on_queue):
+            injection['__on_queue'] = self.on_queue.copy()
+
         injection = constraint_base | cli | injection
 
         return injection
@@ -211,7 +221,7 @@ class InjectSpec(BaseModel):
                 return
             case dict() | ChainGuard():
                 pass
-            case TaskSpec():
+            case x if hasattr(x, "extra"):
                 constraint = constraint.extra
             case _:
                 raise doot.errors.InjectionError("Unknown constraint data type", constraint)
@@ -222,7 +232,7 @@ class InjectSpec(BaseModel):
         cli_params          = [ParamSpec(**cli) for cli in constraint.get(CLI_K, [])]
         cli                 = {cli.name : cli.default for cli in cli_params}
 
-        inject_keys         = {} | self.delay.keys() | self.now.keys() | self.insert.keys()
+        inject_keys         = {} | self.on_queue.keys() | self.delay.keys() | self.now.keys() | self.insert.keys()
 
         if not bool(inject_keys):
             return None
@@ -243,3 +253,16 @@ class InjectSpec(BaseModel):
             raise doot.errors.InjectionError("Surplus keys can not be injected", surplus)
 
         return constraint_defaults, cli
+
+    def flatten(self) -> tuple[set[str], set[str]]:
+        """ Flatten the injection for matching """
+        target_keys = set()
+        target_keys |= self.now.keys()
+        target_keys |= self.delay.keys()
+        target_keys |= self.insert.keys()
+
+        source_keys = (set(self.now.values())
+                       | set(self.delay.values())
+                       | set(self.insert.values()))
+
+        return target_keys, source_keys
