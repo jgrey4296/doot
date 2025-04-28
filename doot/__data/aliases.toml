@@ -12,11 +12,10 @@ graph     = "doot.cmds.graph_cmd:GraphCmd"
 
 [[doot.aliases.reporter]]
 # Map {alias} -> CodeRef String
+default = "doot.reporters:BasicReporter"
 
 [[doot.aliases.report-line]]
 # Map {alias} -> CodeRef String
-basic = "doot.reporters.basic_reporters:DootAlwaysReport"
-time  = "doot.reporters.basic_reporters:TimerReporter"
 
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
@@ -25,7 +24,6 @@ basic = "doot.control.naive_tracker:NaiveTracker"
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String
 basic = "doot.control.runner:DootRunner"
-step  = "doot.control.step_runner:DootStepRunner"
 
 [[doot.aliases.parser]]
 # Map {alias} -> CodeRef String

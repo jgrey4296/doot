@@ -45,8 +45,10 @@ from jgdv.structs.locator import JGDVLocator
 # ##-- 1st party imports
 import doot._interface as API#  noqa: N812
 import doot.errors as DErr  # noqa: N812
-from doot.reporters import NullReporter
+from doot.reporters import BasicReporter
 # ##-- end 1st party imports
+
+import sys
 
 # ##-- types
 # isort: off
@@ -406,7 +408,7 @@ class DootOverlord(metaclass=MLSingleton):
         self.log_config                       = JGDVLogConfig(subprinters=subprinters)
         self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
         # TODO fix this:
-        self._reporter                        = NullReporter() # type: ignore
+        self._reporter                        = BasicReporter() # type: ignore
         self.configs_loaded_from              = []
         self.global_task_state                = {}
         self.path_ext                         = []

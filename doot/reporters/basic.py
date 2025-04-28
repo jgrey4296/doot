@@ -6,6 +6,7 @@ _WorkflowReporter_m implements WorkflowReporter_p methods,
 while _GenReporter_m implements GeneralReporter_p methods.
 
 
+
 """
 # ruff: noqa:
 
@@ -72,7 +73,7 @@ logging.setLevel(logmod.WARN)
 # Vars:
 LINE_LEN   : Final[int] = 46
 LINE_CHAR  : Final[str] = "-"
-INIT_LEVEL : Final[int] = logmod.INFO + 1
+INIT_LEVEL : Final[int] = logmod.WARN
 # Body:
 
 class _WorkflowReporter_m:
@@ -80,40 +81,40 @@ class _WorkflowReporter_m:
     _out : Callable
 
     def root(self) -> Self:
-        self._out("root")
+        self._out("root", level=5)
         return self
 
     def wait(self) -> Self:
         self._out("wait")
         return self
 
-    def act(self, info:str, msg:str) -> Self:
-        self._out("act", info=info, msg=msg)
+    def act(self, info:str, msg:str, level:int=0) -> Self:
+        self._out("act", info=info, msg=msg, level=level)
         return self
 
     def fail(self, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Self:
-        self._out("fail", info=info, msg=msg)
+        self._out("fail", info=info, msg=msg, level=40)
         return self
 
     def branch(self, name:str, info:Maybe[str]=None) -> Self:
-        self._out("branch")
-        self._out("begin", info=info or "Start", msg=name)
+        self._out("branch", level=5)
+        self._out("begin", info=info or "Start", msg=name, level=5)
         return self
 
     def pause (self, reason:str) -> Self:
-        self._out("pause", msg=reason)
+        self._out("pause", msg=reason, level=5)
         return self
 
     def result(self, state:list[str], info:Maybe[str]=None) -> Self:
-        self._out("result" , msg=",".join(str(x) for x in state), info=info)
+        self._out("result" , msg=",".join(str(x) for x in state), info=info, level=5)
         return self
 
     def resume(self, name:str) -> Self:
-        self._out("resume", msg=name)
+        self._out("resume", msg=name, level=5)
         return self
 
     def finished(self) -> Self:
-        self._out("finished")
+        self._out("finished", level=5)
         return self
 
     def queue(self, num:int) -> Self:
@@ -209,13 +210,13 @@ class _GenReporter_m:
 
 @Proto(API.WorkflowReporter_p, API.GeneralReporter_p)
 @Mixin(_GenReporter_m, _WorkflowReporter_m)
-class NullReporter(API.Reporter_d):
+class BasicReporter(API.Reporter_d):
     """ The initial reporter for prior to configuration """
 
-    def __init__(self, *args:Any, logger:Maybe[Logger]=None, **kwargs:Any) -> None:
+    def __init__(self, *args:Any, logger:Maybe[Logger]=None, segments:Maybe[dict]=None, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
         self._logger            = logger
-        self._fmt               = TraceFormatter(segments=API.TRACE_LINES_ASCII)
+        self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
         self._stack             = []
         self._entry_count       = 0
         self.ctx                = []
@@ -241,11 +242,12 @@ class NullReporter(API.Reporter_d):
                 return x
 
     @log.setter
-    def log(self, logger:Logger) -> None:
+    def log(self, logger:Maybe[Logger]) -> None:
         match logger:
+            case None:
+                self._logger = logging
             case logmod.Logger():
                 self._logger = logger
-                self._logger.setLevel(self._curr.log_level)
             case x:
                 raise TypeError(type(x))
 
@@ -253,8 +255,8 @@ class NullReporter(API.Reporter_d):
         return f"<{self.__class__.__name__} : {self.log.name} : {self.log.level} >"
 
     def active_level(self, level:int) -> None:
+        """ Set the base level the reporter will log at. """
         self._curr.log_level = level
-        self.log.setLevel(level)
 
     def set_state(self, state:str, **kwargs:Any) -> Self:
         new_top         = deepcopy(self._stack[-1])
@@ -290,10 +292,10 @@ class NullReporter(API.Reporter_d):
             case _:
                 return False
 
-    def _out(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> None:
+    def _out(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, level :int=0) -> None:
         """ The reporter delegates all actual logging to this method
 
         """
-        assert(isinstance(self._logger, logmod.Logger))
+        assert(isinstance(self._logger, logmod.Logger)), self._logger
         result = self._fmt(key, info=info, msg=msg, ctx=self.ctx)
-        self._logger.log(self._curr.log_level, result)
+        self._logger.log(self._curr.log_level+level, result)
