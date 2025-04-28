@@ -19,7 +19,7 @@ import pytest
 # ##-- end 3rd party imports
 
 ##--|
-from .. import NullReporter
+from .. import BasicReporter
 from .. import _interface as API
 ##--|
 
@@ -58,14 +58,14 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class TestNullReporter:
+class TestBasicReporter:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
 
     def test_basic(self):
-        match NullReporter():
+        match BasicReporter():
             case API.WorkflowReporter_p() as x:
                 assert(isinstance(x, API.GeneralReporter_p))
                 assert(True)
@@ -76,7 +76,7 @@ class TestNullReporter:
     def test_message(self, caplog):
         logger = logmod.getLogger("simple")
         with caplog.at_level(logmod.DEBUG):
-            rep = NullReporter(logger=logger)
+            rep = BasicReporter(logger=logger)
             rep.active_level(logmod.DEBUG)
             rep._out("wait", info="blah", msg="bloo")
 
