@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 """
+The network of task relations.
+
+Uses an nx.Digraph internally.
+Is build 'backwards', as this preserves the meaning
+of graph.pred[x]  = [y] as y.depends_on[x]
+and graph.succ[x] = [y] as y.required_for[x]
+
 
 """
 # Imports:

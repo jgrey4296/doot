@@ -261,14 +261,15 @@ class _Instantiation_m:
         logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         pass
         assert(control in self.specs)
-        assert(rel.target in self.specs)
-        control_spec              = self.specs[control]
-        target_spec               = self.specs[rel.target]
-        successful_matches        = []
-        match self.concrete.get(rel.target, None):
-            case [] | None if rel.target not in self.specs:
-                raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
-            case [] | None:
+        if rel.target not in self.specs:
+            raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
+        control_spec       : TaskSpec       = self.specs[control]
+        target_spec        : TaskSpec       = self.specs[rel.target]
+        successful_matches : list[TaskName] = []
+        instance           : TaskName
+
+        match self.concrete.get(rel.target, []):
+            case []:
                 pass
             case [*xs] if not bool(rel.constraints) and not bool(rel.inject):
                 successful_matches = [x for x in xs if x != control]
@@ -277,26 +278,35 @@ class _Instantiation_m:
                 potentials : list[TaskSpec] = [self.specs[x] for x in xs]
                 successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
 
+        match rel.inject:
+            case None:
+                extra = {}
+            case InjectSpec() as inj:
+                extra = {} | inj.apply_from_spec(control_spec)
+
         match successful_matches:
             case []: # No matches, instantiate, with injected values
-                instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
-                if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-                    raise doot.errors.TrackingError("Failed to build task matching constraints", control_spec, rel)
+                instance = self._instantiate_spec(rel.target, extra=extra)
                 logging.debug("Using New Instance: %s", instance)
-                return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_uniq())
-                instance : TaskName = x
+                instance = x
                 logging.debug("Reusing Instance: %s", instance)
                 return instance
             case [*_, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_uniq())
-                instance : TaskName = x
+                instance = x
                 logging.debug("Reusing latest Instance: %s", instance)
-                return instance
+
+
+
+        if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
+            raise doot.errors.TrackingError("Failed to build task matching constraints", control_spec, rel)
+
+        return instance
 
     def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object

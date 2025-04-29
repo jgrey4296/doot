@@ -90,13 +90,14 @@ class TestSplitTracker:
         spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
+        assert(t_name.is_uniq())
         assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
             case Task_p():
                 assert(True)
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_simple_dependendency(self):
