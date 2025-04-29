@@ -141,11 +141,11 @@ class TrackQueue:
 
         match self._queue.pop():
             case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
-                logging.user("Task halted due to reaching minimum priority while tracking: %s", focus)
+                logging.warning("Task halted due to reaching minimum priority while tracking: %s", focus)
                 self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self._registry.tasks[focus].priority -= 1
-                logging.detail("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
+                logging.debug("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
             case TaskArtifact() as focus:
                 focus.priority -= 1
 
@@ -236,7 +236,7 @@ class TrackQueue:
                 self._registry.set_status(final_name, status)
             case None:
                 status = self._registry.get_status(final_name)
-        logging.trace("Queued Entry at priority: %s, status: %s: %s", target_priority, status, final_name)
+        logging.info("Queued Entry at priority: %s, status: %s: %s", target_priority, status, final_name)
         return final_name
 
     def clear_queue(self) -> None:

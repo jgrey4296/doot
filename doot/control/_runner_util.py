@@ -84,7 +84,7 @@ class _RunnerCtx_m:
         self._signal_failure = None
 
     def __enter__(self) -> Self:
-        logging.trace("Entering Runner Control")
+        logging.info("Entering Runner Control")
         doot.report.trace("Building Task Network...")
         doot.report.gap()
         self.tracker.build_network()
@@ -102,7 +102,7 @@ class _RunnerCtx_m:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> Literal[False]:  # noqa: ANN001
-        logging.trace("Exiting Runner Control")
+        logging.info("Exiting Runner Control")
         # TODO handle exc_types?
         self._finish()
         return False
@@ -111,7 +111,7 @@ class _RunnerCtx_m:
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
-        logging.trace("Running Completed")
+        logging.info("Running Completed")
         if self.step >= max_steps:
             doot.report.warn("Runner Hit the Step Limit: %s", max_steps)
 

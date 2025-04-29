@@ -99,7 +99,7 @@ class CheckLocsTask(DootTask):
                 path = doot.locs.Current[loc]
                 match path.exists():
                     case True:
-                        logging.detail("Location Exists : %s", path)
+                        logging.debug("Location Exists : %s", path)
                     case False if make_missing:
                         doot.report.act(info="Check", msg=f"Making Missing Location: {path}")
                         path.mkdir(parents=True)

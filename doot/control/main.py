@@ -161,7 +161,7 @@ class Loading_m:
                 raise TypeError(type(x))
 
         doot.report.log = doot.subprinter()
-        logging.trace("Logging Setup")
+        logging.info("Logging Setup")
 
 
     def _load_commands(self) -> None:

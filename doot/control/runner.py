@@ -177,8 +177,8 @@ class _ActionExecution_m:
             case None:
                 doot.report.act(f"Action: {self.step}.{count}", action.do)
 
-        logging.detail("Action Executing for Task: %s", task.shortname)
-        logging.detail("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
+        logging.debug("Action Executing for Task: %s", task.shortname)
+        logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
         result = action(task.state)
         match result:
             case None | True:

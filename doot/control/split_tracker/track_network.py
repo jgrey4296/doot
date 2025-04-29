@@ -88,7 +88,7 @@ class _Expansion_m:
 
         # TODO _graph could be built in total, or on demand
         """
-        logging.trace("-> Building Task Network")
+        logging.info("-> Building Task Network")
         match sources:
             case None:
                 queue = list(self.pred[self._root_node].keys())
@@ -99,27 +99,27 @@ class _Expansion_m:
         processed = { self._root_node }
         logging.info("Initial Network Queue: %s", queue)
         while bool(queue): # expand tasks
-            logging.detail("- Processing: %s", queue[-1])
+            logging.debug("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
                 case x if x in processed or self.nodes[x].get(API.EXPANDED, False):
-                    logging.detail("- Processed already")
+                    logging.debug("- Processed already")
                     processed.add(x)
                 case TaskName() as x if x in self.nodes:
                     additions = self._expand_task_node(x)
-                    logging.detail("- Task Expansion produced: %s", additions)
+                    logging.debug("- Task Expansion produced: %s", additions)
                     queue    += additions
                     processed.add(x)
                 case TaskArtifact() as x if x in self.nodes:
                     additions = self._expand_artifact(x)
-                    logging.detail("- Artifact Expansion produced: %s", additions)
+                    logging.debug("- Artifact Expansion produced: %s", additions)
                     queue += additions
                     processed.add(x)
                 case _:
                     raise doot.errors.TrackingError("Unknown value in _graph")
 
         else:
-            logging.detail("- Final Network Nodes: %s", self.nodes)
-            logging.trace("<- Final Network Edges: %s", self.edges)
+            logging.debug("- Final Network Nodes: %s", self.nodes)
+            logging.info("<- Final Network Edges: %s", self.edges)
             self.is_valid = True
             pass
 
@@ -159,7 +159,7 @@ class _Expansion_m:
             # nothing to do
             return
 
-        logging.detail("Connecting: %s -> %s", left, right)
+        logging.debug("Connecting: %s -> %s", left, right)
         # Add the edge, with metadata
         match left, right:
             case TaskName(), TaskName():
@@ -188,14 +188,14 @@ class _Expansion_m:
                 return
             case TaskArtifact():
                 # Add node with metadata
-                logging.trace("Inserting Artifact into graph: %s", name)
+                logging.info("Inserting Artifact into graph: %s", name)
                 self._graph.add_node(name)
                 self.nodes[name][API.EXPANDED]     = False
                 self.nodes[name][API.REACTIVE_ADD] = False
                 self.is_valid = False
             case TaskName():
                 # Add node with metadata
-                logging.trace("Inserting Task into graph: %s", name)
+                logging.info("Inserting Task into graph: %s", name)
                 self._graph.add_node(name)
                 self.nodes[name][API.EXPANDED]     = False
                 self.nodes[name][API.REACTIVE_ADD] = False
@@ -212,7 +212,7 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
         to_expand                                             = set()
 
-        logging.trace("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.info("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         # Connect Relations
         for rel in itz.chain(spec.action_group_elements()):
@@ -240,7 +240,7 @@ class _Expansion_m:
 
         to_expand.update(self._generate_node_subtasks(spec))
         to_expand.update(self._generate_successor_edges(spec))
-        logging.detail("<-- Task Expansion Complete: %s", name)
+        logging.debug("<-- Task Expansion Complete: %s", name)
         return to_expand
 
     def _generate_successor_edges(self, spec:Concrete[TaskSpec]) -> set[Concrete[TaskName]|TaskArtifact]:
@@ -269,7 +269,7 @@ class _Expansion_m:
         """
 
         if TaskSpec.mark_e.JOB in spec.meta:
-            logging.trace("Generating Job Head for: %s", spec.name)
+            logging.info("Generating Job Head for: %s", spec.name)
             head_name     = spec.name.de_uniq().with_head()
             head_instance = self._registry._instantiate_spec(head_name, extra=spec.model_extra)
             self.connect(spec.name, head_instance, job_head=True)
@@ -291,10 +291,10 @@ class _Expansion_m:
         assert(artifact in self._registry.artifacts)
         assert(artifact in self.nodes)
         assert(not self.nodes[artifact].get(API.EXPANDED, False))
-        logging.trace("--> Expanding Artifact: %s", artifact)
+        logging.info("--> Expanding Artifact: %s", artifact)
         to_expand = set()
 
-        logging.detail("-- Instantiating Artifact relevant tasks")
+        logging.debug("-- Instantiating Artifact relevant tasks")
         for name in list(self._registry.artifacts[artifact]):
             instance = self._registry._instantiate_spec(name)
             # Don't connect it to the _graph, it'll be expanded later
@@ -303,7 +303,7 @@ class _Expansion_m:
 
         match artifact.is_concrete():
             case True:
-                logging.detail("-- Connecting concrete artifact to parent abstracts")
+                logging.debug("-- Connecting concrete artifact to parent abstracts")
                 art_path = DKey(artifact[1:], mark=DKey.Mark.PATH)(relative=True)
                 for abstract in self._registry._abstract_artifacts:
                     if art_path not in abstract and artifact not in abstract:
@@ -311,7 +311,7 @@ class _Expansion_m:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
-                logging.detail("-- Connecting abstract task to child concrete _registry.artifacts")
+                logging.debug("-- Connecting abstract task to child concrete _registry.artifacts")
                 for conc in self._registry._concrete_artifacts:
                     assert(conc.is_concrete())
                     conc_path = DKey(conc[1:], mark=DKey.Mark.PATH)(relative=True)
@@ -320,7 +320,7 @@ class _Expansion_m:
                     self.connect(conc, artifact)
                     to_expand.add(conc)
 
-        logging.trace("<-- Artifact Expansion Complete: %s", artifact)
+        logging.info("<-- Artifact Expansion Complete: %s", artifact)
         self.nodes[artifact][API.EXPANDED] = True
         return to_expand
 
@@ -330,7 +330,7 @@ class _Validation_m:
         """ Finalise and ensure consistence of the task _graph.
         run tests to check the dependency graph is acceptable
         """
-        logging.trace("Validating Task Network")
+        logging.info("Validating Task Network")
         if not nx.is_directed_acyclic_graph(self._graph):
             raise doot.errors.TrackingError("Network isn't a DAG")
 
@@ -342,12 +342,12 @@ class _Validation_m:
                     if strict:
                         raise doot.errors.TrackingError("Network isn't fully expanded", node)
                     else:
-                        logging.user("Network isn't fully expanded: %s", node)
+                        logging.warning("Network isn't fully expanded: %s", node)
                 case TaskName() if not node.is_uniq():
                     if strict:
                         raise doot.errors.TrackingError("Abstract ConcreteId in _graph", node)
                     else:
-                        logging.user("Abstract ConcreteId in graph: %s", node)
+                        logging.warning("Abstract ConcreteId in graph: %s", node)
                 case TaskArtifact() if TaskArtifact.bmark_e.glob in node:
                     # If a node is abtract, it needs to be attacked to something
                     no_ctor = not bool(self.network.pred[node])
@@ -355,7 +355,7 @@ class _Validation_m:
                     if strict and no_ctor:
                         raise doot.errors.TrackingError(msg, node)
                     elif no_ctor:
-                        logging.user(msg, node)
+                        logging.warning(msg, node)
 
     def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
         """ get the concrete edges of a task.

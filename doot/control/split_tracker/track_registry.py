@@ -90,11 +90,11 @@ class _Registration_m:
             if spec.name in self.specs:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.trace("Ignoring Registration of disabled task: %s", spec.name.readable)
+                logging.info("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
             self.specs[spec.name] = spec
-            logging.trace("Registered Spec: %s", spec.name)
+            logging.info("Registered Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
             if TaskMeta_e.JOB in spec.meta:
@@ -106,7 +106,7 @@ class _Registration_m:
             self._register_blocking_relations(spec)
 
     def _register_artifact(self, art:TaskArtifact, *tasks:TaskName) -> None:
-        logging.trace("Registering Artifact: %s, %s", art, tasks)
+        logging.info("Registering Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
         # Add it to the relevant abstract/concrete set
         if art.is_concrete():
@@ -135,7 +135,7 @@ class _Registration_m:
         for rel in spec.action_group_elements():
             match rel:
                 case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.is_uniq():
-                    logging.trace("Registering Requirement: %s : %s", target, rel.invert(spec.name))
+                    logging.info("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
                 case _: # Ignore action specs and non
@@ -187,26 +187,26 @@ class _Instantiation_m:
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[TaskName]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name not in self.specs:
-            logging.detail("Not reusing instantiation because name doesn't have a matching spec: %s", name)
+            logging.debug("Not reusing instantiation because name doesn't have a matching spec: %s", name)
             return None
         if extra or add_cli:
-            logging.detail("Not reusing instantiation because extra or cli args were requested: %s", name)
+            logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
         if name.is_uniq():
             return name
 
         if not bool(self.concrete[name]):
-            logging.detail("Not reusing instantiation because there is no instantiation to reuse: %s", name)
+            logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
             return None
 
         abstract = self.specs[name]
         match [x for x in self.concrete[name] if abstract != (concrete:=self.specs[x]) and self.match_with_constraints(concrete, abstract)]:
             case []:
-                logging.detail("Not reusing instantiation because existing specs dont match with constraints: %s", name)
+                logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
             case [x, *xs]:
-                logging.detail("Reusing Concrete Spec: %s for %s", x, name)
+                logging.debug("Reusing Concrete Spec: %s for %s", x, name)
                 # Can use an existing concrete spec
                 return x
 
@@ -218,7 +218,7 @@ class _Instantiation_m:
             case None:
                 pass
             case TaskName() as existing:
-                logging.detail("Reusing instantiation: %s for %s", existing, name)
+                logging.debug("Reusing instantiation: %s for %s", existing, name)
                 return existing
 
         spec = self.specs[name]
@@ -234,7 +234,7 @@ class _Instantiation_m:
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        logging.detail("Instantiating: %s into %s", name, instance_spec.name)
+        logging.debug("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -258,21 +258,13 @@ class _Instantiation_m:
           if theres no constraints, will just instantiate.
 
           """
-        logging.trace("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        pass
         assert(control in self.specs)
         assert(rel.target in self.specs)
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
-        try:
-            match InjectSpec.build(rel.inject, sources=[control_spec]):
-                case None:
-                    extra = {}
-                case x:
-                    extra = x.as_dict(constraint=target_spec)
-        except doot.errors.InjectionError as err:
-            raise doot.errors.TrackingError(*err.args, control, rel) from None
-
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
@@ -290,20 +282,20 @@ class _Instantiation_m:
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints", control_spec, rel)
-                logging.detail("Using New Instance: %s", instance)
+                logging.debug("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.detail("Reusing Instance: %s", instance)
+                logging.debug("Reusing Instance: %s", instance)
                 return instance
-            case [*xs, x]: # TODO check this.
+            case [*_, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.detail("Reusing latest Instance: %s", instance)
+                logging.debug("Reusing latest Instance: %s", instance)
                 return instance
 
     def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None) -> Concrete[TaskName]:
@@ -319,7 +311,7 @@ class _Instantiation_m:
         if name in self.tasks:
             return name
 
-        logging.detail("Constructing Task Object: %s", name)
+        logging.debug("Constructing Task Object: %s", name)
         match task_obj:
             case None:
                 spec = self.specs[name]
@@ -334,7 +326,6 @@ class _Instantiation_m:
         return name
 
 ##--|
-
 @Mixin(_Registration_m, _Instantiation_m, TaskMatcher_m)
 class TrackRegistry:
     """ Stores and manipulates specs, tasks, and artifacts """
@@ -378,7 +369,7 @@ class TrackRegistry:
           Returns True on status update,
           False on no task or artifact to update.
         """
-        logging.trace("Updating State: %s -> %s", task, status)
+        logging.info("Updating State: %s -> %s", task, status)
         match task, status:
             case Task_p(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
@@ -387,7 +378,7 @@ class TrackRegistry:
             case TaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status
             case TaskName(), TaskStatus_e():
-                logging.detail("Not Setting Status of %s, its hasn't been started", task)
+                logging.debug("Not Setting Status of %s, its hasn't been started", task)
                 return False
             case _, _:
                 raise doot.errors.TrackingError("Bad task update status args", task, status)
