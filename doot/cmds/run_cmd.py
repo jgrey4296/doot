@@ -79,10 +79,9 @@ class RunCmd(BaseCommand):
                                           "tracker(str), runner(str)",
                                           ])
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs(),
             self.build_param(name="--interrupt", default=False, type=bool, desc="Activate interrupt handler"),
             self.build_param(name="--step",      default=False, type=bool, desc="Interrupt between workflow step"),
             self.build_param(name="--dry-run",   default=False, type=bool, desc="Don't perform actions"),

@@ -93,10 +93,9 @@ class GraphCmd(BaseCommand):
     _name      = "graph"
     _help : ClassVar[tuple[str]] = tuple(["Create a graph representation of the task network"])
 
-    @property
     def param_specs(self) -> list[ParamSpec]:
         return [
-            *super().param_specs,
+            *super().param_specs(),
             self.build_param(name="--dot",       _short="D", default=False, desc="Output a DOT compatible graph of tasks"),
             self.build_param(name="--internal",  _short="i", type=bool,     default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
             self.build_param(name="--as-dot",    type=bool,  default=True,  desc="use dot for visualisation"),

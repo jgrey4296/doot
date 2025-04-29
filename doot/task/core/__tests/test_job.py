@@ -32,9 +32,9 @@ class TestBaseJob:
             case x:
                  assert(False), x
 
-    def test_paramspecs(self):
+    def test_param_specs(self):
         job = DootJob(TaskSpec.build({"name": "basic::example"}))
-        param_specs = job.param_specs
+        param_specs = job.param_specs()
         assert(isinstance(param_specs, list))
         assert(len(param_specs) == 3)
 

@@ -88,10 +88,9 @@ hide_re      : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)
 class _DagLister_m:
     build_param : Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="--dag",
                              _short="D",
                              type=bool,
@@ -105,10 +104,9 @@ class _TaskLister_m:
     """
     build_param :  Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="-tasks",
                              type=bool,
                              default=True,
@@ -236,10 +234,9 @@ class _TaskLister_m:
 class _LocationLister_m:
     build_param : Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="--locs",
                              type=bool,
                              default=False,
@@ -260,10 +257,9 @@ class _LocationLister_m:
 class _LoggerLister_m:
     build_param : Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="--loggers",
                              type=bool,
                              default=False,
@@ -301,10 +297,9 @@ class _LoggerLister_m:
 class _FlagLister_m:
     build_param : Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="--flags",
                              type=bool,
                              default=False,
@@ -323,10 +318,9 @@ class _FlagLister_m:
 class _ActionLister_m:
     build_param : Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="--actions",
                              type=bool,
                              default=False,
@@ -349,10 +343,9 @@ class _ActionLister_m:
 class _PluginLister_m:
     build_param : Callable
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs, # type: ignore
+            *super().param_specs(), # type: ignore
             self.build_param(name="--plugins",
                              type=bool,
                              default=False,
@@ -396,10 +389,9 @@ class ListCmd(BaseCommand):
         "Set settings.commands.list.hide with a list of regexs to ignore",
     ])
 
-    @property
     def param_specs(self) -> list[ParamSpec]:
         params = [
-            *super().param_specs,
+            *super().param_specs(),
             self.build_param(name="<0>pattern", type=str,  default="", desc="Filter the listing to only values passing this regex"),
         ]
         return params

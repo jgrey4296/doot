@@ -103,7 +103,6 @@ class BaseCommand(Command_d):
             case _:
                 return f" {self.name: <10} :"
 
-    @property
     def param_specs(self) -> list[ParamStruct_p]:
         """
         Provide parameter specs for parsing into doot.args.cmd

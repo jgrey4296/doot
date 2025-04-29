@@ -405,7 +405,6 @@ class _SpecUtils_m:
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
 
-    @property
     def param_specs(self) -> list:
         result = []
         for x in self.extra.on_fail([]).cli():
@@ -441,9 +440,9 @@ class _SpecUtils_m:
         tasks = doot.args.on_fail({})
         for key,val in doot.args.on_fail({}).sub[source]().items():
             spec_extra[key] = val
-
-        cli_spec = self.specialize_from(spec_extra)
-        return cli_spec
+        else:
+            cli_spec = self.specialize_from(spec_extra)
+            return cli_spec
 
 ##--|
 

@@ -74,14 +74,13 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TASK_ALISES                    = doot.aliases.task
-PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS
-STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
+TASK_ALISES                    = doot.aliases.task # type: ignore
+PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS # type: ignore
+STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K # type: ignore
 
 class _TaskProperties_m:
 
     @classmethod
-    @property
     def param_specs(cls) -> list[ParamSpec]:
         """  make class parameter specs  """
         return [

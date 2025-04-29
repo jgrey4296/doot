@@ -136,9 +136,9 @@ class DootJob(DootTask):
         help_lines.append("")
         help_lines += cls._help
 
-        params = cls.param_specs
+        params = cls.param_specs()
         if bool(params):
             help_lines += ["", "Params:"]
-            help_lines += [y for x in cls.param_specs if (y:=str(x))]
+            help_lines += [y for x in cls.param_specs() if (y:=str(x))]
 
         return help_lines

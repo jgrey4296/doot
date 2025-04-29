@@ -181,8 +181,8 @@ class _HelpTask_m:
             sub_indent = (1 + len(ITEM_INDENT)) * " "
             for action in spec.actions:
                 result.append("%s %-30s:" % (ITEM_INDENT, action.do))
-                result.append("%sArgs=%-20s" % (sub_indent, action.args))
-                result.append("%sKwargs=%s" % (sub_indent, dict(action.kwargs)))
+                # result.append("%sArgs=%-20s" % (sub_indent, action.args))
+                # result.append("%sKwargs=%s" % (sub_indent, dict(action.kwargs)))
 
 
         result += self._task_param_assignments(spec)
@@ -232,11 +232,11 @@ class HelpCmd(BaseCommand):
                   "Can also be triggered by passing --help to any command or task"
                   ]
 
-    @property
     def param_specs(self) -> list:
-        return [*super().param_specs,
-                self.build_param(name="<1>target", type=str, default="", desc="The target to get help about. A command or task.")
-                ]
+        return [
+            *super().param_specs(),
+            self.build_param(name="<1>target", type=str, default="", desc="The target to get help about. A command or task.")
+        ]
 
     def __call__(self, tasks, plugins):
         """List task generators"""

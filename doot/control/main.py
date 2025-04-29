@@ -215,7 +215,7 @@ class CLIArgParsing_m:
 
         try:
             cli_args = self.parser(unaliased_args,
-                                   head_specs=self.param_specs,
+                                   head_specs=self.param_specs(),
                                    cmds=cmd_vals,
                                    # Associate tasks with the run cmd
                                    subcmds=subcmds)
@@ -271,10 +271,10 @@ class CLIArgParsing_m:
         help_lines = ["", f"Doot v{doot.__version__}", ""]
         help_lines += self._help_txt
 
-        params = self.param_specs
+        params = self.param_specs()
         if bool(params):
             help_lines += ["", "Params:"]
-            help_lines += (x.help_str() for x in self.param_specs)
+            help_lines += (x.help_str() for x in self.param_specs())
 
         help_lines.append("")
         help_lines.append("Commands: ")
@@ -534,7 +534,6 @@ class DootMain:
         self._cmd_aliases      = ChainGuard()
         self.implicit_task_cmd = None
 
-    @property
     def param_specs(self) -> list[ParamSpec]:
         """ The cli parameters of the main doot program. """
         return [

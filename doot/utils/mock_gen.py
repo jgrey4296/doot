@@ -140,7 +140,6 @@ def mock_task_ctor(name="APretendClass", module="pretend", params=None, mocker=N
             return m
 
         @classmethod
-        @property
         def param_specs(cls):
             return params or []
 

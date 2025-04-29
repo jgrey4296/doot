@@ -73,10 +73,9 @@ class CleanCmd(BaseCommand):
         "Directories will *not* be deleted unless -r[ecursive] is passed",
     ]
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs(),
             self.build_param(name="target", type=str, default=None),
             self.build_param(name="recursive", type=bool, default=False),
         ]

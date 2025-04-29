@@ -83,11 +83,11 @@ NL = None
 
 class _StubDoot_m:
 
-    @property
     def param_specs(self) -> list:
-        return [*super().param_specs,
-                self.build_param(name="--config", type=bool, default=False, desc="Stub a doot.toml"),
-                ]
+        return [
+            *super().param_specs(),
+            self.build_param(name="--config", type=bool, default=False, desc="Stub a doot.toml"),
+        ]
 
     def _stub_doot_toml(self) -> list[str]:
         logging.info("---- Stubbing Doot Toml")
@@ -107,11 +107,11 @@ class _StubDoot_m:
 
 class _StubParam_m:
 
-    @property
     def param_specs(self) -> list:
-        return [*super().param_specs,
-                self.build_param(name="--param", type=bool, default=False, desc="Generate a stub cli arg dict"),
-                ]
+        return [
+            *super().param_specs(),
+            self.build_param(name="--param", type=bool, default=False, desc="Generate a stub cli arg dict"),
+        ]
 
     def _stub_cli_param(self) -> list[str]:
         logging.info("---- Printing CLI Arg info")
@@ -129,11 +129,11 @@ class _StubParam_m:
 
 class _StubAction_m:
 
-    @property
     def param_specs(self) -> list:
-        return [*super().param_specs,
-                self.build_param(name="--action", type=bool, default=False, desc="Help Stub Actions"),
-                ]
+        return [
+            *super().param_specs(),
+            self.build_param(name="--action", type=bool, default=False, desc="Help Stub Actions"),
+        ]
 
     def _stub_action(self, plugins) -> list[str]:
         logging.info("---- Stubbing Actions")
@@ -177,15 +177,15 @@ class _StubAction_m:
 
 class _StubTask_m:
 
-    @property
     def param_specs(self) -> list:
-        return [*super().param_specs,
-                self.build_param(name="--task", type=bool, desc="Stub a Task Specification"),
-                self.build_param(name="-out",   type=str, default="", desc="If set, append the stub to this file"),
+        return [
+            *super().param_specs(),
+            self.build_param(name="--task", type=bool, desc="Stub a Task Specification"),
+            self.build_param(name="-out",   type=str, default="", desc="If set, append the stub to this file"),
 
-                self.build_param(name="<1>name", type=str, default=None,    desc="The Name of the new task"),
-                self.build_param(name="<2>ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
-                ]
+            self.build_param(name="<1>name", type=str, default=None,    desc="The Name of the new task"),
+            self.build_param(name="<2>ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
+        ]
 
     def _stub_task_toml(self, tasks, plugins) -> list[str]:
         """
@@ -262,11 +262,11 @@ class _StubTask_m:
 
 class _StubPrinter_m:
 
-    @property
     def param_specs(self) -> list:
-        return [*super().param_specs,
-                self.build_param(name="--doot.report", type=bool, default=False, desc="Generate a stub doot.report config"),
-                ]
+        return [
+            *super().param_specs(),
+            self.build_param(name="--doot.report", type=bool, default=False, desc="Generate a stub doot.report config"),
+        ]
 
     def _stub_printer(self) -> list[str]:
         logging.info("---- Printing Printer Spec Info")
@@ -290,13 +290,12 @@ class StubCmd(BaseCommand):
                   "args allow stubbing a config file, cli parameter, or action",
                   ]
 
-    @property
     def param_specs(self) -> list:
         return [
-            *super().param_specs,
+            *super().param_specs(),
             self.build_param(name="--strang", type=bool, default=False, desc="Generate a stub strang/location expansion"),
             self.build_param(name="--suppress-header",  default=True, implicit=True),
-            ]
+        ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         match dict(doot.args.cmd.args):

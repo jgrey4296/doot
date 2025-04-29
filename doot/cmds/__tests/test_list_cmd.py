@@ -154,7 +154,7 @@ class TestListCmd:
 
     def test_param_specs(self):
         obj    = ListCmd()
-        result = obj.param_specs
+        result = obj.param_specs()
         expect = ["tasks", "group-by", "dependencies", "internal",
                   "locs", "loggers", "flags", "actions", "plugins" ]
         assert(isinstance(result, list))
