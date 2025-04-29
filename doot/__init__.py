@@ -10,7 +10,7 @@ from __future__ import annotations
 import sys
 import logging as logmod
 from ._interface import __version__
-from .control.overlord import DootOverlord
+from .control.overlord import OverlordFacade
 
 import __main__
 
@@ -21,7 +21,7 @@ logging = logmod.getLogger(__name__)
 match getattr(__main__, "doot_setup", False):
     # Initialises the overlord as the 'doot' module
     case False:
-        sys.modules[__name__].__class__ = DootOverlord
+        sys.modules[__name__].__class__ = OverlordFacade
         sys.modules[__name__].__init__(__name__)
         setattr(__main__, "doot_setup", True)
     case True:

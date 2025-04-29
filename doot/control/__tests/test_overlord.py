@@ -75,14 +75,14 @@ class TestOverlordStartup:
         assert(True is not False) # noqa: PLR0133
 
     def test_constants(self):
-        match DootOverlord(force_new=True):
+        match DootOverlord():
             case DootOverlord() as do:
                 assert(bool(do.constants))
             case x:
                 assert(False), x
 
     def test_aliases(self):
-        match DootOverlord(force_new=True):
+        match DootOverlord():
             case DootOverlord() as do:
                 assert(bool(do.aliases))
                 assert(not bool(do.cmd_aliases))
@@ -90,7 +90,7 @@ class TestOverlordStartup:
                 assert(False), x
 
     def test_null_setup_config(self):
-        match DootOverlord(force_new=True):
+        match DootOverlord():
             case DootOverlord() as do:
                 assert(not bool(do.config))
             case x:
@@ -98,7 +98,7 @@ class TestOverlordStartup:
 
     @pytest.mark.filterwarnings("ignore")
     def test_load_config_default(self, mocker):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         default_config = API.template_path / do.constants.paths.TOML_TEMPLATE
         do.setup(targets=[default_config])
         assert(bool(do.config))
@@ -107,15 +107,17 @@ class TestOverlordStartup:
 
     @pytest.mark.filterwarnings("ignore")
     def test_loc_init(self, mocker):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.locs))
         do.setup()
         assert(bool(do.locs))
+
 
 class TestOverlordLogging:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
 
 class TestOverlordVersionCheck:
     """
@@ -150,23 +152,24 @@ class TestOverlordVersionCheck:
         with pytest.raises(doot.errors.VersionMismatchError):
             do.verify_config_version("0.1.1", "test")
 
+
 class TestOverlordWorkflowUtil:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
     def test_update_global_task_state_default(self):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.global_task_state))
 
     def test_update_global_task_state_empty_data(self):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.global_task_state))
         do.update_global_task_state(ChainGuard(), source="testing")
         assert(not bool(do.global_task_state))
 
     def test_update_global_task_with_data(self):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.global_task_state))
         data = ChainGuard({API.GLOBAL_STATE_KEY: {"testval": "blah"}})
         do.update_global_task_state(data, source="testing")
@@ -174,7 +177,7 @@ class TestOverlordWorkflowUtil:
         assert(do.global_task_state['testval'] == "blah")
 
     def test_update_global_task_state_multi(self):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.global_task_state))
         data1 = ChainGuard({API.GLOBAL_STATE_KEY: {"testval1": "blah"}})
         data2 = ChainGuard({API.GLOBAL_STATE_KEY: {"testval2": "bloo"}})
@@ -187,7 +190,7 @@ class TestOverlordWorkflowUtil:
         assert(do.global_task_state['testval2'] == "bloo")
 
     def test_update_global_task_state_conflict(self):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.global_task_state))
         data1 = ChainGuard({API.GLOBAL_STATE_KEY: {"testval1": "blah"}})
         data2 = ChainGuard({API.GLOBAL_STATE_KEY: {"testval1": "bloo"}})
@@ -196,22 +199,7 @@ class TestOverlordWorkflowUtil:
             do.update_global_task_state(data2, source="testing")
 
     def test_set_parsed_cli_args(self):
-        do = DootOverlord(force_new=True)
+        do = DootOverlord()
         assert(not bool(do.args))
         do.set_parsed_cli_args(ChainGuard({"blah": True}))
         assert(bool(do.args))
-
-class TestOverlordSingleton:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_is_singleton(self):
-        do1 = DootOverlord()
-        do2 = DootOverlord()
-        assert(do1 is do2)
-
-    def test_force_new(self):
-        do1 = DootOverlord()
-        do2 = DootOverlord(force_new=True)
-        assert(do1 is not do2)

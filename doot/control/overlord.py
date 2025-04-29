@@ -370,9 +370,24 @@ class WorkflowUtil_m:
                 raise DErr.VersionMismatchError("No Doot Version Found in config file: %s", source)
 ##--|
 
+class OverlordFacade(types.ModuleType):
+    """
+    A Facade for the overlord, to be used as the module class
+    of the root package 'doot'.
+
+    """
+    _overlord : Overlord_p
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._overlord = DootOverlord()
+
+    def __getattr__(self, key):
+        return getattr(self._overlord, key)
+
 @Proto(Overlord_p)
 @Mixin(Startup_m, Logging_m, WorkflowUtil_m)
-class DootOverlord(types.ModuleType):
+class DootOverlord:
     """
     The main control point of Doot
     The setup logic of doot.
