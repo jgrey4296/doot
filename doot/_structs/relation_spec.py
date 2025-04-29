@@ -86,7 +86,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
           baking requirementFor party.  r=requirementFor, t=party.
 
       May carry additional information:
-      - constraints : a list of keys that much match between the task specs of the two tasks
+      - constraints : dict|list of keys that must match between the task specs of the two tasks
       - inject      : a mapping of { obj.key : sub.key } that will be injected into the object
       - object      : the owning base object of the relationship
 
@@ -96,21 +96,21 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     mark_e        : ClassVar[enum] = RelationMeta_e
 
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta_e                                   = RelationMeta_e.needs
+    relation      : RelationMeta_e                 = RelationMeta_e.needs
     # constraints on spec field equality
-    object        : Maybe[TaskName|TaskArtifact]                     = None
-    constraints   : bool|list|dict[str, str]                         = False
-    inject        : Maybe[str|dict|InjectSpec]                       = None
-    _meta         : dict()                                           = {} # Misc metadata
+    object        : Maybe[TaskName|TaskArtifact]   = None
+    constraints   : dict[str, str]                 = {}
+    inject        : Maybe[InjectSpec]              = None
+    _meta         : dict()                         = {} # Misc metadata
 
     @classmethod
     def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
         relation = relation or cls.mark_e.needs
         result = None
         match data:
-            case RelationSpec():
+            case RelationSpec(): # Do Nothing
                 result = data
-            case pl.Path():
+            case pl.Path(): # Rely on a file
                 result = cls(target=TaskArtifact(data), relation=relation)
             case TaskName() | TaskArtifact():
                 result = cls(target=data, relation=relation)
@@ -126,9 +126,12 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case {"path":path} if "task" not in data:
                 return cls(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
-                constraints = data.get("constraints", None) or data.get("constraints_", False)
+                constraints = data.get("constraints", None) or data.get("constraints_", [])
                 inject      = data.get("inject", None)      or data.get("inject_", None)
-                result = cls(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
+                result      = cls(target=TaskName(taskname),
+                                  constraints=constraints,
+                                  inject=inject,
+                                  relation=relation)
             case _:
                 raise ValueError("Bad data used for relation spec", type(data), data)
 
@@ -147,10 +150,8 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise ValueError("Unparsable target str")
 
     @field_validator("constraints", mode="before")
-    def _validate_constraints(cls, val) -> bool|dict:
+    def _validate_constraints(cls, val) -> dict:
          match val:
-             case bool():
-                 return val
              case list():
                  return {x:x for x in val}
              case dict():

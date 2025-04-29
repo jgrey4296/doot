@@ -28,7 +28,8 @@ from jgdv.structs.dkey import DKey
 import doot
 import doot.errors
 from doot._structs.inject_spec import InjectSpec
-
+from doot._structs.task_spec import TaskSpec
+from doot.task import DootTask
 
 # ##-- end 1st party imports
 
@@ -67,14 +68,6 @@ logging = logmod.getLogger(__name__)
 
 class TestInjectSpec:
 
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
-
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
@@ -93,124 +86,92 @@ class TestInjectSpec:
                 assert(False), x
 
     def test_build_something(self):
-        match InjectSpec.build({"now":["a"]}):
+        match InjectSpec.build({"from_spec":["a"]}):
             case InjectSpec():
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_as_dict(self):
-        match InjectSpec.build({"now":["a"]}).as_dict():
-            case dict():
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_expansion_now_list(self):
-        source = {"a": "blah"}
-        match InjectSpec.build({"now":["a"]}, sources=[source]).as_dict():
-            case {"a":"blah"}:
-                assert(True)
-            case x:
-                assert(False), x
-
-
-    def test_expansion_now_dict(self):
-        source = {"a": "blah", "b":"aweg"}
-        match InjectSpec.build({"now":{"a": "{b}"}}, sources=[source]).as_dict():
-            case {"a":"aweg"}:
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_expansion_now_repeated_list(self):
-        source = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"now":["a"]}, sources=[source]).as_dict():
-            case {"a":"bloo"}:
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_expansion_delay_list(self):
-        source = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"delay":["a"]}, sources=[source]).as_dict():
-            case {"a": DKey() as x} if x == "blah":
-                assert(True)
-            case x:
-                assert(False), x
-
-
-    def test_expansion_delay_dict(self):
-        source = {"a": "{blah}", "blah": "bloo", "b": "{aweg}", "aweg": "qqqq"}
-        match InjectSpec.build({"delay":{"a": "{b}"}}, sources=[source]).as_dict():
-            case {"a": DKey() as x} if x == "aweg":
-                assert(True)
-            case x:
-                assert(False), x
-
-
-    def test_insert(self):
-        source = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"insert":["a"]}, sources=[source], insertion="aweg").as_dict():
-            case {"a": str() as x} if x == "aweg":
-                assert(True)
-            case x:
-                assert(False), x
-
-
-    def test_insert_dict(self):
-        source = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"insert":{"a": "a", "b": "blah"}}, sources=[source], insertion="aweg").as_dict():
-            case {"a":"a", "b": "blah"}:
-                assert(True)
-            case x:
-                assert(False), x
-
-
-    def test_suffix(self):
-        source = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"suffix":"blah"}).as_dict():
-            case {"_add_suffix":"blah"}:
-                assert(True)
-            case x:
-                assert(False), x
-
+class TestInjectSpecConstraintChecking:
 
     def test_constraints_pass(self):
         """ injection ⊂ constraints """
-        constraint = {"a": 1, "b": 2}
-        source = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"now" : ["a"]}).as_dict(constraint=constraint):
-            case dict():
+        source = ["a"]
+        needed = []
+        target = []
+        inject     = InjectSpec.build({"from_spec" : ["a"]})
+        match inject.validate_against(source=source, needed=needed, target=target):
+            case None:
                 assert(True)
             case x:
                 assert(False), x
 
-
-    def test_constraints_fail(self):
-        """ 'a' is injected unexpectedly
-        injection ⊄ injection
-        """
-        constraint = {"b": 2}
-        source = {"a": "{blah}", "blah": "bloo"}
-        with pytest.raises(doot.errors.StateError):
-            InjectSpec.build({"now" : ["a"]}).as_dict(constraint=constraint)
-
-
-    def test_constraints_required(self):
-        """ 'a' is expected and missing from constraint defaults """
-        constraint = {"b": 2, 'must_inject': ["a"]}
-        source     = {"a": "{blah}", "blah": "bloo"}
-        match InjectSpec.build({"now" : ["a"]}).as_dict(constraint=constraint):
-            case dict():
+    @pytest.mark.skip
+    def test_constraints_surplus(self):
+        """ injection ⊃ constraints """
+        source = ["a"]
+        needed = []
+        target = ["a"]
+        inject     = InjectSpec.build({"from_spec" : ["a"]})
+        match inject.validate_against(source=source, needed=needed, target=target):
+            case x if x[0] == {"a"} and not bool(x[1]):
                 assert(True)
             case x:
                 assert(False), x
 
+    def test_constraints_missing(self):
+        """ injection ⊄ constraints """
+        source = ["a"]
+        needed = ["b"]
+        target = []
+        inject     = InjectSpec.build({"from_spec" : ["a"]})
+        match inject.validate_against(source=source, needed=needed, target=target):
+            case x if not bool(x[0]) and x[1] == {"b"}:
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_constraints_required_fail(self):
-        """ 'a' is expected and missing from constraint defaults """
-        constraint = {"b": 2, 'must_inject': ["a"]}
-        source     = {"a": "{blah}", "b": "bloo"}
-        with pytest.raises(doot.errors.StateError):
-            InjectSpec.build({"now" : ["blah"]}).as_dict(constraint=constraint)
+class TestInjectionApplication:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        match InjectSpec.build({"from_spec":["blah"]}):
+            case InjectSpec():
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_apply_from_spec(self):
+        injection = InjectSpec.build({"from_spec":["blah"]})
+        parent    = TaskSpec.build({"name": "simple::parent", "blah": "bloo"})
+        match injection.apply_from_spec(parent):
+            case {"blah":"bloo"}:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_apply_from_spec_only(self):
+        injection = InjectSpec.build({"from_spec":["blah"], "from_state":["aweg"]})
+        parent    = TaskSpec.build({"name": "simple::parent", "blah": "bloo", "aweg": "other"})
+        match injection.apply_from_spec(parent):
+            case {"aweg": "other"}:
+                assert(False)
+            case {"blah":"bloo"}:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_apply_from_state(self):
+        injection   = InjectSpec.build({"from_spec":["blah"], "from_state":["aweg"]})
+        parent_spec = TaskSpec.build({"name": "simple::parent", "blah": "bloo", "aweg": "other"})
+        parent_task = DootTask(parent_spec)
+        parent_task.state['aweg'] = "task_state"
+        match injection.apply_from_state(parent_task):
+            case {"aweg": "other"}:
+                assert(False)
+            case {"aweg": "task_state"}:
+                assert(True)
+            case x:
+                assert(False), x

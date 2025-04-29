@@ -33,6 +33,8 @@ from doot._structs.dkey import DKey
 
 # ##-- end 1st party imports
 
+from . import _interface as API
+
 # ##-- types
 # isort: off
 import abc
@@ -55,6 +57,8 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+   from doot._abstract import Task_p, Task_d
+   from doot.structs import TaskName
    from doot._structs.task_spec import  TaskSpec
    type ConstraintData = TaskSpec | dict | ChainGuard
 
@@ -66,69 +70,60 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-CLI_K         : Final[str]         = "cli"
-MUST_INJECT_K : Final[str]         = "must_inject"
-SPECIAL_KEYS  : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
-INJECT_KEYS   : Final[list[str]]   = doot.constants.misc.INJECT_KEYS
-SUFFIX_KEY    : Final[str]         = "_add_suffix"
 
 # Body:
 
 class InjectSpec(BaseModel):
     """A ConstraintData representation of an injection.
 
-    Injections fall into three groups:
-    - now    : immediate key expansions, on spec build
-    - queue  : when the  task is queued
-    - delay  : l1 expansions, ready to expand fully later, expanded on target run
-    - insert : literal values to inject
+    With a Task P, the parent, and Task C, the child,
+    P injects data into C at defined times:
+    - from_spec   : uses P.spec values
+    - from_state  : users P.state values
+    - from_target : from C.spec
+    - literal     : uses supplied data literally
 
-    They can be of the form:
-    - list[str|DKey]     : where k=j for target[k] = source[j]
-    - dict[str:str|DKey] : where k,j for target[k] = source[j]
+    from_state and from_target both mean the application of the injection
+    is delayed from when the child spec is built, to when it is queued, or run.
 
-    RHS keys are *explicit* form
+    Injection data can be:
+    - list[str|DKey]     : for k in list, child[k] = parent[j]
+    - dict[str:str|DKey] : for k,j in dict.items, child[k] = parent[j]
+
+    List Keys are *implicit*
+    Dict RHS keys are *explicit* form
 
     """
-    now          : dict       = Field(default_factory=dict)
-    on_queue     : dict       = Field(default_factory=dict)
-    delay        : dict       = Field(default_factory=dict)
-    insert       : dict       = Field(default_factory=dict)
-    suffix       : Maybe[str] = Field(default=None)
+    from_cli     : dict       = Field(default_factory=dict)
+    from_spec    : dict       = Field(default_factory=dict)
+    from_state   : dict       = Field(default_factory=dict)
+    from_target  : dict       = Field(default_factory=dict)
+    literal      : dict       = Field(default_factory=dict)
+    with_suffix  : Maybe[str] = Field(default=None)
+    _mapping     : dict
 
     @classmethod
-    def build(cls, data:dict, /, sources:Maybe[Iterable]=None, insertion:Any=None, constraint:Maybe[ConstraintData]=None) -> Maybe[Self]:
+    def build(cls, data:dict) -> Maybe[Self]:
         """ builds an InjectSpec from basic data """
-        logging.trace("Building Injection: %s", data)
+        logging.info("Building Injection: %s", data)
         match data:
-            case None:
-                return None
-            case InjectSpec():
+            case None | InjectSpec():
                 return data
-            case str() as base_s:
-                base_k = DKey(base_s, implicit=True, check=dict|ChainGuard)
-                data   = base_k(*sources)
+            case dict() | ChainGuard() as x if not bool(x):
+                return None
             case dict() | ChainGuard():
                 pass
             case _:
                 raise doot.errors.InjectionError("Unknown injection base type", data)
 
         try:
-            result             = cls(**data)
+            return cls(**data)
         except ValidationError as err:
-            logging.detail("Building Injection Failed: %s : %s", data, err)
+            logging.debug("Building Injection Failed: %s : %s", data, err)
             raise
 
-        if not bool(result):
-            return None
-
-        result.initial_expansion(sources)
-        result.set_insertion(insertion)
-        result._validate_constraints(constraint)
-        return result
-
     @staticmethod
-    def _prep_keys(keys:Maybe[dict[str,str]|list[str]], literal:bool=False) -> dict[str, DKey]:
+    def _prep_keys(keys:Maybe[dict[str,str]|list[str]], literal:bool=False) -> dict[str, Maybe[DKey|str]]:
         """ prepare keys for the expansions
         literal = True : means rhs is not a key
         """
@@ -146,123 +141,124 @@ class InjectSpec(BaseModel):
             case _:
                 raise doot.errors.InjectionError("unknown keys type", keys)
 
-    @field_validator("now", mode="before")
-    def _validate_now(cls, val:Any) -> dict:
+    @model_validator(mode="after")
+    def _validate_injection(self) -> Self:
+        # Build the target <- source mapping
+        self._mapping = dict()
+        for x,y in itz.chain(self.from_spec.items(),
+                             self.from_state.items(),
+                             self.from_target.items(),
+                             self.literal.items()):
+            self._mapping[str(x)] = str(y)
+        else:
+            return self
+
+    @field_validator("from_cli", mode="before")
+    def _validate_from_cli(cls, val:Any) -> dict:
         return cls._prep_keys(val)
 
-    @field_validator("on_queue", mode="before")
-    def _validate_on_queue(cls, val:Any) -> dict:
+    @field_validator("from_spec", mode="before")
+    def _validate_from_spec(cls, val:Any) -> dict:
         return cls._prep_keys(val)
 
-    @field_validator("delay", mode="before")
-    def _validate_delay(cls, val:Any) -> dict:
+    @field_validator("from_state", mode="before")
+    def _validate_from_state(cls, val:Any) -> dict:
         return cls._prep_keys(val)
 
-    @field_validator("insert", mode="before")
-    def _validate_insert(cls, val:Any) -> dict:
+    @field_validator("from_target", mode="before")
+    def _validate_from_target(cls, val:Any) -> dict:
+        return cls._prep_keys(val)
+
+    @field_validator("literal", mode="before")
+    def _validate_literal(cls, val:Any) -> dict:
         return cls._prep_keys(val, literal=True)
 
+
     def __bool__(self) -> bool:
-        return (bool(self.now)
-                | bool(self.delay)
-                | bool(self.insert)
-                | bool(self.on_queue)
-                | (self.suffix is not None))
+        return (bool(self.from_spec)
+                | bool(self.from_state)
+                | bool(self.from_target)
+                | bool(self.literal)
+                | (self.with_suffix is not None))
 
-    def initial_expansion(self, sources:Maybe[Iterable]) -> None:
-        """ fully expand 'now' vars, l1 expand 'delay' vars """
-        if sources is None:
-            return
-        self.now   = {k:v(*sources, fallback=v) for k,v in self.now.items()}
-        self.delay = {k:DKey(v(*sources, insist=True, fallback=v, limit=1)) for k,v in self.delay.items()}
+    def validate_against(self, source:Maybe[list[str]]=None, needed:Maybe[list[str]]=None, target:Maybe[list[str]]=None) -> Maybe[tuple[set[str], set[str]]]:
+        """ Ensures this injection is usable with given sources, and given required injections
 
-    def set_insertion(self, insertion:Any) -> None:
-        if insertion is None:
-            return
+        eg:
+        Task(must_inject=['a']),
+        Source('a'=5)
+        Injection(from_spec=['a'])
+        The Injection is valid.
 
-        for k in self.insert.keys():
-            self.insert[k] = self.insert[k] or insertion
+        eg:
+        Task(must_inject=['a']),
+        Source('d'=10)
+        Injection(from_spec=['a'])
+        The Injection is invalid, 'a' is missing from the source.
 
-    def as_dict(self, *, constraint:Maybe[ConstraintData]=None, insertion=None) -> dict:
-        """ coerce the injections for insertion into a task spec
+        eg:
+        Task('a'=5)
+        Source('a'=10)
+        Injection(from_spec=['a'])
+        The Injection is invalid, 'a' is surplus to the task.
+
+
         """
-        match self._validate_constraints(constraint):
-            case  None:
-                constraint_base, cli= {}, {}
-            case dict() as constraint_base, dict() as cli:
+        source  = source or []
+        needed  = needed or []
+        target  = target or []
+        surplus = set() # {x for x in self._mapping.keys() if x in target}
+        missing = {y for y in self._mapping.values() if y not in source}
+        missing |= {z for z in needed if z not in self._mapping}
+
+        if bool(missing) or bool(surplus):
+            return surplus, missing
+
+        return None
+
+    def apply_from_spec(self, parent:TaskSpec) -> dict:
+        """ Apply values from the parent's spec values """
+        data = {}
+        for x,y in self.from_spec.items():
+            data[str(x)] = y(parent)
+        else:
+            return data
+
+    def apply_from_state(self, parent:Task_d) -> dict:
+        """ Expand a key using the parents state """
+        data = {}
+        for x,y in self.from_state.items():
+            data[str(x)] = y(parent.state, parent.spec)
+        else:
+            return data
+
+    def apply_from_target(self, parent:Task_p) -> dict:
+        """ An L1 expansion from the parent, to use a child's key as the value """
+        data = {}
+        for x,y in self.from_target.items():
+            data[str(x)] = y(parent.state, parent.spec, insist=True, fallback=y, limit=1)
+        else:
+            return data
+
+    def apply_from_cli(self, source:TaskName|str) -> dict:
+        data = {}
+        source_args = doot.args.on_fail({}).sub[source]()
+        for x,y in self.from_cli.items():
+            data[str(x)] = y(source_args)
+        else:
+            return data
+
+    def apply_literal(self, source:list|dict) -> dict:
+        match source:
+            case list():
                 pass
-
-        match self.suffix:
-            case None:
-                suffix = {}
-            case x:
-                suffix = {SUFFIX_KEY: x}
-
-        match insertion:
-            case None:
-                insert = self.insert
-            case x:
-                insert = {k:x for k in self.insert.keys()}
-
-        injection   = {} | self.delay | self.now | insert | suffix
-        if bool(self.on_queue):
-            injection['__on_queue'] = self.on_queue.copy()
-
-        injection = constraint_base | cli | injection
-
-        return injection
-
-    def _validate_constraints(self, constraint:Maybe[ConstraintData]) -> Maybe[tuple[dict, dict]]:
-        """ check the keys to be injected match keys in the default spec """
-        match constraint:
-            case None:
-                return
-            case dict() | ChainGuard()  as x if not bool(x):
-                return
-            case dict() | ChainGuard():
+            case dict():
                 pass
-            case x if hasattr(x, "extra"):
-                constraint = constraint.extra
-            case _:
-                raise doot.errors.InjectionError("Unknown constraint data type", constraint)
+            case x:
+                raise TypeError(type(x))
 
-        logging.trace("Validating Injection against constraint: %s", constraint)
-
-        constraint_defaults = {k:v for k,v in constraint.items() if k != MUST_INJECT_K}
-        cli_params          = [ParamSpec(**cli) for cli in constraint.get(CLI_K, [])]
-        cli                 = {cli.name : cli.default for cli in cli_params}
-
-        inject_keys         = {} | self.on_queue.keys() | self.delay.keys() | self.now.keys() | self.insert.keys()
-
-        if not bool(inject_keys):
-            return None
-
-        # promote indirect keys to direct when checking
-        indirect_keys = {x for x in inject_keys if x.endswith("_")}
-        inject_keys -= indirect_keys
-        inject_keys |= {x[:-1] for x in indirect_keys}
-
-        spec_keys           = {str(x) for x in constraint_defaults.keys()}
-        cli_keys            = set(cli.keys())
-        required_keys       = {str(x) for x in constraint.get(MUST_INJECT_K, [])}
-
-        if bool(missing:=required_keys - inject_keys):
-            raise doot.errors.InjectionError("Required Keys not injected", missing)
-
-        if bool(surplus:=inject_keys - (spec_keys | cli_keys | required_keys)):
-            raise doot.errors.InjectionError("Surplus keys can not be injected", surplus)
-
-        return constraint_defaults, cli
-
-    def flatten(self) -> tuple[set[str], set[str]]:
-        """ Flatten the injection for matching """
-        target_keys = set()
-        target_keys |= self.now.keys()
-        target_keys |= self.delay.keys()
-        target_keys |= self.insert.keys()
-
-        source_keys = (set(self.now.values())
-                       | set(self.delay.values())
-                       | set(self.insert.values()))
-
-        return target_keys, source_keys
+        data = {}
+        for x,y in self.literal.items():
+            data[str(x)] = y
+        else:
+            return data

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -33,6 +31,8 @@ from doot._structs.relation_spec import RelationSpec
 from doot.structs import DKey, TaskSpec, InjectSpec
 
 # ##-- end 1st party imports
+
+from doot._structs import _interface as S_API
 
 # ##-- types
 # isort: off
@@ -75,81 +75,62 @@ class TaskMatcher_m:
 
           if not given a relation, then just check self and control dont conflict.
           """
-
         match relation:
-            case None if not control.name <= target.name:
+            case None if not control.name < target.name:
                 return False
+            case None:
+                return True
             case RelationSpec(target=targ):
                 # the target instance must be more specific than the target mentioned in the relation
                 sources = [target.name] + target.get_source_names()
                 if not any(targ <= x for x in sources):
                     return False
 
-        constraints, injections = self._get_relation_data(relation, control)
-        assert(constraints is not None)
-        source_data, target_data = control.extra, target.extra
-
-        # Check constraints match
-        for targ_k,source_k in constraints.items():
-            if source_k not in source_data:
-                continue
-            if (targ_v:=target_data.get(targ_k, None)) != (source_v:=source_data[source_k]):
-                logging.debug("Constraint does not match: %s(%s) : %s(%s)", targ_k, targ_v, source_k, source_v)
+        assert(isinstance(relation, RelationSpec))
+        match self._matches_constraints(control, relation, target):
+            case False:
                 return False
-
-        match injections:
-            case None:
-                return True
-            case InjectSpec(suffix=str() as suffix) if suffix not in target.name:
-                logging.debug("Suffix %s not found in %s", suffix, target.name)
+            case _:
+                pass
+        match self._matches_injections(control, relation, target):
+            case False:
                 return False
-            case InjectSpec():
-                target_keys, source_keys = injections.flatten()
-
-        # Check injections. keys must be available, but not necessarily the same
-        if bool(source_keys - source_data.keys()):
-            logging.debug("source key/data mismatch: %s", source_keys - source_data.keys())
-            return False
-        if bool(target_keys - target_data.keys()):
-            # target don't match
-            logging.debug("target key/data mismatch: %s", target_keys - target_data.keys())
-            return False
+            case _:
+                pass
 
         return True
 
-    def _get_relation_data(self, relation:Maybe[RelationSpec], control:TaskSpec) -> tuple[Data, Maybe[InjectSpec]]:
-        """ Extract the relevant relation constraints and injections  """
+    def _matches_constraints(self, parent:TaskSpec, relation:RelationSpec, child:TaskSpec) -> bool:
         match relation:
-            case None:
-                constraint_d = True
-                inject_d     = None
-            case RelationSpec(constraints=constraint_d, inject=inject_d):
+            case RelationSpec(constraints=constraints) if bool(constraints):
                 pass
+            case _:
+                return True
 
+        # Check constraints match
+        for targ_k,source_k in constraints.items():
+            if source_k not in parent.extra:
+                continue
+            if (targ_v:=child.extra.get(targ_k, None)) != (source_v:=parent.extra[source_k]):
+                logging.debug("Constraint does not match: %s(%s) : %s(%s)", targ_k, targ_v, source_k, source_v)
+                return False
 
-        match constraint_d:
-            case False:
-                constraint_d = {}
-            case True:
-                constraint_d = {x:x for x in control.extra.keys()}
-            case [*xs]:
-                constraint_d = { x:x for x in xs }
-            case dict() | ChainGuard():
+        else:
+            return True
+
+    def _matches_injections(self, parent:TaskSpec, relation:RelationSpec, child:TaskSpec) -> bool:
+        match relation:
+            case RelationSpec(inject=InjectSpec() as inject) if bool(inject):
                 pass
+            case _:
+                return True
 
-        match inject_d:
-            case None:
-                pass
-            case InjectSpec():
-                pass
-            case str() as key_s:
-                key      = DKey(key_s, check=dict|ChainGuard, implicit=True)
-                inject_d = InjectSpec.build(key(control))
-
-        assert(isinstance(constraint_d, dict))
-        assert(isinstance(inject_d, InjectSpec|None)), breakpoint()
-        return constraint_d, inject_d
-
+        needed = child.extra.on_fail([])[S_API.MUST_INJECT_K]()
+        match inject.validate_against(source=parent.extra.keys(), target=child.extra.keys(), needed=needed):
+            case [surplus, missing]:
+                return False
+            case _:
+                return True
 
     def match_edge(self, rel:RelationSpec, edges:list[TaskName], *, exclude:None|list=None) -> bool:
         """ Given a list of existing edges,

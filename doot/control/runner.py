@@ -158,7 +158,7 @@ class _ActionExecution_m:
 
         if bool(new_nodes):
             self.tracker.build_network(sources=new_nodes)
-            doot.report.trace("Queued %s Subtasks", len(new_nodes))
+            doot.report.result([f"{len(new_nodes)} Tasks"], info="Queued")
 
         return None
 

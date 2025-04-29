@@ -31,7 +31,7 @@ from jgdv.structs.locator import Location
 import doot
 import doot.errors
 from doot._structs.relation_spec import RelationSpec, RelationMeta_e
-from doot.structs import TaskName
+from doot.structs import TaskName, InjectSpec
 
 logging = logmod.root
 
@@ -62,18 +62,25 @@ class TestRelationSpec:
         assert(id(obj.constraints) != id(constraints))
 
     def test_injections(self):
-        inject = {"now": { "a" : "b", "c": "d" }}
+        inject = {"from_spec": { "a" : "{b}", "c": "{d}" }}
         obj = RelationSpec.build({"task":"group::a.test", "inject": inject})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.inject == {"now": {"a": "b", "c": "d"}})
+        match obj.inject:
+            case InjectSpec(from_spec=fs):
+                assert(fs['a'] == "b")
+            case x:
+                 assert(False), x
 
     def test_injections_independent(self):
-        inject = {"now": { "a" : "b", "c": "d" }}
+        inject = {"from_spec": { "a" : "{b}", "c": "{d}" }}
         obj = RelationSpec.build({"task":"group::a.test", "inject": inject})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.inject == {"now": { "a" : "b", "c": "d" }})
-        inject['e'] = 5
-        assert(obj.inject == {"now": { "a" : "b", "c": "d" }})
+        match obj.inject:
+            case InjectSpec(from_spec=fs):
+                inject['e'] = 5
+                assert(fs == { "a" : "b", "c": "d" })
+            case x:
+                 assert(False), x
 
     def test_location_dep(self):
         obj = RelationSpec.build(pl.Path("a/file.txt"))

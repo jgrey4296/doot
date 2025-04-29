@@ -296,6 +296,7 @@ class BasicReporter(API.Reporter_d):
         """ The reporter delegates all actual logging to this method
 
         """
-        assert(isinstance(self._logger, logmod.Logger)), self._logger
+        if self._logger is None:
+            return
         result = self._fmt(key, info=info, msg=msg, ctx=self.ctx)
         self._logger.log(self._curr.log_level+level, result)

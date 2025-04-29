@@ -159,6 +159,11 @@ class Task_d:
     _version         : str       = "0.1"
     _help            : list[str]
     doc              : list[str]
+    state            : dict
+    spec             : SpecStruct_p
+    status           : TaskStatus_e
+    priority         : int
+
 
 @runtime_checkable
 class Task_p(Protocol):
