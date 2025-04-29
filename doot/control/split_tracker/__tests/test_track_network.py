@@ -175,13 +175,13 @@ class TestTrackerNetwork:
         obj   = network
         spec  = doot.structs.TaskSpec.build({
             "name":"basic::task",
-            "depends_on":[{"task":"basic::dep", "inject":{"now": {"test_key":"{test_key}"}}}],
+            "depends_on":[{"task":"basic::dep", "inject":{"from_spec": {"test_key":"{test_key}"}}}],
             "required_for": ["basic::chained"],
             "test_key": "bloo"
                                             })
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep",
-                                             "depends_on": [{"task":"basic::chained", "inject":{"now":{"test_key":"{test_key}"}}}],
-                                             "test_key": "blah"})
+                                             "depends_on": [{"task":"basic::chained", "inject":{"from_spec":{"test_key":"{test_key}"}}}],
+                                             })
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "must_inject":["test_key"]})
         obj._registry.register_spec(spec, spec2, spec3)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -365,7 +365,7 @@ class TestTrackerNetworkBuildConstraints:
     def test_build_dep_match_with_injection(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"{test_key}"}}}],
+                                             "depends_on":[{"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{test_key}"}}}],
                                              "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "must_inject":["inj_key"]})
         obj._registry.register_spec(spec, spec2)
@@ -386,7 +386,7 @@ class TestTrackerNetworkBuildConstraints:
     def test_build_dep_match_with_injection_fail(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"{bad_key}"}}}],
+                                             "depends_on":[{"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{bad_key}"}}}],
                                              "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj._registry.register_spec(spec, spec2)
@@ -404,8 +404,8 @@ class TestTrackerNetworkBuildConstraints:
           test_key=bloo should be carried from basic::task to basic::dep to basic::chained
         """
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"now":["test_key"]}}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"now":["test_key"]}}], "test_key": "blah"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"from_spec":["test_key"]}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"from_spec":["test_key"]}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
         obj._registry.register_spec(spec, spec2, spec3)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -440,10 +440,10 @@ class TestTrackerNetworkBuildConstraints:
         obj = network
         # Abstract specs
         spec  = doot.structs.TaskSpec.build({"name":"basic::task",
-                                             "required_for":[{"task":"basic::req", "inject":{"now": ["test_key"]}}],
+                                             "required_for":[{"task":"basic::req", "inject":{"from_spec": ["test_key"]}}],
                                              "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::req",
-                                             "required_for": [{"task":"basic::chained", "inject":{"now": ["test_key"]}}],
+                                             "required_for": [{"task":"basic::chained", "inject":{"from_spec": ["test_key"]}}],
                                              "must_inject":["test_key"],
                                              })
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "must_inject":["test_key"]})

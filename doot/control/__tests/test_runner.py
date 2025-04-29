@@ -21,19 +21,16 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import pytest
 from jgdv.structs.chainguard import ChainGuard
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-
-# ##-- end 1st party imports
-
-# ##-- 1st party imports
+from doot.control.split_tracker import SplitTracker
 from doot.control.runner import DootRunner
 from doot.enums import TaskStatus_e
-from doot.structs import ActionSpec, TaskSpec, DKey, TaskName
-from doot.control.naive_tracker import NaiveTracker
-from doot.task import DootTask, DootJob
+from doot.structs import ActionSpec, DKey, TaskName, TaskSpec
+from doot.task import DootJob, DootTask
 
 # ##-- end 1st party imports
 
@@ -75,7 +72,7 @@ class _MockObjs_m:
 
     @pytest.fixture(scope="function")
     def runner(self, ctor, mocker):
-        tracker  = NaiveTracker()
+        tracker  = SplitTracker()
         runner   = ctor(tracker=tracker)
         return runner
 
