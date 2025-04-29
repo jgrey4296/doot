@@ -151,7 +151,7 @@ class TrackQueue:
 
         return focus
 
-    def queue_entry(self, target:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
+    def queue_entry(self, target:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
         """
           Queue a task by name|spec|Task_p.
           registers and instantiates the relevant spec, inserts it into the _network
@@ -167,8 +167,6 @@ class TrackQueue:
         target_priority : int = self._network._declare_priority
 
         match target:
-            case Task_p() as task:
-                return self._queue_from_task(task)
             case TaskArtifact() as art:
                 assert(target in self._registry.artifacts)
                 self._network.connect(art, None if from_user else False)
@@ -183,7 +181,6 @@ class TrackQueue:
                 abs_name = spec.name
             case TaskName() | str():
                 abs_name = self._queue_prep_name(target)
-
 
         match abs_name:
             case None:
@@ -232,20 +229,6 @@ class TrackQueue:
                 return self._queue_prep_name(TaskName(name))
             case _:
                 return name
-
-
-    def _queue_from_task(self, task:Task_p) -> TaskName:
-        if task.name in self._registry.tasks:
-            return task.name
-
-        self._registry.register_spec(task.spec)
-        instance = self._registry._instantiate_spec(task.name, add_cli=from_user)
-        # update the task with its concrete spec
-        task.spec = self._registry.specs[instance]
-        self._network.connect(instance, None if from_user else False)
-        prepped_name = self._registry._make_task(instance, task_obj=task)
-        self._registry._make_task(task.name, task_obj=task)
-        return task.name
 
     def clear_queue(self) -> None:
         """ Remove everything from the task queue,

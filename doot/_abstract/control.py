@@ -126,7 +126,7 @@ class TaskTracker_p(Protocol):
         pass
 
     @abstractmethod
-    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
         pass
 
     @abstractmethod
