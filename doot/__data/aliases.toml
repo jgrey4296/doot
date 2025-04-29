@@ -19,7 +19,7 @@ default = "doot.reporters:BasicReporter"
 
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
-basic = "doot.control.naive_tracker:NaiveTracker"
+basic = "doot.control.split_tracker:SplitTracker"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String
