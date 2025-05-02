@@ -60,9 +60,19 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-CLI_K         : Final[str]         = "cli"
-MUST_INJECT_K : Final[str]         = "must_inject"
-SPECIAL_KEYS  : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
-SUFFIX_KEY    : Final[str]         = "_add_suffix"
+CLI_K           : Final[str]         = "cli"
+MUST_INJECT_K   : Final[str]         = "must_inject"
+SUFFIX_K        : Final[str]         = "_add_suffix"
+META_K          : Final[str]         = "meta"
+GROUP_K         : Final[str]         = "group"
+NAME_K          : Final[str]         = "name"
+SPECIAL_KEYS    : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
 
+NONE_S          : Final[str]         = "None"
+DASH_S          : Final[str]         = "-"
+USCORE_S        : Final[str]         = "_"
+
+DEFAULT_JOB     : Final[str]         = "job"
+EXTENDED        : Final[str]         = "<+>"
+PARTIAL         : Final[str]         = "<partial>"
 # Body:

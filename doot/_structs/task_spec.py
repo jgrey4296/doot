@@ -42,6 +42,7 @@ from doot._abstract.control import QueueMeta_e
 
 # ##-- end 1st party imports
 
+from . import _interface as API # noqa: N812
 from .action_spec import ActionSpec
 from .artifact import TaskArtifact
 from .relation_spec import RelationMeta_e, RelationSpec
@@ -80,7 +81,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-DEFAULT_JOB : Final[str] = "job"
 
 def _dicts_to_specs(deps:list[dict], *, relation:RelationMeta_e=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
     """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
@@ -213,14 +213,20 @@ class _JobUtils_m:
         cleanup_name       = self.name.de_uniq().with_cleanup()
         base_deps          = [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec) and x.target != cleanup_name]
         actions            = [x for x in self.cleanup if isinstance(x, ActionSpec)]
+        sources            = self.sources[:]
+        match self.name.root().with_cleanup():
+            case x if x == cleanup_name:
+                sources += [self.name, None]
+            case x:
+                sources += [x]
 
         cleanup : TaskSpec = TaskSpec.build({
             "name"            : cleanup_name,
-            "sources"         : self.sources[:] + [self.name, None],
+            "sources"         : sources,
             "actions"         : actions,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : base_deps,
-            "meta"           : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
+            "meta"            : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
             **self.extra,
             })
         assert(not bool(cleanup.cleanup))
@@ -246,7 +252,7 @@ class _TransformerUtils_m:
                 pass
 
         assert(pre.is_concrete() or post.is_concrete())
-        instance = self.instantiate_onto(None)
+        instance = self.instantiate()
         match self.transformer_of():
             case None:
                 raise doot.errors.TrackingError("Tried to transformer to_uniq a non-transformer", self.name)
@@ -335,60 +341,79 @@ class _SpecUtils_m:
             case str():
                 return cls(name=TaskName(data))
 
-    def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
-        """ apply self over the top of data """
-        match data:
+    def instantiate(self) -> TaskSpec:
+        """
+        Return this spec, copied with a uniq name
+        """
+        instance = self.model_copy()
+        instance.name = self.name.to_uniq()
+        return instance
+
+    def reify_partial(self, actual:TaskSpec) -> TaskSpec:
+        if self.name[-1] != API.PARTIAL:
+            raise ValueError("Tried to reify a non-partial spec", self.name)
+
+        last_source = self.sources[-1]
+        if last_source != actual.name:
+            raise ValueError("Incorrect base spec for partial", self.name, last_source, actual.name)
+
+        adjusted = dict(self)
+        adjusted['name'] = self.name.pop()
+        return actual.under(adjusted, suffix=False)
+
+    def over(self, data:TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
+        """ data + self -> TaskSpec """
+        if data is self:
+            raise doot.errors.TrackingError("Tried to apply a spec over itself ", self.name, data.name)
+        if not data.name < self.name:
+            raise doot.errors.TrackingError("Tried to apply an unrelated spec over another", self.name, data.name)
+        result = data._specialize_merge(self)
+        match suffix:
             case None:
-                return self.specialize_from(self)
-            case TaskSpec():
-                return data.specialize_from(self)
-            case _:
-                raise TypeError("Can't to_uniq onto something not a task spec", data)
+                result.name = self.name.push(API.EXTENDED)
+            case False:
+                pass
+            case str():
+                result.name = self.name.push(suffix)
+        return result
 
-    def specialize_from(self, data:dict|TaskSpec) -> TaskSpec:
-        """ apply data on top of self"""
+    def under(self, data:dict|TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
+        """ self + data -> TaskSpec """
         match data:
-            case {"_add_suffix": str() as suff}:
-                # When an injection adds a suffix, it occurs here
-                specialized = dict(self)
-                specialized.update(data)
-                specialized['name'] = self.name.push(suff)
-                del specialized['_add_suffix']
-                return TaskSpec.build(specialized)
-            case dict():
-                specialized = dict(self)
-                specialized.update(data)
-                return TaskSpec.build(specialized)
-            case TaskSpec() if self is data:
-                # specializing on self, just to_uniq a name
-                specialized           = dict(self)
-                specialized['name']   = self.name.to_uniq()
-                # Otherwise theres interference:
-                specialized['sources'] = self.sources[:] + [self.name]
-                return TaskSpec.build(specialized)
-            case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
-                raise doot.errors.TrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
+            case TaskSpec() if data is self:
+                raise doot.errors.TrackingError("Tried to apply a spec under itself ", self.name, data.name)
+            case TaskSpec() if not self.name < data.name:
+                raise doot.errors.TrackingError("Tried to apply an unrelated spec under another", self.name, data.name)
             case TaskSpec():
-                return self._specialize_merge(data)
-            case _:
-                raise TypeError("Unexpected type for specializing spec", data)
+                result = self._specialize_merge(data)
+            case dict():
+                data.setdefault('name', self.name.push("<data>"))
+                basic = TaskSpec.build(data)
+                result = self._specialize_merge(basic)
+        match suffix:
+            case None:
+                result.name = result.name.push(API.EXTENDED)
+            case False:
+                pass
+            case str():
+                result.name = result.name.push(suffix)
 
-    def _specialize_merge(self, data:dict|TaskSpec) -> TaskSpec:
+        return result
+
+    def _specialize_merge(self, data:TaskSpec) -> TaskSpec:
         """
-          apply data over the top of self.
-          a *single* application, as a spec on it's own has no means to look up other specs,
-          which is the tracker's responsibility.
+          Apply data over the top of self
 
-          so source chain: [root..., self, data]
+        Combines, rather than overrides, particular values.
+
         """
-
         specialized = dict(self)
-        specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
+        specialized |= dict(data)
+        # specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
         # Then special updates
-        specialized['name']         = data.name.to_uniq()
+        specialized['name']         = data.name
         specialized['sources']      = self.sources[:] + [self.name, data.name]
-
         specialized['actions']      = self.actions      + data.actions
         specialized["depends_on"]   = self.depends_on   + data.depends_on
         specialized["required_for"] = self.required_for + data.required_for
@@ -397,10 +422,10 @@ class _SpecUtils_m:
         specialized["setup"]        = self.setup        + data.setup
 
         # Internal is only for initial specs, to control listing
-        specialized['meta']        = set()
-        specialized['meta'].update(self.meta)
-        specialized['meta'].update(data.meta)
-        specialized['meta'].difference_update({TaskMeta_e.INTERNAL})
+        specialized[API.META_K]        = set()
+        specialized[API.META_K].update(self.meta)
+        specialized[API.META_K].update(data.meta)
+        specialized[API.META_K].difference_update({TaskMeta_e.INTERNAL})
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
@@ -427,8 +452,8 @@ class _SpecUtils_m:
     def apply_cli_args(self, *, override:Maybe[str]=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
         spec_extra : dict = dict(self.extra.items() or [])
-        if 'cli' in spec_extra:
-            del spec_extra['cli']
+        if API.CLI_K in spec_extra:
+            del spec_extra[API.CLI_K]
 
         # Apply any cli defined args
         for cli in self.extra.on_fail([]).cli():
@@ -441,7 +466,7 @@ class _SpecUtils_m:
         for key,val in doot.args.on_fail({}).sub[source]().items():
             spec_extra[key] = val
         else:
-            cli_spec = self.specialize_from(spec_extra)
+            cli_spec = self.under(spec_extra)
             return cli_spec
 
 ##--|
@@ -495,10 +520,10 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
         """ converts a-key into a_key, and joins group+name """
-        cleaned = {k.replace("-","_") : v  for k,v in data.items()}
-        if "group" in cleaned and TaskName._separator not in cleaned["name"]:
-            cleaned['name'] = TaskName._separator.join([cleaned['group'], cleaned['name']])
-            del cleaned['group']
+        cleaned = {k.replace(API.DASH_S, API.USCORE_S) : v  for k,v in data.items()}
+        if API.GROUP_K in cleaned and TaskName._separator not in cleaned[API.GROUP_K]:
+            cleaned[API.NAME_K] = TaskName._separator.join([cleaned[API.GROUP_K], cleaned[API.NAME_K]])
+            del cleaned[API.GROUP_K]
         return cleaned
 
     @model_validator(mode="after")
@@ -515,7 +540,7 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
                 self.meta.add(TaskMeta_e.DISABLED)
                 self.ctor = None
             case x if TaskMeta_e.JOB in self.meta and not isinstance(x, Job_p):
-                self.ctor = CodeReference(doot.aliases.task[DEFAULT_JOB])
+                self.ctor = CodeReference(doot.aliases.task[API.DEFAULT_JOB])
             case None:
                 pass
             case x if issubclass(x, Task_p):
@@ -523,6 +548,9 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
 
         if TaskMeta_e.TRANSFORMER not in self.meta:
             self._transform = False
+
+        if self.name[-1] == API.PARTIAL and not bool(self.sources):
+            raise ValueError("Tried to create a partial spec with no base source", self.name)
 
         return self
 
@@ -584,26 +612,22 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
         """ builds the soures list, converting strings to task names,
 
           """
-        match val:
-            case None:
-                val = []
-            case list():
-                pass
-            case _:
-                val = [val]
-
         result = []
         for x in val:
             match x:
-                case "None" | None:
+                case API.NONE_S | None:
                     result.append(None)
+                case TaskName() if x[-1] == API.PARTIAL:
+                    raise ValueError("A TaskSpec can not rely on a partial spec", x)
                 case TaskName() | pl.Path():
                     result.append(x)
                 case str():
                     try:
                         name = TaskName(x)
+                        if name[-1] == API.PARTIAL:
+                            raise ValueError("A TaskSpec can not rely on a partial spec", x)
                         result.append(name)
-                    except (StrangErrs.StrangError, ValueError, ValidationError):
+                    except (StrangErrs.StrangError, ValidationError):
                         result.append(pl.Path(x))
                 case x:
                     raise TypeError("Bad Typed Source", x)

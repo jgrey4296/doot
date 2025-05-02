@@ -43,7 +43,6 @@ from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskStatus_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.core.task import DootTask
-from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
 from . import _interface as API # noqa: N812
@@ -95,7 +94,7 @@ class _Expansion_m:
 
         # TODO _graph could be built in total, or on demand
         """
-        logging.info("-> Building Task Network")
+        logging.info("[Build] -> Task Network")
         match sources:
             case None:
                 queue = list(self.pred[self._root_node].keys())
@@ -104,16 +103,14 @@ class _Expansion_m:
             case [*xs]:
                 queue = list(sources)
         processed = { self._root_node }
-        logging.info("Initial Network Queue: %s", queue)
+        logging.info("[Build.Initial] Network Queue: %s", queue)
         while bool(queue): # expand tasks
-            logging.debug("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
                 case x if x in processed or self.nodes[x].get(API.EXPANDED, False):
-                    logging.debug("- Processed already")
+                    logging.debug("[Processed] %s", current)
                     processed.add(x)
                 case TaskName() as x if x in self.nodes:
                     additions = self._expand_task_node(x)
-                    logging.debug("- Task Expansion produced: %s", additions)
                     queue    += additions
                     processed.add(x)
                 case TaskArtifact() as x if x in self.nodes:
@@ -125,8 +122,7 @@ class _Expansion_m:
                     raise doot.errors.TrackingError("Unknown value in _graph")
 
         else:
-            logging.debug("- Final Network Nodes: %s", self.nodes)
-            logging.info("<- Final Network Edges: %s", self.edges)
+            logging.debug("[Build] <- Network Edges: %s", self.edges)
             self.is_valid = True
             pass
 
@@ -166,20 +162,24 @@ class _Expansion_m:
             # nothing to do
             return
 
-        logging.debug("Connecting: %s -> %s", left, right)
         # Add the edge, with metadata
         match left, right:
             case TaskName(), TaskName():
+                logging.debug("[Connect] %s -> %s", left.readable, right.readable)
                 self._graph.add_edge(left, right, type=EdgeType_e.TASK, **kwargs)
             case TaskName(), TaskArtifact():
+                logging.debug("[Connect] %s -> %s", left.readable, right)
                 self._graph.add_edge(left, right, type=EdgeType_e.TASK_CROSS, **kwargs)
             case TaskArtifact(), TaskName():
+                logging.debug("[Connect] %s -> %s", left, right.readable)
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
             case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
                 raise doot.errors.TrackingError("Tried to connect two concrete _registry.artifacts", left, right)
             case TaskArtifact(), TaskArtifact() if right.is_concrete():
+                logging.debug("[Connect] %s -> %s", left, right)
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
             case TaskArtifact(), TaskArtifact() if not right.is_concrete():
+                logging.debug("[Connect] %s -> %s", left, right)
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
 
     def _add_node(self, name:Concrete[TaskName]|TaskArtifact) -> None:
@@ -195,14 +195,14 @@ class _Expansion_m:
                 return
             case TaskArtifact():
                 # Add node with metadata
-                logging.info("Inserting Artifact into graph: %s", name)
+                logging.debug("[+] Artifact: %s", name)
                 self._graph.add_node(name)
                 self.nodes[name][API.EXPANDED]     = False
                 self.nodes[name][API.REACTIVE_ADD] = False
                 self.is_valid = False
             case TaskName():
                 # Add node with metadata
-                logging.info("Inserting Task into graph: %s", name)
+                logging.debug("[+] Task: %s", name.readable)
                 self._graph.add_node(name)
                 self.nodes[name][API.EXPANDED]     = False
                 self.nodes[name][API.REACTIVE_ADD] = False
@@ -219,7 +219,7 @@ class _Expansion_m:
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
         to_expand                                             = set()
 
-        logging.info("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.info("[Build.Expand] -> Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         # Connect Relations
         for rel in itz.chain(spec.action_group_elements()):
@@ -233,9 +233,6 @@ class _Expansion_m:
                     assert(target in self._registry.artifacts)
                     self.connect(*rel.to_ordered_pair(name))
                     to_expand.add(target)
-                case RelationSpec(target=TaskName()) if self.match_edge(rel, relevant_edges.keys(), exclude=[name]):
-                    # already linked, ignore.
-                    continue
                 case RelationSpec(target=TaskName()):
                     # Get specs and instances with matching target
                     instance = self._registry._instantiate_relation(rel, control=name)
@@ -247,7 +244,7 @@ class _Expansion_m:
 
         to_expand.update(self._generate_node_subtasks(spec))
         to_expand.update(self._generate_successor_edges(spec))
-        logging.debug("<-- Task Expansion Complete: %s", name)
+        logging.debug("[Expand] <- Task: %s : %s", name.readable, to_expand)
         return to_expand
 
     def _generate_successor_edges(self, spec:Concrete[TaskSpec]) -> set[Concrete[TaskName]|TaskArtifact]:
@@ -263,7 +260,7 @@ class _Expansion_m:
         # Get (abstract) blocking relations from self._blockers
         blockers  = self._registry._blockers[spec.name.pop(top=True)]
 
-        # Try to link instantiated nodes if they match constraints
+        # TODO Try to link instantiated nodes if they match constraints
 
         # else instantiate and link new nodes
 
@@ -276,16 +273,17 @@ class _Expansion_m:
         """
 
         if TaskSpec.mark_e.JOB in spec.meta:
+            # Instance (spec needs head)
             logging.info("Generating Job Head for: %s", spec.name)
-            head_name     = spec.name.de_uniq().with_head()
-            head_instance = self._registry._instantiate_spec(head_name, extra=spec.model_extra)
+            rel = RelationSpec.build({"task": spec.name.de_uniq().with_head()})
+            head_instance = self._registry._instantiate_relation(rel, control=spec.name)
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
         if not spec.name.is_cleanup():
-            # Instantiate and connect the cleanup task
-            cleanup_name = spec.name.de_uniq().with_cleanup()
-            cleanup = self._registry._instantiate_spec(cleanup_name)
+            # Instance (spec <needs> cleanup)
+            rel = RelationSpec.build({"task": spec.name.de_uniq().with_cleanup()})
+            cleanup = self._registry._instantiate_relation(rel, control=spec.name)
             self.connect(spec.name, cleanup, cleanup=True)
             return [cleanup]
 
@@ -327,7 +325,7 @@ class _Expansion_m:
                     self.connect(conc, artifact)
                     to_expand.add(conc)
 
-        logging.info("<-- Artifact Expansion Complete: %s", artifact)
+        logging.info("<-- Artifact Expansion Complete: %s -> %s", artifact, to_expand)
         self.nodes[artifact][API.EXPANDED] = True
         return to_expand
 
@@ -383,11 +381,14 @@ class _Validation_m:
 
     def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]:
         """ Get all predecessors of a node that don't evaluate as complete """
+        status     : TaskStatus_e | ArtifactStatus_e
+        is_success : bool
+        incomplete : list[TaskName|TaskArtifact]
         assert(focus in self.nodes)
         incomplete = []
         for x in self.pred[focus]:
-            status = self._registry.get_status(x)
-            is_success = status in TaskStatus_e.success_set or status is ArtifactStatus_e.EXISTS
+            status     = self._registry.get_status(x)
+            is_success = status in API.SUCCESS_STATUSES
             match x:
                 case _ if is_success:
                     pass
@@ -404,7 +405,7 @@ class _Validation_m:
 
 ##--|
 
-@Mixin(_Expansion_m, _Validation_m, TaskMatcher_m)
+@Mixin(_Expansion_m, _Validation_m)
 class TrackNetwork:
     """ The _graph of concrete tasks and their dependencies """
     _registry         : TrackRegistry

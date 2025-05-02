@@ -28,7 +28,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from doot.enums import EdgeType_e
+from doot.enums import EdgeType_e, TaskStatus_e, ArtifactStatus_e
 
 # ##-- types
 # isort: off
@@ -72,4 +72,12 @@ ARTIFACT_EDGES                  : Final[set[EdgeType_e]]      = EdgeType_e.artif
 DECLARE_PRIORITY                : Final[int]                  = 10
 MIN_PRIORITY                    : Final[int]                  = -10
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
+
+SUCCESS_STATUSES : Final[set[TaskStatus_e|ArtifactStatus_e]]  = {
+    TaskStatus_e.SUCCESS,
+    TaskStatus_e.TEARDOWN,
+    TaskStatus_e.DEAD,
+    ArtifactStatus_e.EXISTS,
+}
+
 # Body:

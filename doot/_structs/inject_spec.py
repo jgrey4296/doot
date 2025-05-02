@@ -181,7 +181,7 @@ class InjectSpec(BaseModel):
                 | bool(self.literal)
                 | (self.with_suffix is not None))
 
-    def validate_against(self, source:Maybe[list[str]]=None, needed:Maybe[list[str]]=None, target:Maybe[list[str]]=None) -> Maybe[tuple[set[str], set[str]]]:
+    def validate_against(self, control:TaskSpec, target:TaskSpec) -> bool:
         """ Ensures this injection is usable with given sources, and given required injections
 
         eg:
@@ -204,41 +204,39 @@ class InjectSpec(BaseModel):
 
 
         """
-        source  = source or []
-        needed  = needed or []
-        target  = target or []
-        surplus = set() # {x for x in self._mapping.keys() if x in target}
-        missing = {y for y in self._mapping.values() if y not in source}
-        missing |= {z for z in needed if z not in self._mapping}
+        if any(x not in control.extra for x in self.from_spec.values()):
+            raise ValueError("Control is missing injection sources", control.name, self)
+        if any(x not in target.extra for x in self.from_spec.keys()):
+            return False
 
-        if bool(missing) or bool(surplus):
-            return surplus, missing
+        return True
 
-        return None
+
 
     def apply_from_spec(self, parent:TaskSpec) -> dict:
-        """ Apply values from the parent's spec values """
+        """ Apply values from the parent's spec values.
+
+        Fully expands keys in 'from_spec',
+        Only partially expands (L1) from 'from_target'
+        """
+        logging.info("Applying from_spec injection: %s", parent.name)
         data = {}
         for x,y in self.from_spec.items():
             data[str(x)] = y(parent)
+        for x,y in self.from_target.items():
+            data[str(x)] = y(parent.spec, insist=True, fallback=y, limit=1)
         else:
             return data
 
     def apply_from_state(self, parent:Task_d) -> dict:
         """ Expand a key using the parents state """
+        logging.info("Applying from_state injection: %s", parent.name)
         data = {}
         for x,y in self.from_state.items():
             data[str(x)] = y(parent.state, parent.spec)
         else:
             return data
 
-    def apply_from_target(self, parent:Task_p) -> dict:
-        """ An L1 expansion from the parent, to use a child's key as the value """
-        data = {}
-        for x,y in self.from_target.items():
-            data[str(x)] = y(parent.state, parent.spec, insist=True, fallback=y, limit=1)
-        else:
-            return data
 
     def apply_from_cli(self, source:TaskName|str) -> dict:
         data = {}
@@ -248,17 +246,11 @@ class InjectSpec(BaseModel):
         else:
             return data
 
-    def apply_literal(self, source:list|dict) -> dict:
-        match source:
-            case list():
-                pass
-            case dict():
-                pass
-            case x:
-                raise TypeError(type(x))
-
+    def apply_literal(self, val:Any) -> dict:
+        """ Takes a value and sets it for any keys in self.literal  """
+        logging.info("Applying literal injection: %s", val)
         data = {}
         for x,y in self.literal.items():
-            data[str(x)] = y
+            data[str(x)] = val
         else:
             return data

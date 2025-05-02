@@ -35,6 +35,8 @@ from doot.errors import TaskError, TaskFailed
 
 # ##-- end 1st party imports
 
+logging = logmod.getLogger(__name__)
+
 @Proto(Action_p)
 class DootBaseAction:
     """
@@ -49,6 +51,7 @@ class DootBaseAction:
         return f"Base Action"
 
     def __call__(self, spec:ActionSpec, state:dict) -> Maybe[dict|bool]:
+        logging.debug("Base Action Called: %s", state.get("count", 0))
         doot.report.detail("Base Action Called: %s", state.get("count", 0))
         doot.report.user(" ".join(spec.args))
         return { "count" : state.get("count", 0) + 1 }

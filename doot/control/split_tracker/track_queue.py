@@ -140,12 +140,16 @@ class TrackQueue:
             return self._queue.peek()
 
         match self._queue.pop():
-            case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
-                logging.warning("Task halted due to reaching minimum priority while tracking: %s", focus)
+            case TaskName() as focus if focus not in self._registry.tasks:
+                pass
+            case TaskName() as focus if self._registry.get_priority(focus) < self._network._min_priority:
+                logging.warning("[Deque] Halting (Min Priority) : %s", focus.readable)
                 self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
-                self._registry.tasks[focus].priority -= 1
-                logging.debug("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
+                task  = self._registry.tasks[focus]
+                prior = task.priority
+                task.priority -= 1
+                logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus.readable)
             case TaskArtifact() as focus:
                 focus.priority -= 1
 
@@ -175,6 +179,7 @@ class TrackQueue:
                 if status:
                     self._registry.set_status(art, status)
 
+                logging.debug("[Queue] %s : %s", self._registry.get_status(art), art)
                 return art
             case TaskSpec() as spec:
                 self._registry.register_spec(spec)
@@ -186,30 +191,33 @@ class TrackQueue:
             case None:
                 return None
             case TaskName() as x if x not in self._registry.specs:
-                raise doot.errors.TrackingError("Unrecognized take name, it may not be registered", name)
-            case TaskName() as x if x not in self._registry.tasks:
-                inst_name = self._registry._instantiate_spec(x)
-                task_name = self._registry._make_task(inst_name)
+                raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", name)
+            case TaskName() as x if not x.is_uniq():
+                inst_name = self._registry._instantiate_spec(x, add_cli=from_user)
             case TaskName() as x:
-                task_name = x
+                inst_name = x
 
-        if task_name not in self._network:
-            self._network.connect(task_name, None if from_user else False)
-        target_priority = self._registry.tasks[task_name].priority
-        self.active_set.add(task_name)
-        self._queue.add(task_name, priority=target_priority)
+        if inst_name not in self._network:
+            self._network.connect(inst_name, None if from_user else False)
+
+        self.active_set.add(inst_name)
+        match self._registry.tasks.get(inst_name, None):
+            case None:
+                self._queue.add(inst_name, API.DECLARE_PRIORITY)
+            case x:
+                self._queue.add(inst_name, x.priority)
         # Apply the override status if necessary:
         match status:
             case TaskStatus_e():
-                self._registry.set_status(task_name, status)
+                self._registry.set_status(inst_name, status)
             case None:
-                status = self._registry.get_status(task_name)
+                status = self._registry.get_status(inst_name)
 
-        logging.info("Queued Entry at priority: %s, status: %s: %s", target_priority, status, task_name)
-        return task_name
+        logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name.readable)
+        return inst_name
 
     def _queue_prep_name(self, name:str|TaskName) -> Maybe[TaskName]:
-        """ Preprocess the name to queue
+        """ Heuristics for queueing task names
 
         """
         match name:

@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 
 """
-
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -32,13 +32,13 @@ import doot
 import doot.errors
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import ArtifactStatus_e, TaskMeta_e, TaskStatus_e
-from doot.mixins.matching import TaskMatcher_m
 from doot.structs import (ActionSpec, InjectSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.core.task import DootTask
 
 # ##-- end 1st party imports
 
 from . import _interface as API # noqa: N812
+from doot._structs import _interface as S_API  # noqa: N812
 
 # ##-- types
 # isort: off
@@ -66,7 +66,8 @@ if TYPE_CHECKING:
     type ActionElem  = ActionSpec|RelationSpec
     type ActionGroup = list[ActionElem]
 ##--|
-from doot._abstract import Task_p
+##
+from doot._abstract import Task_p, Task_d
 # isort: on
 # ##-- end types
 
@@ -77,24 +78,49 @@ logging.disabled = False
 
 ##--|
 
-class _Registration_m:
+class _RegistryData:
+    specs                : dict[TaskName, TaskSpec]
+    concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]
+    # Invariant for tasks: every key in tasks has a matching key in specs.
+    tasks                : dict[Concrete[TaskName], Task_p]
+    artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]
+    _artifact_status     : dict[TaskArtifact, TaskStatus_e]
+    # Artifact sets
+    _abstract_artifacts  : set[Abstract[TaskArtifact]]
+    _concrete_artifacts  : set[Concrete[TaskArtifact]]
+    # indirect blocking requirements:
+    _blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]
+    _late_injections     : dict[Concrete[TaskName], tuple[InjectSpec, TaskName]]
+
+class _Registration_m(_RegistryData):
 
     def register_spec(self, *specs:TaskSpec) -> None:
-        """ Register task specs, abstract or concrete.
+        """ Register task specs, abstract or concrete
+
         An initial concrete instance will be created for any abstract spec.
+
+        Specs with names ending in <partial> will apply their direct .sources predecessor
+        under themselves, and pop off the 'partial' name
+        That predecessor can not be partial itself
         """
-        queue = []
+        queue : list[TaskSpec] = []
         queue += specs
         while bool(queue):
             spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.info("Ignoring Registration of disabled task: %s", spec.name.readable)
+                logging.info("[Disabled] task: %s", spec.name.readable)
                 continue
+            if spec.name[-1] == "<partial>":
+                spec = self._reify_partial_spec(spec)
 
             self.specs[spec.name] = spec
-            logging.info("Registered Spec: %s", spec.name)
+            match spec.name.is_uniq():
+                case True:
+                    logging.info("[+] Concrete Spec: %s", spec.name.readable)
+                case False:
+                    logging.info("[+] Abstract Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
             if TaskMeta_e.JOB in spec.meta:
@@ -104,9 +130,27 @@ class _Registration_m:
 
             self._register_spec_artifacts(spec)
             self._register_blocking_relations(spec)
+        else:
+            pass
+
+    def _reify_partial_spec(self, spec:TaskSpec) -> TaskSpec:
+        """ Take a partial spec a.b.c..<partial>,
+        Apply it over
+        """
+        adjusted_name = spec.name.pop() # type: ignore
+        if adjusted_name in self.specs:
+            raise ValueError("Tried to reify a partial spec into one that already is registered")
+
+        base_name = spec.sources[-1]
+        assert(isinstance(base_name, TaskName))
+        match self.specs.get(base_name, None):
+            case TaskSpec() as base_spec:
+                return spec.reify_partial(base_spec)
+            case _:
+                raise ValueError("No Base Spec for Partial", spec.name, base_name)
 
     def _register_artifact(self, art:TaskArtifact, *tasks:TaskName) -> None:
-        logging.info("Registering Artifact: %s, %s", art, tasks)
+        logging.info("[+] Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
         # Add it to the relevant abstract/concrete set
         if art.is_concrete():
@@ -135,13 +179,20 @@ class _Registration_m:
         for rel in spec.action_group_elements():
             match rel:
                 case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.is_uniq():
-                    logging.info("Registering Requirement: %s : %s", target, rel.invert(spec.name))
+                    logging.info("[Requirement]: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
                 case _: # Ignore action specs and non
                     pass
 
-class _Instantiation_m:
+    def _register_late_injection(self, task:TaskName, inject:InjectSpec, parent:TaskName) -> None:
+        """ Register an injection to run on task initialisation,
+        using the state injection's from its parent
+        """
+        assert(task not in self._late_injections)
+        self._late_injections[task] = (inject, parent)
+
+class _Instantiation_m(_RegistryData):
 
     def _get_task_source_chain(self, name:Abstract[TaskName]) -> list[Abstract[TaskSpec]]:
         """ get the chain of sources for a task.
@@ -150,19 +201,20 @@ class _Instantiation_m:
 
           traces with the *last* value in spec.sources.
         """
-        match name:
-            case TaskName():
-                assert(not name.is_uniq())
-            case TaskArtifact():
-                assert(not name.is_concrete())
-        spec                          = self.specs[name]
-        chain   : list[TaskSpec]  = []
-        current : Maybe[TaskSpec] = spec
-        count   : int = API.INITIAL_SOURCE_CHAIN_COUNT
+        spec    : TaskSpec
+        chain   : list[TaskSpec]
+        current : Maybe[TaskSpec]
+        count   : int
+
+        assert(not name.is_uniq())
+        spec    = self.specs[name]
+        chain   = []
+        current = spec
+        count   = API.INITIAL_SOURCE_CHAIN_COUNT
         while current is not None:
             if 0 > count:
                 raise doot.errors.TrackingError("Building a source chain grew to large", name)
-            count -= 1
+            count -= 0
             match current: # Determine the base
                 case TaskSpec(name=name) if TaskMeta_e.JOB_HEAD in name:
                     # job heads are generated, so don't have a source chain
@@ -186,29 +238,12 @@ class _Instantiation_m:
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[TaskName]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
-        if name not in self.specs:
-            logging.debug("Not reusing instantiation because name doesn't have a matching spec: %s", name)
-            return None
-        if extra or add_cli:
-            logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
-            return None
+        no_spec       = name not in self.specs
+        invalid_reuse = extra or add_cli
+        uniq_spec     = name.is_uniq()
+        no_instances  = not bool(self.concrete[name])
 
-        if name.is_uniq():
-            return name
-
-        if not bool(self.concrete[name]):
-            logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
-            return None
-
-        abstract = self.specs[name]
-        match [x for x in self.concrete[name] if abstract != (concrete:=self.specs[x]) and self.match_with_constraints(concrete, abstract)]:
-            case []:
-                logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
-                return None
-            case [x, *xs]:
-                logging.debug("Reusing Concrete Spec: %s for %s", x, name)
-                # Can use an existing concrete spec
-                return x
+        return None
 
     def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:Maybe[dict|ChainGuard]=None) -> Concrete[TaskName]:
         """ Convert an Asbtract Spec into a Concrete Spec,
@@ -218,23 +253,13 @@ class _Instantiation_m:
             case None:
                 pass
             case TaskName() as existing:
-                logging.debug("Reusing instantiation: %s for %s", existing, name)
+                logging.debug("[Reuse] Spec %s for %s", existing.readable, name)
                 return existing
 
-        spec = self.specs[name]
-        # Instantiate the spec from its source chain
-        match self._get_task_source_chain(name):
-            case []:
-                raise doot.errors.TrackingError("this shouldn't be possible", name)
-            case [x]:
-                # No chain, just instantiate the spec
-                instance_spec = x.instantiate_onto(None)
-            case [*xs]:
-                # (reversed because the chain goes from spec -> ancestor)
-                # and you want to instantiate descendents onto ancestors
-                instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
+        spec          = self.specs[name]
+        instance_spec = spec.instantiate()
 
-        logging.debug("Instantiating: %s into %s", name, instance_spec.name)
+        logging.debug("[Instance] %s into %s", name, instance_spec.name.readable)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -242,7 +267,7 @@ class _Instantiation_m:
 
         if extra:
             # apply additional settings onto the instance
-            instance_spec = instance_spec.specialize_from(extra)
+            instance_spec = instance_spec.under(extra)
 
         assert(instance_spec.name.is_uniq())
         # Map abstract -> concrete
@@ -258,55 +283,34 @@ class _Instantiation_m:
           if theres no constraints, will just instantiate.
 
           """
-        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
-        pass
+        logging.debug("[Relation]: %s -> %s -> %s", control.readable, rel.relation.name, rel.target)
         assert(control in self.specs)
         if rel.target not in self.specs:
             raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
+
+        assert(isinstance(rel.target, TaskName))
         control_spec       : TaskSpec       = self.specs[control]
         target_spec        : TaskSpec       = self.specs[rel.target]
         successful_matches : list[TaskName] = []
         instance           : TaskName
+        existing           : TaskName
 
-        match self.concrete.get(rel.target, []):
-            case []:
-                pass
-            case [*xs] if not bool(rel.constraints) and not bool(rel.inject):
-                successful_matches = [x for x in xs if x != control]
-            case [*xs]:
-                # concrete instances exist, match on them
-                potentials : list[TaskSpec] = [self.specs[x] for x in xs]
-                successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
+        for existing in self.concrete.get(rel.target, []):
+            if not rel.accepts(control_spec, self.specs[existing]):
+                # Constraint or Inject mismatch
+                continue
 
-        match rel.inject:
-            case None:
-                extra = {}
-            case InjectSpec() as inj:
-                extra = {} | inj.apply_from_spec(control_spec)
-
-        match successful_matches:
-            case []: # No matches, instantiate, with injected values
-                instance = self._instantiate_spec(rel.target, extra=extra)
-                logging.debug("Using New Instance: %s", instance)
-            case [x]: # One match, connect it
-                assert(x in self.specs)
-                assert(x.is_uniq())
-                instance = x
-                logging.debug("Reusing Instance: %s", instance)
-                return instance
-            case [*_, x]: # TODO check this.
-                # Use most recent instance?
-                assert(x in self.specs)
-                assert(x.is_uniq())
-                instance = x
-                logging.debug("Reusing latest Instance: %s", instance)
-
-
-
-        if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-            raise doot.errors.TrackingError("Failed to build task matching constraints", control_spec, rel)
-
-        return instance
+            return existing
+        else:
+            # make a new rel.target instance
+            match rel.inject:
+                case InjectSpec() as inj:
+                    injection = inj.apply_from_spec(control_spec)
+                    instance = self._instantiate_spec(rel.target, extra=injection)
+                    self._register_late_injection(instance, inj, control)
+                    return instance
+                case _:
+                    return self._instantiate_spec(rel.target)
 
     def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
@@ -314,6 +318,8 @@ class _Instantiation_m:
 
           return the name of the task
           """
+        task : Task_d
+
         if not isinstance(name, TaskName):
             raise doot.errors.TrackingError("Tried to add a not-task", name)
         if not name.is_uniq():
@@ -321,36 +327,38 @@ class _Instantiation_m:
         if name in self.tasks:
             return name
 
-        logging.debug("Constructing Task Object: %s", name)
+        logging.debug("[Instance] Task Object: %s", name)
         match task_obj:
             case None:
                 spec = self.specs[name]
-                task : Task_p = spec.make()
-            case Task_p():
+                task = spec.make()
+            case Task_d():
                 task = task_obj
             case _:
                 raise doot.errors.TrackingError("Supplied task object isn't a task_i", task_obj)
+
+        match self._late_injections.get(name, None):
+            case InjectSpec() as inj, TaskName() as control:
+                task.state |= inj.apply_from_state(self.tasks[control])
+            case _:
+                pass
+
+        must_inject = spec.extra.on_fail([])[S_API.MUST_INJECT_K]()
+        match [x for x in must_inject if x not in task.state]:
+            case []:
+                pass
+            case xs:
+                raise doot.errors.TrackingError("Task did not receive required injections", spec.name, xs)
 
         # Store it
         self.tasks[name] = task
         return name
 
 ##--|
-@Mixin(_Registration_m, _Instantiation_m, TaskMatcher_m)
-class TrackRegistry:
-    """ Stores and manipulates specs, tasks, and artifacts """
 
-    specs                : dict[TaskName, TaskSpec]
-    concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]
-    # Invariant for tasks: every key in tasks has a matching key in specs.
-    tasks                : dict[Concrete[TaskName], Task_p]
-    artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]
-    _artifact_status     : dict[TaskArtifact, TaskStatus_e]
-    # Artifact sets
-    _abstract_artifacts  : set[Abstract[TaskArtifact]]
-    _concrete_artifacts  : set[Concrete[TaskArtifact]]
-    # indirect blocking requirements:
-    _blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]
+@Mixin(_Registration_m, _Instantiation_m)
+class TrackRegistry(_RegistryData):
+    """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
         self.specs                = {}
@@ -361,6 +369,7 @@ class TrackRegistry:
         self._abstract_artifacts  = set()
         self._concrete_artifacts  = set()
         self._blockers            = defaultdict(lambda: [])
+        self._late_injections     = {}
 
     def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
@@ -374,23 +383,32 @@ class TrackRegistry:
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_p, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+    def set_status(self, target:Concrete[TaskName|TaskArtifact]|Task_p, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
         """
-        logging.info("Updating State: %s -> %s", task, status)
-        match task, status:
-            case Task_p(), TaskStatus_e() if task.name in self.tasks:
+        match target, status:
+            case Task_p() as task, TaskStatus_e() if task.name in self.tasks:
+                logging.info("[%s] %s -> %s", task.name.readable, self.get_status(task.name), status)
                 self.tasks[task.name].status = status
-            case TaskArtifact(), ArtifactStatus_e():
-                self._artifact_status[task] = status
-            case TaskName(), TaskStatus_e() if task in self.tasks:
+            case TaskName() as task, TaskStatus_e() if task in self.tasks:
+                logging.info("[%s] %s -> %s", task.readable, self.get_status(task), status)
                 self.tasks[task].status = status
+            case TaskArtifact() as art, ArtifactStatus_e():
+                logging.info("[%s] %s -> %s", tart, self.get_status(art), status)
+                self._artifact_status[art] = status
             case TaskName(), TaskStatus_e():
-                logging.debug("Not Setting Status of %s, its hasn't been started", task)
+                logging.debug("[%s] Not Started Yet", task)
                 return False
             case _, _:
                 raise doot.errors.TrackingError("Bad task update status args", task, status)
 
         return True
+
+    def get_priority(self, target:Concrete[TaskName|TaskArtifact]) -> int:
+        match target:
+            case TaskName() if target in self.tasks:
+                return self.tasks[target].priority
+            case _:
+                return API.DECLARE_PRIORITY

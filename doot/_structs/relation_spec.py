@@ -78,17 +78,16 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     """ {object} is {relation} to {target}
 
     Object is optional, to allow multiple different objects to have the same relationship to the target.
-     Encodes a relation between a object , (who owns this relationspec)
-      and the subject of the relation (who is contained within the relation)
+    Encodes a relation between an object , (who owns this relationspec)
+    and the subject of the relation (who is contained within the relation)
 
-      eg: baking dependsOn      mixing. relation=dependsOn, target=mixing.
-          baking produces       cake.   r=produces, t=cake.
-          baking requirementFor party.  r=requirementFor, t=party.
+    eg: (baking <needs> mixing)
+        (baking <blocks> cake)
 
-      May carry additional information:
-      - constraints : dict|list of keys that must match between the task specs of the two tasks
-      - inject      : a mapping of { obj.key : sub.key } that will be injected into the object
-      - object      : the owning base object of the relationship
+    May carry additional information:
+    - constraints : dict|list. Maps obj[x] == targ[y] requirements
+    - inject      : InjectSpec. Maps targ[x] = obj[y] values to pass to target.
+    - object      : Maybe[TaskName]. the owning base object of the relationship
 
     """
 
@@ -105,6 +104,9 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
 
     @classmethod
     def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
+        """ Create a new relation, defaulting to a requirement.
+
+        """
         relation = relation or cls.mark_e.needs
         result = None
         match data:
@@ -190,7 +192,6 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         """ a helper to make an edge for the tracker.
           uses the current (abstract) target, unless an instance is provided
           """
-        logging.info("Relation to edge: (object:%s) (rel:%s) (target:%s) (target instance:%s)", obj, self.relation, self.target, target)
         match self.relation:
             case RelationMeta_e.needs:
                 # target is a predecessor
@@ -228,5 +229,29 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                             constraints=self.constraints)
 
     def forward_dir_p(self) -> bool:
-        " is this relation's direction obj -> target? "
+        """ is this relation's direction obj -> target? """
         return self.relation is RelationMeta_e.blocks
+
+
+    def accepts(self, control:TaskSpec, target:TaskSpec) -> bool:
+        """ Test if this pair of Tasks satisfies the relation """
+        if not target.name.is_uniq():
+            return False
+        if not (self.target < target.name):
+            return False
+
+        # Check constraints match
+        for targ_k,source_k in self.constraints.items():
+            if source_k not in control.extra:
+                continue
+            if targ_k not in target.extra:
+                return False
+
+            if (targ_v:=target.extra.get(targ_k, None)) != (source_v:=control.extra[source_k]):
+                logging.debug("[Relation] Constraint does not match: %s(%s) : %s(%s)", targ_k, targ_v, source_k, source_v)
+                return False
+
+        if self.inject is None:
+            return True
+
+        return self.inject.validate_against(control, target)

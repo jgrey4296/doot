@@ -36,7 +36,7 @@ from jgdv import Proto
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._structs.relation_spec import RelationSpec
+from doot.structs import RelationSpec, InjectSpec
 from doot.control.split_tracker.track_network import TrackNetwork
 from doot.control.split_tracker.track_queue import TrackQueue
 from doot.control.split_tracker.track_registry import TrackRegistry
@@ -130,33 +130,17 @@ class SplitTracker:
         else:
             return queued
 
-
     def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
         return self._registry.get_status(task)
 
     def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
         self._registry.set_status(task, state)
 
-
     def build_network(self, *, sources:Maybe[True|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
         self._network.build_network(sources=sources)
 
     def validate_network(self) -> None:
         self._network.validate_network()
-
-    def propagate_state_and_cleanup(self, name:TaskName) -> None:
-        """ Propagate a task's state on to its cleanup task"""
-        logging.info("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
-        cleanups = [x for x in self._network.succ[name] if self._network.edges[name, x].get("cleanup", False)]
-        task = self._registry.tasks[name]
-        match cleanups:
-            case [x, *xs]:
-                cleanup_id = self.queue_entry(cleanups[0])
-                cleanup_task = self._registry.tasks[cleanup_id]
-                cleanup_task.state.update(task.state)
-                task.state.clear()
-            case _:
-                task.state.clear()
 
     def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:
         """ ask for the next task that can be performed
@@ -166,39 +150,38 @@ class SplitTracker:
           or if theres nothing left in the queue
 
         """
-        logging.info("---- Getting Next Task")
-        logging.debug("Tracker Active Set Size: %s", len(self._queue.active_set))
+        focus : str|TaskName|TaskArtifact
+        count : int
+        result : Maybe[Task_p|TaskArtifact]
+        status : TaskStatus_e
+
+        logging.info("[Next.For] (Active: %s)", len(self._queue.active_set))
         if not self._network.is_valid:
             raise doot.errors.TrackingError("Network is in an invalid state")
 
         if target and target not in self._queue.active_set:
             self.queue_entry(target, silent=True)
 
-        focus : Maybe[str|TaskName|TaskArtifact] = None
-        count                                    = API.MAX_LOOP
-        result : Maybe[Task_p|TaskArtifact]      = None
+        count  = API.MAX_LOOP
+        result = None
         while (result is None) and bool(self._queue) and 0 < (count:=count-1):
-            focus  : TaskName|TaskArtifact = self._queue.deque_entry()
-            status : TaskStatus_e          = self._registry.get_status(focus)
-            match focus:
-                case TaskName():
-                    logging.debug("Tracker Head: %s (Task). State: %s, Priority: %s",
-                                   focus, self._registry.get_status(focus), self._registry.tasks[focus].priority)
-                case TaskArtifact():
-                    logging.debug("Tracker Head: %s (Artifact). State: %s, Priority: %s",
-                                   focus, self._registry.get_status(focus), self._registry.get_status(focus))
+            focus  = self._queue.deque_entry()
+            status = self._registry.get_status(focus)
+            logging.debug("[Next.For.Head]: %s : %s", status, focus)
 
             match status:
                 case TaskStatus_e.DEAD:
-                    logging.info("Task is Dead: %s", focus)
                     del self._registry.tasks[focus]
                 case TaskStatus_e.DISABLED:
-                    logging.info("Task Disabled: %s", focus)
+                    pass
                 case TaskStatus_e.TEARDOWN:
-                    logging.info("Tearing Down: %s", focus)
-                    self._queue.active_set.remove(focus)
-                    self._registry.set_status(focus, TaskStatus_e.DEAD)
-                    self.propagate_state_and_cleanup(focus)
+                    for succ in self._network.succ[focus]:
+                        if not self._network.edges[focus, succ].get(API.CLEANUP, False):
+                            self.set_status(succ, TaskStatus_e.HALTED)
+                        self.queue_entry(succ)
+                    else:
+                        self._queue.active_set.remove(focus)
+                        self._registry.set_status(focus, TaskStatus_e.DEAD)
                 case ArtifactStatus_e.EXISTS:
                     # Task Exists, queue its dependents and *don't* add the artifact back in
                     self._queue.execution_trace.append(focus)
@@ -206,7 +189,6 @@ class SplitTracker:
                     if bool(heads):
                         self.queue_entry(heads[0])
                 case TaskStatus_e.SUCCESS:
-                    logging.info("Task Succeeded: %s", focus)
                     self._queue.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     heads = [x for x in self._network.succ[focus] if self._network.edges[focus, x].get("job_head", False)]
@@ -214,42 +196,28 @@ class SplitTracker:
                         self.queue_entry(heads[0])
                 case TaskStatus_e.FAILED:  # propagate failure
                     self._queue.active_set.remove(focus)
-                    logging.warning("Task Failed, Propagating from: %s to: %s", focus, list(self._network.succ[focus]))
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
-                    for succ in self._network.succ[focus]:
-                        self._registry.set_status(succ, TaskStatus_e.FAILED)
                 case TaskStatus_e.HALTED:  # remove and propagate halted status
-                    logging.warning("Task Halted, Propagating from: %s to: %s", focus, list(self._network.succ[focus]))
-                    for succ in self._network.succ[focus]:
-                        if self._network.edges[focus, succ].get("cleanup", False):
-                            continue
-                        self.set_status(succ, TaskStatus_e.HALTED)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.SKIPPED:
-                    logging.warning("Task was skipped: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.DEAD)
                 case TaskStatus_e.RUNNING:
-                    logging.info("Waiting for Runner to update status for: %s", focus)
                     self.queue_entry(focus)
                 case TaskStatus_e.READY:   # return the task if its ready
-                    logging.info("Task Ready to run, informing runner: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.RUNNING)
                     result = self._registry.tasks[focus]
                 case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
-                    logging.info("Checking Task Dependencies: %s", focus)
                     match self._network.incomplete_dependencies(focus):
                         case []:
                             self.queue_entry(focus, status=TaskStatus_e.READY)
                         case [*xs]:
-                            logging.info("Task Blocked: %s on : %s", focus, xs)
+                            logging.debug("Task Blocked: %s on : %s", focus, xs)
                             self.queue_entry(focus)
                             for x in xs:
                                 self.queue_entry(x, parent=focus)
                 case TaskStatus_e.INIT:
-                    logging.info("Task Object Initialising: %s", focus)
-                    self.queue_entry(focus, status=TaskStatus_e.WAIT)
+                    task_name = self.queue_entry(focus, status=TaskStatus_e.WAIT)
                 case ArtifactStatus_e.STALE:
-                    logging.warning("Artifact is Stale: %s", focus)
                     for pred in self._network.pred[focus]:
                         self.queue_entry(pred)
                 case ArtifactStatus_e.DECLARED if bool(focus):
@@ -262,7 +230,8 @@ class SplitTracker:
                             assert(not bool(focus))
                             path = focus.expand()
                             self.queue_entry(focus)
-                            # Returns the artifact, the runner can try to create it, then override the halt
+                            # Returns the artifact, the runner can try to create
+                            # it, then override the halt
                             result = focus
                         case [*xs]:
                             logging.info("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
@@ -270,19 +239,17 @@ class SplitTracker:
                             for x in xs:
                                 self.queue_entry(x)
                 case TaskStatus_e.DEFINED:
-                    logging.info("Constructing Task Object for concrete spec: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.HALTED)
                 case TaskStatus_e.DECLARED:
-                    logging.info("Declared Task dequeued: %s. Instantiating into tracker network.", focus)
+                    self._registry._make_task(focus)
                     self.queue_entry(focus)
                 case TaskStatus_e.NAMED:
                     logging.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
-
                 case x: # Error otherwise
-                    raise doot.errors.TrackingError("Unknown task state: ", x)
+                    raise doot.errors.TrackingError("Unknown task state", x)
 
         else:
-            logging.info("---- Determined Next Task To Be: %s", result)
+            logging.info("[Next.For] <- %s", result)
             return result
 
     def generate_plan(self, *args):
