@@ -93,9 +93,10 @@ MSG_SPACING              : Final[int] = 6
 class ReportStackEntry_d:
     log_extra : dict
     log_level : int
+    depth     : int
     state     : str
     data      : dict
-    prefix    : list
+    prefix    : list[str]
 
     def __init__(self, **kwargs:Any) -> None:
         self.log_extra = kwargs.pop("log_extra")
@@ -103,16 +104,16 @@ class ReportStackEntry_d:
         self.state     = kwargs.pop("state")
         self.data      = kwargs.pop("data")
         self.prefix    = kwargs.pop("prefix", [])
+        self.depth     = kwargs.pop("depth", 1)
         self.extra     = dict(kwargs)
 
 
 class Reporter_d:
-    ctx             : list[str]
     _act_trace      : list
     _fmt            : TraceFormatter_p
     _stack          : list[ReportStackEntry_d]
     _entry_count    : int
-    _logger         : Maybe[Logger]
+    _logger         : Logger
     _log_level      : int
 
 @runtime_checkable
@@ -134,75 +135,87 @@ class WorkflowReporter_p(Protocol):
         # level-
         pass
 
-    def root(self) -> None:
+    def root(self) -> Self:
         # pass fmt
         pass
 
-    def wait(self) -> None:
+    def wait(self) -> Self:
         # pass fmt
         pass
 
-    def act(self, info:str, msg:str) -> None:
+    def act(self, info:str, msg:str) -> Self:
         # msg fmt
         pass
 
-    def fail(self, info:str, msg:str) -> None:
+    def fail(self, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Self:
         # msg fmt
         pass
 
-    def branch(self, name:str) -> None:
+    def branch(self, name:str) -> Self:
         # pass fmt
         pass
 
-    def pause (self, reason:str) -> None:
+    def pause (self, reason:str) -> Self:
         # msg fmt
         pass
 
-    def result(self, state:list[str]) -> None:
+    def result(self, state:list[str]) -> Self:
         # Maybe msg fmt
         pass
 
-    def resume(self, name:str) -> None:
+    def resume(self, name:str) -> Self:
         # msg fmt
         pass
 
-    def finished(self) -> None:
+    def finished(self) -> Self:
         # pass fmt
         pass
 
-    def queue(self, num:int) -> None:
+    def queue(self, num:int) -> Self:
         raise NotImplementedError()
 
-    def state_result(self, *vals:str) -> None:
+    def state_result(self, *vals:str) -> Self:
         raise NotImplementedError()
 
 @runtime_checkable
 class GeneralReporter_p(Protocol):
     """ Reporter Methods for general user facing messages """
 
+    def header(self) -> Self:
+        pass
+
+    def summary(self) -> Self:
+        pass
+
+    def trace(self, msg:str, *rest:str) -> Self:
+        pass
+
+    def failure(self, msg:str, *rest:str) -> Self:
+        pass
+
+    def warn(self, msg:str, *rest:str) -> Self:
+        pass
+
+@runtime_checkable
+class Reporter_p(WorkflowReporter_p, GeneralReporter_p, Protocol):
+    @property
+    def state(self) -> ReportStackEntry_d:
+        pass
+
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         pass
 
-    def set_state(self, state:str, **kwargs:Any) -> None:
+    def push_state(self, state:str, **kwargs:Any) -> Self:
         pass
 
-    def header(self) -> None:
+    def pop_state(self) -> Self:
         pass
-
-    def summary(self) -> None:
-        pass
-
-    def trace(self, msg:str, *rest:str) -> None:
-        pass
-
-    def failure(self, msg:str, *rest:str) -> None:
-        pass
-
-    def warn(self, msg:str, *rest:str) -> None:
-        pass
-
 @runtime_checkable
 class TraceFormatter_p(Protocol):
 
     def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str:
+        pass
+
+
+    def get_segment(self, key:str) -> Maybe[str]:
         pass

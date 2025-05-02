@@ -107,16 +107,19 @@ class TraceFormatter:
     def _build_ctx(self, ctx:Maybe[list]) -> str:
         """ Given a current context list, builds a prefix string for the current print call """
         match ctx:
-            case None:
+            case None | []:
                 return ""
             case list():
-                return "".join(ctx)
+                return API.GAP.join(ctx) + API.GAP
             case x:
                 raise TypeError(type(x))
 
     def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str:
         """ Build the formatted report line.
 
+        key : the segment type to use
+        info/msg : values to format into the report
+        ctx : list[str] of values prefixing the report
         """
         extra        = {}
         extra['time']= datetime.datetime.now().strftime(API.TIME_FMT) # noqa: DTZ005
@@ -146,3 +149,14 @@ class TraceFormatter:
         extra['ctx'] = self._build_ctx(ctx)
         result : str = fmt.format_map(extra)
         return result
+
+    def get_segment(self, key:str) -> Maybe[str]:
+        match self._segments.get(key, None):
+            case None:
+                return None
+            case str() as val:
+                return val
+            case left, mid, right:
+                return None
+            case _:
+                raise ValueError("Unexpected value in reporter segments", key)
