@@ -56,7 +56,7 @@ class TestBaseTask:
 
     def test_run_lambda_action(self, caplog):
         caplog.clear()
-        caplog.set_level(logmod.NOTSET, logger=printer.name)
+        caplog.set_level(logmod.NOTSET, logger=logging.root.name)
         printer.propagate = True
         spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.core.action:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
@@ -104,7 +104,6 @@ class TestBaseTask:
         as_str           = stub.to_toml()
         loaded           = ChainGuard.read(as_str)
         as_dict          = dict(loaded)
-        as_dict['group'] = "basic"
         new_spec         = TaskSpec.build(as_dict)
         assert(isinstance(new_spec, TaskSpec))
         assert(str(new_spec.name) == str(task.spec.name))

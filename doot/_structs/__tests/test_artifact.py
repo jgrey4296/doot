@@ -70,7 +70,7 @@ class TestArtifactReification:
             case None:
                 assert(False)
             case TaskArtifact() as res:
-                assert(res == "test/other/blah.txt")
+                assert(res == "file::>test/other/blah.txt")
 
     def test_reify_only_concrete_parts(self):
         obj    = TaskArtifact("test/*/blah.txt")
@@ -79,25 +79,25 @@ class TestArtifactReification:
             case None:
                 assert(False)
             case TaskArtifact() as res:
-                assert(res == "test/other/blah.txt")
+                assert(res == "file::>test/other/blah.txt")
 
     def test_reify_stem(self):
         obj                = TaskArtifact("test/?.txt")
         target             = pl.Path("test/blah.txt")
         result             = obj.reify(target)
-        assert(result      == "test/blah.txt")
+        assert(result      == "file::>test/blah.txt")
 
     def test_reify_only_stem(self):
         obj                = TaskArtifact("test/?.txt")
         target             = pl.Path("blah.txt")
         result             = obj.reify(target)
-        assert(result      == "test/blah.txt")
+        assert(result      == "file::>test/blah.txt")
 
     def test_reify_path_and_stem(self):
         obj           = TaskArtifact("*/?.txt")
         target        = pl.Path("test/blah.txt")
         result        = obj.reify(target)
-        assert(result == "test/blah.txt")
+        assert(result == "file::>test/blah.txt")
 
     def test_reify_path_and_stem_fail(self):
         obj           = TaskArtifact("*/?.blah")
@@ -107,29 +107,29 @@ class TestArtifactReification:
 
     def test_reify_path_fail(self):
         obj    = TaskArtifact("other/?.txt")
-        target = pl.Path("test/blah.txt")
+        target = pl.Path("file::>test/blah.txt")
         assert(obj.reify(target) is None)
 
     def test_reify_glob_path(self):
         obj           = TaskArtifact("*/blah.txt")
         target        = pl.Path("test/blah.txt")
         result        = obj.reify(target)
-        assert(result == "test/blah.txt")
+        assert(result == "file::>test/blah.txt")
 
     def test_reify_rec_glob(self):
         obj           = TaskArtifact("test/**/blah.txt")
         target        = pl.Path("test/a/b/c/aweg")
         result        = obj.reify(target)
-        assert(result == "test/a/b/c/aweg/blah.txt")
+        assert(result == "file::>test/a/b/c/aweg/blah.txt")
 
     def test_reify_suffix(self):
         obj           = TaskArtifact("other/blah.?")
         target        = pl.Path("blah.txt")
         result        = obj.reify(target)
-        assert(result == "other/blah.txt")
+        assert(result == "file::>other/blah.txt")
 
     def test_reify_ext_with_path(self):
         obj           = TaskArtifact("other/blah.?")
         target        = pl.Path("other/blah.txt")
         result        = obj.reify(target)
-        assert(result == "other/blah.txt")
+        assert(result == "file::>other/blah.txt")

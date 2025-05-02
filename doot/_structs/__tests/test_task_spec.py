@@ -28,6 +28,9 @@ DEFAULT_CTOR = CodeReference(doot.aliases.task[doot.constants.entrypoints.DEFAUL
 
 class TestTaskSpec:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_raw_ctor(self):
         obj = structs.TaskSpec(name="simple::task")
         assert(obj is not None)
@@ -118,6 +121,9 @@ class TestTaskSpec:
 
 class TestTaskSpecValidation:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_meta_build(self):
         obj = structs.TaskSpec.build({"name":"simple::test"})
         assert(obj.meta == {TaskMeta_e.default})
@@ -131,67 +137,185 @@ class TestTaskSpecValidation:
         obj = structs.TaskSpec.build({"name":"simple::test", "blah": {}})
         assert("blah" in obj.model_fields_set)
 
+    def test_sources_fail_if_partial(self):
+        with pytest.raises(ValueError):
+            structs.TaskSpec.build({"name":"simple::test", "sources": ["basic::some.other..<partial>"]})
+
+class TestTaskSpec_Joining:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_over(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_task  = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": ["agroup::base"]})
+
+        match over_task.over(under_task):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec is not under_task)
+                assert(new_spec is not over_task)
+                assert(new_spec.name != under_task.name)
+                assert(over_task.name < new_spec.name)
+                assert("a" in new_spec.extra)
+                assert("b" in new_spec.extra)
+                assert(bool(new_spec.actions))
+                assert(new_spec.sources == ["agroup::base", "agroup::base.a"])
+            case x:
+                 assert(False), x
+
+    def test_over_suffix(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_task  = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
+
+        match over_task.over(under_task, suffix="blah"):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec.name == "agroup::base.a..blah")
+            case x:
+                 assert(False), x
+
+    def test_over_false_suffix(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_task  = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
+
+        match over_task.over(under_task, suffix=False):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec.name == "agroup::base.a")
+            case x:
+                 assert(False), x
+
+    def test_under(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_task  = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
+
+        match under_task.under(over_task):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec is not under_task)
+                assert(new_spec is not over_task)
+                assert(new_spec.name != under_task.name)
+                assert(over_task.name < new_spec.name)
+                assert("a" in new_spec.extra)
+                assert("b" in new_spec.extra)
+                assert(bool(new_spec.actions))
+                assert(new_spec.sources == ["agroup::base", "agroup::base.a"])
+            case x:
+                 assert(False), x
+
+    def test_under_suffix(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_task  = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
+
+        match under_task.under(over_task, suffix="blah"):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec.name == "agroup::base.a..blah")
+            case x:
+                 assert(False), x
+
+    def test_under_dict(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_data = {"blah": "bloo"}
+
+        match under_task.under(over_data):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec is not under_task)
+                assert(new_spec.name != under_task.name)
+                assert(under_task.name < new_spec.name)
+                assert("a" in new_spec.extra)
+                assert(bool(new_spec.actions))
+                assert("blah" in new_spec.extra)
+                assert(new_spec.sources == ["agroup::base", "agroup::base..<data>"])
+            case x:
+                 assert(False), x
+
+    def test_under_dict_suffix(self):
+        under_task = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
+        over_data = {"blah": "bloo"}
+
+        match under_task.under(over_data, suffix="blah"):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec.name == "agroup::base..<data>..blah")
+            case x:
+                 assert(False), x
+
+    def test_reify_partial(self):
+        base      = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions"    : [{"do":"log", "msg":"blah"}]})
+        partial   = structs.TaskSpec.build({"name": "agroup::base.blah..<partial>", "a": 20, "b": "blah", "sources": ["agroup::base"]})
+
+        match partial.reify_partial(base):
+            case structs.TaskSpec() as new_spec:
+                assert(new_spec.name == "agroup::base.blah")
+            case x:
+                 assert(False), x
+
+
+    def test_reify_incorrect(self):
+        bad_base      = structs.TaskSpec.build({"name": "agroup::base.bad", "a": 0, "actions"    : [{"do":"log", "msg":"blah"}]})
+        partial   = structs.TaskSpec.build({"name": "agroup::base.blah..<partial>", "a": 20, "b": "blah", "sources": ["agroup::base"]})
+
+        with pytest.raises(ValueError):
+            partial.reify_partial(bad_base)
 
 class TestTaskSpecInstantiation:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_instantiation(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::base"})
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
 
-        instance = override_task.instantiate_onto(base_task)
+        instance = override_task.over(base_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(instance.name != base_task.name)
         assert(override_task.name < instance.name)
         assert("a" in instance.extra)
         assert("b" in instance.extra)
-        assert(instance.sources == ["agroup::base", "agroup::atask"])
+        assert(instance.sources == ["agroup::base", "agroup::base.a"])
 
     def test_instantiation_extends_sources(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::base"})
-        instance = override_task.instantiate_onto(base_task)
-        assert(instance.sources == ["agroup::base", "agroup::atask"])
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources":[ "agroup::base"]})
+        instance = override_task.over(base_task)
+        assert(instance.sources == ["agroup::base", "agroup::base.a"])
 
     def test_instantiation_prefers_newer_extra_vals(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "a": 100, "b": 2, "sources": "agroup::base"})
-        instance = override_task.instantiate_onto(base_task)
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "a": 100, "b": 2, "sources":[ "agroup::base"]})
+        instance = override_task.over(base_task)
         assert(instance.extra['a'] == 100)
-        assert(instance.sources == ["agroup::base", "agroup::atask"])
+        assert(instance.sources == ["agroup::base", "agroup::base.a"])
 
     def test_specialize_from_fail_unrelated(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::not.base"})
+        override_task = structs.TaskSpec.build({"name": "agroup::not.base", "b": 2, "sources":["agroup::not.base"]})
 
         assert(not base_task.name < structs.TaskName(override_task.sources[-1]))
         with pytest.raises(doot.errors.TrackingError):
-            base_task.specialize_from(override_task)
+            base_task.under(override_task)
 
     def test_specialize_keeps_base_actions(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "actions":[{"do":"basic"}]})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources":"agroup::base"})
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources":["agroup::base"]})
 
-        instance = base_task.specialize_from(override_task)
+        instance = base_task.under(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(bool(instance.actions))
 
     def test_specialize_keeps_override_actions(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "actions":[{"do":"basic"}], "sources":"agroup::base"})
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "actions":[{"do":"basic"}], "sources":["agroup::base"]})
 
-        instance = base_task.specialize_from(override_task)
+        instance = base_task.under(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(bool(instance.actions))
 
     def test_specialize_source_as_taskname(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources" : "agroup::base"})
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources" :[ "agroup::base"]})
 
-        instance = base_task.specialize_from(override_task)
+        instance = base_task.under(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(not isinstance(instance.ctor, structs.TaskName))
@@ -199,26 +323,19 @@ class TestTaskSpecInstantiation:
 
     def test_dependency_merge(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "depends_on": ["basic::dep"]})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "depends_on": ["extra::dep"], "b": 2, "sources" : "agroup::base"})
+        override_task = structs.TaskSpec.build({"name": "agroup::base.a", "depends_on": ["extra::dep"], "b": 2, "sources" :[ "agroup::base"]})
 
-        instance = base_task.specialize_from(override_task)
+        instance = base_task.under(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(len(instance.depends_on) == 2)
 
-    def test_specialize_conflict(self):
-        base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 1, "sources" : "agroup::not.base"})
-
-        with pytest.raises(doot.errors.TrackingError):
-            base_task.specialize_from(override_task)
-
     def test_simple_data_extension(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
         data = {"a": 2, "b": 3}
-        instance = base_task.specialize_from(data)
+        instance = base_task.under(data)
         assert(instance is not base_task)
-        assert(instance.name == base_task.name)
+        assert(base_task.name < instance.name)
         assert(instance.a == 2)
         assert(instance.b == 3)
         assert(instance.c == "blah")
@@ -232,17 +349,15 @@ class TestTaskSpecInstantiation:
 
     def test_dict_sources_independence(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
-        instance = base_task.specialize_from({})
+        instance = base_task.under({})
         assert(base_task.sources is not instance.sources)
         instance.sources.append("blah")
         assert("blah" not in base_task.sources)
 
     def test_self_sources_independence(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
-        instance = base_task.specialize_from(base_task)
-        assert(base_task.sources is not instance.sources)
-        instance.sources.append("blah")
-        assert("blah" not in base_task.sources)
+        with pytest.raises(doot.errors.TrackingError):
+            base_task.under(base_task)
 
     def test_cli_arg_application(self, mocker):
         data = {"sub":{"agroup::base": {"blah":"bloo"}}}
@@ -250,12 +365,11 @@ class TestTaskSpecInstantiation:
         base     = structs.TaskSpec.build({"name":"agroup::base",
                                            "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
                                            })
-        instance = base.specialize_from({})
+        instance = base.under({})
         assert(not hasattr(instance, "blah"))
         with_cli = instance.apply_cli_args()
         assert(hasattr(with_cli, "blah"))
         assert(with_cli.blah == "bloo")
-
 
     def test_cli_arg_fallback_to_default(self, mocker):
         data = {"sub":{"agroup::base": {}}}
@@ -263,22 +377,23 @@ class TestTaskSpecInstantiation:
         base     = structs.TaskSpec.build({"name":"agroup::base",
                                            "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
                                            })
-        instance = base.specialize_from({})
+        instance = base.under({})
         assert(not hasattr(instance, "blah"))
         with_cli = instance.apply_cli_args()
         assert(hasattr(with_cli, "blah"))
         assert(with_cli.blah == "aweg")
-
 
 class TestTaskGeneration:
     """ eg: job heads and cleanup tasks
 
     """
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_basic(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
         assert(isinstance(base_task, structs.TaskSpec))
-
 
     def test_empty_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
@@ -290,7 +405,6 @@ class TestTaskGeneration:
             case _:
                 assert(False)
 
-
     def test_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
         match base_task.gen_cleanup_task():
@@ -301,11 +415,8 @@ class TestTaskGeneration:
             case _:
                 assert(False)
 
-
     def test_instantiated_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
-        instance      = base_task.specialize_from(base_task)
-        assert(structs.TaskName.bmark_e.gen in instance.name)
         match base_task.gen_cleanup_task():
             case [cleanup_task]:
                 assert(isinstance(cleanup_task, structs.TaskSpec))
@@ -313,7 +424,6 @@ class TestTaskGeneration:
                 assert(base_task.name in cleanup_task.depends_on[0])
             case _:
                 assert(False)
-
 
     def test_job_head_gen_empty_cleanup(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": []})
@@ -324,7 +434,6 @@ class TestTaskGeneration:
                assert(base_task.name in head.depends_on[0])
             case xs:
                 assert(False), xs
-
 
     def test_job_head_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]})

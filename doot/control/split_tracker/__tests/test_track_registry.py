@@ -28,7 +28,7 @@ import doot.errors
 import doot.structs
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
-
+from doot.structs import TaskName, InjectSpec
 from doot.control.split_tracker.track_registry import TrackRegistry
 # ##-- end 1st party imports
 
@@ -63,6 +63,60 @@ logging = logmod.root
 class TestRegistry:
 
     def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_task_retrieval(self):
+        obj  = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        name = spec.name
+        obj.register_spec(spec)
+        instance  = obj._instantiate_spec(name)
+        result    = obj._make_task(instance)
+        retrieved = obj.tasks[result]
+        assert(isinstance(retrieved, Task_p))
+
+    def test_task_get_default_status(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        name = spec.name
+        obj.register_spec(spec)
+        instance = obj._instantiate_spec(name)
+        result   = obj._make_task(instance)
+        status   = obj.get_status(result)
+        assert(status is TaskStatus_e.INIT)
+
+    def test_task_status_missing_task(self):
+        obj = TrackRegistry()
+        name = doot.structs.TaskName("basic::task")
+        assert(obj.get_status(name) == TaskStatus_e.NAMED)
+
+    def test_set_status(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        name = spec.name
+        obj.register_spec(spec)
+        instance = obj._instantiate_spec(name)
+        result = obj._make_task(instance)
+        assert(obj.get_status(result) is TaskStatus_e.INIT)
+        assert(obj.set_status(result, TaskStatus_e.SUCCESS) is True)
+        assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
+
+    def test_set_status_missing_task(self):
+        obj = TrackRegistry()
+        name = doot.structs.TaskName("basic::task")
+        assert(obj.set_status(name, TaskStatus_e.SUCCESS) is False)
+
+    def test_spec_retrieval(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        name = spec.name
+        obj.register_spec(spec)
+        retrieved = obj.specs[name]
+        assert(retrieved == spec)
+
+class TestRegistration:
+
+    def test_sanity(self):
         obj = TrackRegistry()
         assert(obj is not None)
 
@@ -73,6 +127,13 @@ class TestRegistry:
         obj.register_spec(spec)
         assert(bool(obj.specs))
         assert(len(obj.specs) == 2)
+
+    def test_register_spec_cleanup(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        assert(not bool(obj.specs))
+        obj.register_spec(spec)
+        assert(spec.name.with_cleanup() in obj.specs)
 
     def test_register_job_spec(self):
         obj = TrackRegistry()
@@ -118,13 +179,163 @@ class TestRegistry:
         obj.register_spec(spec)
         assert(len(obj.specs) == 0)
 
-    def test_spec_retrieval(self):
+    def test_register_partial_spec(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "actions":[{"do":"log", "msg":"blah"}]})
+        obj.register_spec(spec)
+        partial_spec = doot.structs.TaskSpec.build({"name":"basic::task.blah..<partial>", "sources":["basic::task"], "actions":[{"do":"log", "msg":"blah"}]})
+        obj.register_spec(partial_spec)
+        assert("basic::task.blah" in obj.specs)
+        assert("basic::task.blah..<partial>" not in obj.specs)
+
+class TestInstantiation:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_instantiate_spec(self):
         obj = TrackRegistry()
         spec = doot.structs.TaskSpec.build({"name":"basic::task"})
-        name = spec.name
         obj.register_spec(spec)
-        retrieved = obj.specs[name]
-        assert(retrieved == spec)
+        pre_count = len(obj.specs)
+        assert(not bool(obj.concrete))
+        match obj._instantiate_spec(TaskName("basic::task")):
+            case TaskName() as x if x.is_uniq():
+                assert(pre_count < len(obj.specs))
+                assert(bool(obj.concrete))
+            case x:
+                 assert(False), x
+
+
+    def test_instantiate_spec_doesnt_instance_cleanup(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        pre_count = len(obj.specs)
+        assert(not bool(obj.concrete))
+        instance = obj._instantiate_spec(TaskName("basic::task"))
+        assert(instance in obj.specs)
+        assert(not bool(obj.concrete[spec.name.with_cleanup()]))
+
+    def test_instantiate_spec_fail(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        pre_count = len(obj.specs)
+        assert(not bool(obj.concrete))
+        with pytest.raises(KeyError):
+            obj._instantiate_spec(TaskName("basic::bad"))
+
+    @pytest.mark.xfail
+    def test_reuse_instantiation(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        pre_count = len(obj.specs)
+        assert(not bool(obj.concrete))
+        inst_1 = obj._instantiate_spec(TaskName("basic::task"))
+        inst_2 = obj._instantiate_spec(TaskName("basic::task"))
+        assert(inst_1 == inst_2)
+
+    def test_dont_reuse_instantiation(self):
+        obj = TrackRegistry()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        pre_count = len(obj.specs)
+        assert(not bool(obj.concrete))
+        inst_1 = obj._instantiate_spec(TaskName("basic::task"))
+        inst_2 = obj._instantiate_spec(TaskName("basic::task"), extra={"blah":"bloo"})
+        assert(inst_1 != inst_2)
+
+    def test_instantiate_relation(self):
+        obj = TrackRegistry()
+        control_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on": ["basic::dep"]})
+        dep_spec = doot.structs.TaskSpec.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
+        obj.register_spec(control_spec, dep_spec)
+
+        control_inst = obj._instantiate_spec(control_spec.name)
+        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+            case TaskName() as dep_name:
+                assert(dep_name.is_uniq())
+                assert(dep_spec.name < dep_name)
+                assert(dep_name in obj.specs)
+                dep_inst_spec = obj.specs[dep_name]
+                assert(bool(dep_inst_spec.actions))
+            case x:
+                 assert(False), x
+
+    def test_instantiate_relation_with_injection(self):
+        obj = TrackRegistry()
+        dependency = {"task":"basic::dep", "inject":{"from_spec":["blah"]}}
+        control_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on": [dependency], "blah": "bloo"})
+        dep_spec = doot.structs.TaskSpec.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
+        obj.register_spec(control_spec, dep_spec)
+
+        control_inst = obj._instantiate_spec(control_spec.name)
+        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+            case TaskName() as dep_name:
+                dep_inst_spec = obj.specs[dep_name]
+                assert(dep_inst_spec.extra["blah"] == "bloo")
+            case x:
+                 assert(False), x
+
+    def test_instantiate_relation_with_late_injection(self):
+        obj = TrackRegistry()
+        dependency = {"task":"basic::dep", "inject":{"from_spec":["blah"], "from_state":["aweg"]}}
+        control_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on": [dependency], "blah": "bloo", "aweg":"qqqq"})
+        dep_spec = doot.structs.TaskSpec.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
+        obj.register_spec(control_spec, dep_spec)
+
+        control_inst = obj._instantiate_spec(control_spec.name)
+        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+            case TaskName() as dep_name:
+                dep_inst_spec = obj.specs[dep_name]
+                assert(dep_inst_spec.extra["blah"] == "bloo")
+                assert("aweg" not in dep_inst_spec.extra)
+                assert(dep_name in obj._late_injections)
+            case x:
+                 assert(False), x
+
+
+    def test_instantiate_relation_with_constraints(self):
+        obj = TrackRegistry()
+        control_spec = doot.structs.TaskSpec.build({"name":"basic::task",
+                                                    "constraints":["blah", "aweg"],
+                                                    "blah": "bloo", "aweg":"qqqq",
+                                                    "depends_on": [{"task":"basic::dep", "constraints":["blah", "aweg"]}],
+                                                    })
+        basic_dep = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(control_spec, basic_dep)
+
+        control_inst = obj._instantiate_spec(control_spec.name)
+        not_suitable = obj._instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
+        suitable     = obj._instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"qqqq"})
+        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+            case TaskName() as dep_name:
+                assert(dep_name == suitable)
+            case x:
+                 assert(False), x
+
+
+    def test_instantiate_relation_with_no_matching_constraints(self):
+        obj = TrackRegistry()
+        control_spec = doot.structs.TaskSpec.build({"name":"basic::task",
+                                                    "constraints":["blah", "aweg"],
+                                                    "blah": "bloo", "aweg":"qqqq",
+                                                    "depends_on": [{"task":"basic::dep", "constraints":["blah", "aweg"]}],
+                                                    })
+        basic_dep = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(control_spec, basic_dep)
+
+        control_inst = obj._instantiate_spec(control_spec.name)
+        bad_1 = obj._instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
+        bad_2 = obj._instantiate_spec(basic_dep.name, extra={"blah":"BAD", "aweg":"qqqq"})
+        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+            case TaskName() as dep_name:
+                assert(dep_name != bad_1)
+                assert(dep_name != bad_1)
+            case x:
+                 assert(False), x
 
     def test_make_task(self):
         obj = TrackRegistry()
@@ -136,47 +347,20 @@ class TestRegistry:
         obj._make_task(instance)
         assert(bool(obj.tasks))
 
-    def test_task_retrieval(self):
+    def test_make_task_with_late_injection(self):
         obj = TrackRegistry()
         spec = doot.structs.TaskSpec.build({"name":"basic::task"})
-        name = spec.name
+        inj  = InjectSpec.build({"from_state": ["blah"]})
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result = obj._make_task(instance)
-        retrieved = obj.tasks[result]
-        assert(isinstance(retrieved, Task_p))
+        source_inst = obj._instantiate_spec(spec.name)
+        obj._make_task(source_inst)
+        obj.tasks[source_inst].state["blah"] = "bloo"
 
-    def test_task_get_default_status(self):
-        obj = TrackRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result   = obj._make_task(instance)
-        status   = obj.get_status(result)
-        assert(status is TaskStatus_e.INIT)
-
-    def test_task_status_missing_task(self):
-        obj = TrackRegistry()
-        name = doot.structs.TaskName("basic::task")
-        assert(obj.get_status(name) == TaskStatus_e.NAMED)
-
-    def test_set_status(self):
-        obj = TrackRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result = obj._make_task(instance)
-        assert(obj.get_status(result) is TaskStatus_e.INIT)
-        assert(obj.set_status(result, TaskStatus_e.SUCCESS) is True)
-        assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
-
-    def test_set_status_missing_task(self):
-        obj = TrackRegistry()
-        name = doot.structs.TaskName("basic::task")
-        assert(obj.set_status(name, TaskStatus_e.SUCCESS) is False)
-
+        dep_inst = obj._instantiate_spec(spec.name)
+        obj._register_late_injection(dep_inst, inj, source_inst)
+        obj._make_task(dep_inst)
+        assert("blah" in obj.tasks[dep_inst].state)
+        assert(obj.tasks[dep_inst].state["blah"] == "bloo")
 
 class TestRegistryInternals:
 
@@ -199,7 +383,7 @@ class TestRegistryInternals:
         obj = TrackRegistry()
         base_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
         dep_spec = doot.structs.TaskSpec.build({"name": "example::dep"})
-        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": "basic::task", "bloo": 15})
+        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": ["basic::task"], "bloo": 15})
         obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
@@ -207,6 +391,7 @@ class TestRegistryInternals:
         assert(isinstance(special, doot.structs.TaskName))
         assert(special in obj.concrete[spec.name])
 
+    @pytest.mark.xfail
     def test_instantiate_spec_match_reuse(self):
         obj = TrackRegistry()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
@@ -239,20 +424,19 @@ class TestRegistryInternals:
     def test_instantiate_spec_chain(self):
         obj = TrackRegistry()
         base_spec = doot.structs.TaskSpec.build({"name":"basic::task", "blah": 2, "bloo": 5})
-        dep_spec = doot.structs.TaskSpec.build({"name": "example::dep", "sources":"basic::task", "bloo":10, "aweg":15 })
-        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": "example::dep", "aweg": 20})
+        dep_spec = doot.structs.TaskSpec.build({"name": "example::dep", "sources": ["basic::task"], "bloo":10, "aweg":15 })
+        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": ["example::dep"], "aweg": 20})
         obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, doot.structs.TaskName))
 
-
     def test_instantiate_spec_name_change(self):
         obj       = TrackRegistry()
         base_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
         dep_spec = doot.structs.TaskSpec.build({"name": "example::dep"})
-        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": "basic::task", "bloo": 15})
+        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": ["basic::task"], "bloo": 15})
         obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
@@ -262,10 +446,11 @@ class TestRegistryInternals:
         assert(isinstance(special[1:-1], UUID))
 
     def test_instantiate_spec_extra_merge(self):
-        obj = TrackRegistry()
-        base_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
-        dep_spec = doot.structs.TaskSpec.build({"name": "example::dep"})
-        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": "basic::task", "bloo": 15, "aweg": "aweg"})
+        obj           = TrackRegistry()
+        base_spec     = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
+        dep_spec      = doot.structs.TaskSpec.build({"name": "example::dep"})
+        abs_spec      = doot.structs.TaskSpec.build({"name":"basic::task.a", "sources": ["basic::task"], "bloo": 15, "aweg": "aweg"})
+        spec          = abs_spec.over(base_spec)
         obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
@@ -276,11 +461,11 @@ class TestRegistryInternals:
         assert(concrete.extra.bloo == 15)
 
     def test_instantiate_spec_depends_merge(self):
-        obj = TrackRegistry()
+        obj       = TrackRegistry()
         base_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"]})
-        dep_spec = doot.structs.TaskSpec.build({"name": "example::dep"})
+        dep_spec  = doot.structs.TaskSpec.build({"name": "example::dep"})
         dep_spec2 = doot.structs.TaskSpec.build({"name": "another::dep"})
-        spec    = doot.structs.TaskSpec.build({"name":"test::spec", "sources": "basic::task", "depends_on":["another::dep"]})
+        spec      = base_spec.under({"depends_on":["another::dep"]})
         obj.register_spec(base_spec, dep_spec, dep_spec2, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)

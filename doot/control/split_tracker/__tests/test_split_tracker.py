@@ -77,8 +77,10 @@ class TestSplitTracker:
 
     def test_next_for_fails_with_unbuilt_network(self):
         obj = SplitTracker()
-        with pytest.raises(doot.errors.TrackingError):
+        with pytest.raises(doot.errors.TrackingError) as ctx:
             obj.next_for()
+
+        assert(ctx.value.args[0] == "Network is in an invalid state")
 
     def test_next_for_empty(self):
         obj = SplitTracker()
@@ -91,7 +93,7 @@ class TestSplitTracker:
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
         assert(t_name.is_uniq())
-        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
         obj.build_network()
         match obj.next_for():
             case Task_p():
@@ -101,15 +103,12 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_simple_dependendency(self):
-        """
-
-        """
         obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
         obj.build_network()
         match obj.next_for():
             case Task_p() as result:
@@ -125,7 +124,7 @@ class TestSplitTracker:
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
         obj.build_network()
         dep_inst = obj.next_for()
         assert(dep.name < dep_inst.name)
@@ -145,7 +144,7 @@ class TestSplitTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
@@ -164,10 +163,16 @@ class TestSplitTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
+        logging.info("--------------------------------------------------")
         obj.build_network()
+        logging.info("--------------------------------------------------")
         # Force the dependency to success without getting it from next_for:
+        obj._registry._make_task(t_name)
+        obj._registry._make_task(dep_inst)
+        obj.set_status(t_name, TaskStatus_e.HALTED)
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
+        logging.info("--------------------------------------------------")
         match obj.next_for():
             case Task_p() as task:
                 assert(task.name.is_cleanup())
@@ -177,7 +182,7 @@ class TestSplitTracker:
         for x in obj._registry.tasks.values():
             if x.name.is_cleanup():
                 continue
-            assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD])
+            assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
     def test_next_fail(self):
         obj  = SplitTracker()
@@ -186,11 +191,17 @@ class TestSplitTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
+        logging.info("--------------------------------------------------")
         obj.build_network()
+        logging.info("--------------------------------------------------")
         # Force the dependency to success without getting it from next_for:
+        obj._registry._make_task(t_name)
+        obj._registry._make_task(dep_inst)
+        obj.set_status(t_name, TaskStatus_e.FAILED)
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
-        match obj.next_for():
+        logging.info("--------------------------------------------------")
+        match (current:=obj.next_for()):
             case Task_p() as task:
                 assert(task.name.is_cleanup())
             case x:
@@ -199,7 +210,7 @@ class TestSplitTracker:
         for x in obj._registry.tasks.values():
             if x.name.is_cleanup():
                 continue
-            assert(x.status in [TaskStatus_e.DEAD])
+            assert(x.status in [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
     def test_next_job_head(self):
         obj       = SplitTracker()
@@ -234,7 +245,7 @@ class TestSplitTracker:
 
         match obj.next_for():
             case Task_p():
-                pass
+                assert(True)
             case x:
                 assert(False), x
 

@@ -25,7 +25,7 @@ class TestTaskStub:
     def test_initial(self):
         obj = stub.TaskStub.build()
         assert(isinstance(obj, stub.TaskStub))
-        assert(obj.ctor == "doot.task.core.task:DootTask")
+        assert(obj.ctor == "cls::doot.task.core.task:DootTask")
         assert(obj['name'].default == "basic::stub")
 
     def test_add_field(self):

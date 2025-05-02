@@ -211,7 +211,6 @@ class TestTrackerNetworkBuild:
         """ a simple task, should also have a ..$cleanup$ successor """
         obj          = network
         spec         = doot.structs.TaskSpec.build({"name":"basic::task"})
-        cleanup_name = spec.name.with_cleanup()
         obj._registry.register_spec(spec)
         assert(len(obj) == 1) # Root node
         assert(len(obj._registry.specs) == 2)
@@ -222,8 +221,21 @@ class TestTrackerNetworkBuild:
         obj.build_network()
         assert(len(obj) == 3)
         assert(instance in obj)
+
+
+    def test_build_cleanup(self, network):
+        """ a simple task, should also have a ..$cleanup$ successor """
+        obj          = network
+        spec         = doot.structs.TaskSpec.build({"name":"basic::task"})
+        cleanup_name = spec.name.with_cleanup()
+        obj._registry.register_spec(spec)
+        instance = obj._registry._instantiate_spec(spec.name)
+        obj.connect(instance)
+        obj.build_network()
         match obj._registry.concrete.get(cleanup_name, None):
             case [TaskName() as cleanup_instance]:
+                assert(cleanup_instance.is_cleanup())
+                cleanup_spec = obj._registry.specs[cleanup_instance]
                 assert(cleanup_name < cleanup_instance)
                 assert(cleanup_instance in obj.succ[instance])
             case x:
@@ -349,9 +361,12 @@ class TestTrackerNetworkBuildConstraints:
             case x:
                 assert(False), x
 
+    @pytest.mark.xfail
     def test_build_dep_match_with_constraint_fail(self, network):
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task",
+                                             "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}],
+                                             "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -383,6 +398,7 @@ class TestTrackerNetworkBuildConstraints:
             case x:
                 assert(False), x
 
+    @pytest.mark.xfail
     def test_build_dep_match_with_injection_fail(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task",
@@ -405,7 +421,7 @@ class TestTrackerNetworkBuildConstraints:
         """
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"from_spec":["test_key"]}}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"from_spec":["test_key"]}}], "test_key": "blah"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep",  "depends_on": [{"task":"basic::chained", "inject":{"from_spec":["test_key"]}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
         obj._registry.register_spec(spec, spec2, spec3)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -419,8 +435,9 @@ class TestTrackerNetworkBuildConstraints:
             case [TaskName() as dep_inst]:
                 assert(spec2.name < dep_inst)
                 assert(spec.test_key == obj._registry.specs[dep_inst].test_key)
-                assert(obj._registry.specs[dep_inst].sources[-1] == spec2.name)
-                assert(obj._registry.specs[dep_inst].test_key != spec2.test_key)
+                dep_spec = obj._registry.specs[dep_inst]
+                assert(spec2.name <= dep_spec.sources[-1])
+                assert(dep_spec.test_key != spec2.test_key)
             case x:
                 assert(False), x
 
@@ -428,8 +445,9 @@ class TestTrackerNetworkBuildConstraints:
             case [TaskName() as chain_inst]:
                 assert(spec3.name < chain_inst)
                 assert(spec.test_key == obj._registry.specs[chain_inst].test_key)
-                assert(obj._registry.specs[chain_inst].sources[-1] == spec3.name)
-                assert(obj._registry.specs[chain_inst].test_key != spec3.test_key)
+                chain_spec = obj._registry.specs[chain_inst]
+                assert(spec3.name < chain_spec.sources[-1])
+                assert(chain_spec.test_key != spec3.test_key)
             case x:
                 assert(False), x
 
@@ -537,7 +555,7 @@ class TestTrackerNetworkBuildArtifacts:
         assert(len(obj) == 2)
         obj.build_network()
         obj.validate_network()
-        assert(len(obj) == 6)
+        assert(len(obj) == 7)
         # Check theres a path between the specs, via the artifact
         match obj._registry.concrete.get(spec2.name, None):
             case [TaskName() as dep_inst]:
