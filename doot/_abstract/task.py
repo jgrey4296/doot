@@ -157,8 +157,8 @@ class Task_d:
     """ Core Interface for Tasks """
 
     _version         : str       = "0.1"
-    _help            : list[str]
-    doc              : list[str]
+    _help            : tuple[str, ...]
+    doc              : tuple[str, ...]
     state            : dict
     spec             : SpecStruct_p
     status           : TaskStatus_e

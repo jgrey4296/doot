@@ -409,7 +409,6 @@ class _SpecUtils_m:
         """
         specialized = dict(self)
         specialized |= dict(data)
-        # specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
         # Then special updates
         specialized['name']         = data.name
