@@ -8,7 +8,7 @@ doc_builder = "html"
 env_name    = "doot-dev312"
 
 [[locations]]
-doc_conf = "docs"
+doc_conf = "{src}/__docs"
 doc_src  = "{src}"
 doc_out  = "{temp}/docs"
 # autodoc  = "{doc_conf}/_api"

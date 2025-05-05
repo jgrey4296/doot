@@ -114,11 +114,11 @@ class Loading_m:
     def _get_from_config(self) -> None:
         """ Get main-relevant config settings """
         # but config vals
-        self.preferred_cmd_loader                          = doot.config.on_fail("default").startup.loaders.command()
-        self.preferred_task_loader                         = doot.config.on_fail("default").startup.loaders.task()
-        self.preferred_parser                              = doot.config.on_fail("default").startup.loaders.parser()
-        self.empty_call_cmd                                = doot.config.on_fail("list").startup.empty_cmd()
-        self.implicit_task_cmd                             = doot.config.on_fail("run").startup.doot.implicit_task_cmd()
+        self.preferred_cmd_loader   = doot.config.on_fail("default").startup.loaders.command()
+        self.preferred_task_loader  = doot.config.on_fail("default").startup.loaders.task()
+        self.preferred_parser       = doot.config.on_fail("default").startup.loaders.parser()
+        self.empty_call_cmd         = doot.config.on_fail("list").startup.empty_cmd()
+        self.implicit_task_cmd      = doot.config.on_fail("run").startup.doot.implicit_task_cmd()
 
     def _load_plugins(self) -> None:
         """ Use the plugin loader to find all applicable `importlib.EntryPoint`s  """

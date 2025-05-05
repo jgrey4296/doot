@@ -306,7 +306,7 @@ class _Instantiation_m(_RegistryData):
             match rel.inject:
                 case InjectSpec() as inj:
                     injection = inj.apply_from_spec(control_spec)
-                    instance = self._instantiate_spec(rel.target, extra=injection)
+                    instance  = self._instantiate_spec(rel.target, extra=injection)
                     self._register_late_injection(instance, inj, control)
                     return instance
                 case _:
