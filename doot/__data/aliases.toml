@@ -6,9 +6,7 @@ doot_version = "1.1.1"
 help      = "doot.cmds.help_cmd:HelpCmd"
 run       = "doot.cmds.run_cmd:RunCmd"
 list      = "doot.cmds.list_cmd:ListCmd"
-clean     = "doot.cmds.clean_cmd:CleanCmd"
 stub      = "doot.cmds.stub_cmd:StubCmd"
-graph     = "doot.cmds.graph_cmd:GraphCmd"
 
 [[doot.aliases.reporter]]
 # Map {alias} -> CodeRef String
