@@ -24,23 +24,19 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Proto, Mixin
 import pytest
+from jgdv import Mixin, Proto
 from jgdv.structs.chainguard import ChainGuard
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-
-# ##-- end 1st party imports
-
-
-# ##-- 1st party imports
 import doot.errors
-from doot._abstract import Command_p
-from doot.cmds import list_cmd as list_mod
-from doot.cmds.list_cmd import ListCmd
-from doot.structs import TaskSpec
+from .._interface import Command_p
+from .. import list_cmd as list_mod
+from ..list_cmd import ListCmd
+from doot.workflow.structs import TaskSpec
 
 # ##-- end 1st party imports
 
@@ -207,8 +203,8 @@ class TestListCmd:
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(minimal_example))
         obj = ListCmd()
-        mock_class1 = "doot.task:DootTask"
-        mock_class2 = "doot.task:DootJob_bad"
+        mock_class1 = "doot.workflow:DootTask"
+        mock_class2 = "doot.workflow:DootJob_bad"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
             "simple" : TaskSpec.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
@@ -258,7 +254,6 @@ class TestListings:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-
     def test_list_tasks_matches(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(simple_pattern))
@@ -271,7 +266,6 @@ class TestListings:
                 assert(True)
             case _:
                 assert(False)
-
 
     def test_list_group_matches(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
@@ -346,7 +340,6 @@ class TestListings:
             case _:
                 assert(False)
 
-
     def test_list_actions(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(list_actions))
@@ -359,7 +352,6 @@ class TestListings:
                 assert(True)
             case _:
                 assert(False)
-
 
     def test_list_plugins(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)

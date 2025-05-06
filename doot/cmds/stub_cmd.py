@@ -26,22 +26,26 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Proto, Mixin
+from jgdv import Mixin, Proto
 from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-import doot.enums
 import doot.errors
-from doot._structs.dkey import DKey
-from doot.cmds.core.cmd import BaseCommand
-from doot.structs import DKeyed, TaskName, TaskStub
-from doot.task.core.job import DootJob
-from doot.task.core.task import DootTask
+from doot.util.dkey import DKey, DKeyed
+from .structs.task_stub import TaskStub
+from doot.workflow.job import DootJob
+from doot.workflow.structs.task_name import TaskName
+from doot.workflow.task import DootTask
 
 # ##-- end 1st party imports
+
+# ##-| Local
+from ._base import BaseCommand
+
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -65,7 +69,9 @@ if TYPE_CHECKING:
     type ListVal = str|Lambda|tuple[str,dict]
 
 ##--|
-from doot._abstract import PluginLoader_p, Task_p, Command_p
+from doot.control.loaders._interface import PluginLoader_p
+from doot.workflow._interface import Task_p
+from .._interface import Command_p
 # isort: on
 # ##-- end types
 

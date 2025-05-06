@@ -37,7 +37,7 @@ which can be modified, and when returned is used to update the task state.
 ## CLI
 
 The CLI automatically calls doot.setup (loading any doot.toml and pyproject.toml found in the cwd),
-then uses doot.utils.log_config to set up logging from the loaded config,
+then uses doot.util.log_config to set up logging from the loaded config,
 then creates an overlord, which parses cli args and continues to start a cmd.
 After it completes, it may announce it has finished.
 

@@ -58,8 +58,9 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from doot._abstract.loader import Loader_p
-from doot._abstract import Command_p, Main_p
+from .loaders._interface  import Loader_p
+from doot.cmds._interface import Command_p
+from ._interface import Main_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -122,9 +123,9 @@ class Loading_m:
 
     def _load_plugins(self) -> None:
         """ Use the plugin loader to find all applicable `importlib.EntryPoint`s  """
-        from doot.loaders.plugin import DootPluginLoader
+        from doot.control.loaders.plugin import PluginLoader
         try:
-            self.plugin_loader = DootPluginLoader()
+            self.plugin_loader = PluginLoader()
             self.plugin_loader.setup()
             self.plugins : ChainGuard = self.plugin_loader.load()
             doot._load_aliases(data=self.plugins)

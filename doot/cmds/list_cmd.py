@@ -39,9 +39,9 @@ from jgdv.logging import _interface as LogAPI  # noqa: N812
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.cmds.core.cmd import BaseCommand
-from doot.enums import TaskMeta_e
-from doot._abstract import Command_p
+from doot.workflow._interface import TaskMeta_e
+from ._base import BaseCommand
+from ._interface import Command_p
 
 # ##-- end 1st party imports
 
@@ -310,7 +310,7 @@ class _FlagLister_m:
         logging.info("---- Listing Task Flags")
         result : list[ListVal] = []
         result.append("Task Flags: ")
-        for x in sorted(doot.enums.TaskMeta_e):
+        for x in sorted(TaskMeta_e):
             result.append(f"-- {x}")
         else:
             return result

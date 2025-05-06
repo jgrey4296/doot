@@ -29,8 +29,8 @@ from jgdv.cli._interface import NON_DEFAULT_KEY
 
 # ##-- 1st party imports
 import doot
-from doot.cmds.core.cmd import BaseCommand
-from doot._abstract import Command_p
+from ._base import BaseCommand
+from ._interface import Command_p
 
 # ##-- end 1st party imports
 
@@ -44,8 +44,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -56,7 +54,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from doot.structs import TaskSpec
+    from doot.workflow import TaskSpec
 ##--|
 
 # isort: on
@@ -95,14 +93,14 @@ class _HelpCmd_m:
         return result
 
 
-    def _cmd_param_assignments(self, cmd) -> list[str]:
-        result = []
+    def _cmd_param_assignments(self, cmd) -> list[Maybe[str]]:
+        result : list[Maybe[str]] = []
         result.append(None)
         result.append("%s Parameters:" % GROUP_INDENT)
 
         max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, cmd.param_specs)), 0)
         fmt_str       = f"> %{max_param_len}s : (%-5s) : %s "
-        args = doot.args.cmd.args
+        args = doot.args.cmd.args # type: ignore
         last_prefix = None
         for param in sorted([x for x in cmd.param_specs], key=ParamSpec.key_func):
             if last_prefix and last_prefix != param.prefix:
@@ -128,10 +126,10 @@ class _HelpCmd_m:
 
 class _HelpTask_m:
 
-    def _task_help(self, count, spec:TaskSpec) -> list[str]:
+    def _task_help(self, count, spec:TaskSpec) -> list[Maybe[str]]:
         """ Print the help for a task spec """
         task_name = str(spec.name)
-        result = [
+        result : list[Maybe[str]] = [
             "",
             LINE_SEP,
             f"{count:4}: Task: {task_name}",
@@ -161,6 +159,7 @@ class _HelpTask_m:
             case _:
                 ctor = spec.ctor
 
+        assert(isinstance(ctor, Task_p))
         if ctor is not None:
             result.append(f"{GROUP_INDENT} Ctor Class:")
             result += ctor.class_help()

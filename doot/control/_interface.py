@@ -62,3 +62,34 @@ logging = logmod.getLogger(__name__)
 # Vars:
 LOG_PREFIX : Final[str] = "----"
 # Body:
+
+@runtime_checkable
+class Overlord_p(Protocol):
+    """
+    protocol for the doot accesspoint,
+    used for setting up and using Doot programmatically
+    """
+
+    def setup(self, *, targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]) -> None:
+        pass
+
+    def subprinter(self, name:Maybe[str]=None, *, prefix=None) -> Logger:
+        pass
+
+@runtime_checkable
+class Main_p(Protocol):
+    """
+    protocol for doot as a main program
+    """
+
+    def __init__(self, *, args:Maybe[list]=None) -> None:
+        pass
+
+    def main(self) -> None:
+        pass
+
+    def run_cmd(self, cmd:Maybe[str]=None) -> int:
+        pass
+
+    def shutdown(self) -> None:
+        raise NotImplementedError()

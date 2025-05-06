@@ -43,12 +43,10 @@ from jgdv.structs.locator import JGDVLocator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-import doot._interface as API#  noqa: N812
+from .. import _interface as API#  noqa: N812
 import doot.errors as DErr  # noqa: N812
 from doot.reporters import BasicReporter
 # ##-- end 1st party imports
-
-import sys
 
 # ##-- types
 # isort: off
@@ -61,8 +59,9 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, overload
-from doot._abstract import (Command_p, Overlord_p)
 from doot.reporters._interface import WorkflowReporter_p
+from ._interface import Overlord_p
+from doot.cmds._interface import Command_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -73,7 +72,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import Maybe
-    from doot._abstract.loader import Loader_p
+    from .loaders._interface import Loader_p
 
     type Logger                            = logmod.Logger
     type DootError                         = DErr.DootError
