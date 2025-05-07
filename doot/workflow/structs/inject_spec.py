@@ -30,6 +30,7 @@ from jgdv.cli import ParamSpec
 import doot
 import doot.errors
 from doot.util.dkey import DKey
+from doot.workflow._interface import Task_p
 
 # ##-- end 1st party imports
 
@@ -210,27 +211,32 @@ class InjectSpec(BaseModel):
 
 
 
-    def apply_from_spec(self, parent:TaskSpec) -> dict:
+    def apply_from_spec(self, parent:dict|TaskSpec) -> dict:
         """ Apply values from the parent's spec values.
 
         Fully expands keys in 'from_spec',
         Only partially expands (L1) from 'from_target'
         """
-        logging.info("Applying from_spec injection: %s", parent.name)
+        # logging.info("Applying from_spec injection: %s", parent.name)
         data = {}
         for x,y in self.from_spec.items():
             data[str(x)] = y(parent)
         for x,y in self.from_target.items():
-            data[str(x)] = y(parent.spec, insist=True, fallback=y, limit=1)
+            data[str(x)] = y(parent, insist=True, fallback=y, limit=1)
         else:
             return data
 
-    def apply_from_state(self, parent:Task_p) -> dict:
+    def apply_from_state(self, parent:dict|Task_p) -> dict:
         """ Expand a key using the parents state """
-        logging.info("Applying from_state injection: %s", parent.name)
+        # logging.info("Applying from_state injection: %s", parent.name)
+        match parent:
+            case dict() | ChainGuard():
+                pdata = parent
+            case Task_p():
+                pdata = parent.state
         data = {}
         for x,y in self.from_state.items():
-            data[str(x)] = y(parent.state, parent.spec)
+            data[str(x)] = y(pdata)
         else:
             return data
 
