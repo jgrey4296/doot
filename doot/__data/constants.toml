@@ -1,3 +1,4 @@
+## constants.toml -*- mode: Toml -*-
 # Doot Constants
 doot_version = "1.1.1"
 

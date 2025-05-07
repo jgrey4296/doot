@@ -78,7 +78,7 @@ class PluginLoader:
     """
 
     def setup(self, extra_config:Maybe[dict|ChainGuard]=None) -> Self:
-        self.plugins = defaultdict(list)
+        self.plugins : dict = defaultdict(list)
         match extra_config:
             case None:
                 self.extra_config = ChainGuard({})
@@ -89,12 +89,12 @@ class PluginLoader:
 
         return self
 
-    def load(self) -> ChainGuard[EntryPoint]:
+    def load(self) -> ChainGuard[EntryPoint]: # type: ignore[type-arg]
         """
         use entry_points(group="doot")
         add to the config ChainGuard
         """
-        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
+        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX) # type: ignore[attr-defined]
         try:
             self._load_system_plugins()
         except Exception as err:

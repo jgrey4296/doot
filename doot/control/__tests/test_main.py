@@ -2,25 +2,32 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import logging as logmod
+import pathlib as pl
+import sys
 import unittest
 import warnings
-import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
-##-- end imports
-logging = logmod.root
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import pytest
-import sys
-import doot
 
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
 import doot._interface as API
 from doot.control.main import DootMain
+
+# ##-- end 1st party imports
 
 class TestDootMain:
 
@@ -37,20 +44,19 @@ class TestDootMain:
     def test_main_method(self, mocker):
         dmain       = DootMain()
         mocker.patch.object(dmain, "_load")
-        mocker.patch.object(dmain, "_handle_cli_args", return_value=None)
-        mocker.patch.object(dmain, "_set_cmd_instance")
-        mocker.patch.object(dmain, "_parse_args")
+        mocker.patch.object(dmain, "handle_cli_args", return_value=None)
+        mocker.patch.object(dmain, "set_cmd_instance")
+        mocker.patch.object(dmain, "parse_args")
         mocker.patch.object(dmain, "run_cmd")
         mocker.patch.object(dmain, "shutdown")
 
         with pytest.raises(SystemExit) as ctx:
-            dmain.main()
+            dmain()
 
         assert(ctx.value.code is API.ExitCodes.FRONTEND_FAIL)
 
 class TestMainLoading:
 
-    @pytest.mark.skip("TODO")
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
@@ -60,9 +66,12 @@ class TestMainLoading:
 
 class TestMainCLIArgParsing:
 
-    @pytest.mark.skip("TODO")
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
+    @pytest.mark.skip("TODO")
+    def test_todo(self):
+        pass
 
 class TestMainCmdRun:
 

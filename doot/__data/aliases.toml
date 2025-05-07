@@ -72,5 +72,3 @@ touch    =       "doot.workflow.actions.io:TouchFileAction"
 # Map {alias} -> CodeRef String
 "job"   = "doot.workflow:DootJob"
 "task"  = "doot.workflow:DootTask"
-
-[[doot.aliases.mixin]]

@@ -63,15 +63,12 @@ class TestBasicReporter:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-
     def test_basic(self):
         match BasicReporter():
-            case API.WorkflowReporter_p() as x:
-                assert(isinstance(x, API.GeneralReporter_p))
-                assert(True)
+            case API.Reporter_p() as x:
+                assert(isinstance(x, API.Reporter_p))
             case x:
                 assert(False), x
-
 
     def test_message(self, caplog):
         logger = logmod.getLogger("simple")

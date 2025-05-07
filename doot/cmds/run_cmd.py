@@ -96,7 +96,7 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        self._set_reporter(plugins)
+        doot.load_reporter(target=reporter_target)
 
         doot.report.active_level(logmod.INFO)
         doot.report.set_state("cmd")
@@ -117,20 +117,6 @@ class RunCmd(BaseCommand):
             if not self._confirm_plan(runner):
                 return
             runner(handler=interrupt)
-
-    def _set_reporter(self, plugins) -> None:
-        match reporter_target:
-            case None:
-                return
-            case _:
-                pass
-
-        reporters = plugins.on_fail([], list).reporter()
-        match plugin_selector(reporters, target=reporter_target):
-            case type() as x:
-                doot.set_reporter(x(logger=doot.report.log))
-            case x:
-                raise TypeError(type(x))
 
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_p, TaskRunner_p]:

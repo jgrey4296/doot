@@ -35,7 +35,6 @@ from doot.workflow import ActionSpec, DootTask
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = doot.subprinter()
 ##-- end logging
 
 class SimpleTaskExample(DootTask):
@@ -57,7 +56,7 @@ class SimpleTaskExample(DootTask):
         yield self._extra_actions[1]
 
     def _head(self, spec, state):
-        printer.info("An Example Head action")
+        logging.info("An Example Head action")
 
     def _tail(self, spec, state):
-        printer.info("An Example Tail Action")
+        logging.info("An Example Tail Action")

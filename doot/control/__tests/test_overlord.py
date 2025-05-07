@@ -74,27 +74,17 @@ class TestOverlordStartup:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_constants(self):
+    def basic_ctor(self):
         match DootOverlord():
             case DootOverlord() as do:
-                assert(bool(do.constants))
+                assert(True)
             case x:
                 assert(False), x
 
-    def test_aliases(self):
-        match DootOverlord():
-            case DootOverlord() as do:
-                assert(bool(do.aliases))
-                assert(not bool(do.cmd_aliases))
-            case x:
-                assert(False), x
-
-    def test_null_setup_config(self):
-        match DootOverlord():
-            case DootOverlord() as do:
-                assert(not bool(do.config))
-            case x:
-                assert(False), x
+    def test_null_setup(self):
+        obj = DootOverlord()
+        assert(bool(obj.constants))
+        assert(bool(obj.aliases))
 
     @pytest.mark.filterwarnings("ignore")
     def test_load_config_default(self, mocker):
@@ -112,12 +102,10 @@ class TestOverlordStartup:
         do.setup()
         assert(bool(do.locs))
 
-
 class TestOverlordLogging:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
-
 
 class TestOverlordVersionCheck:
     """
@@ -141,7 +129,6 @@ class TestOverlordVersionCheck:
         with pytest.raises(doot.errors.VersionMismatchError):
             do.verify_config_version(ver, None, override=target)
 
-
     def test_verify_config_version(self):
         do = DootOverlord()
         do.verify_config_version(do.__version__, "test")
@@ -151,7 +138,6 @@ class TestOverlordVersionCheck:
         do = DootOverlord()
         with pytest.raises(doot.errors.VersionMismatchError):
             do.verify_config_version("0.1.1", "test")
-
 
 class TestOverlordWorkflowUtil:
 

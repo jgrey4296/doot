@@ -5,6 +5,17 @@ The Basic implementation of a reporter.
 _WorkflowReporter_m implements WorkflowReporter_p methods,
 while _GenReporter_m implements GeneralReporter_p methods.
 
+
+The BasicReporter has both:
+- _stack
+- _entry_count
+
+The stack hold all ReportStackEntry_d's,
+while the entry_count records the number of times the reporter has
+been used in a 'with' statement.
+This is to ensure that if you add entries to the stack,
+you've got to pop them off before the end of the with block.
+
 """
 # ruff: noqa:
 # mypy: disable-error-code="attr-defined"
@@ -57,7 +68,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    type Logger = logmod.Logger
+    from logmod import Logger
+    from ._interface import Reporter_p
     type TreeElem = None | str | list[TreeElem] | dict[str, TreeElem] | tuple[str, TreeElem]
 ##--|
 
@@ -75,10 +87,10 @@ LINE_CHAR  : Final[str] = "-"
 INIT_LEVEL : Final[int] = logmod.WARN
 # Body:
 
-class _TreeReporter_m(API.Reporter_d):
+class _TreeReporter_m:
     """ Methods to report a tree of data """
 
-    def tree(self, data:dict|list) -> Self:
+    def tree(self:Reporter_p, data:dict|list) -> Reporter_p:
         queued : list[TreeElem] = [data]
         self.root()
         while bool(queued):
@@ -109,65 +121,65 @@ class _TreeReporter_m(API.Reporter_d):
             self.finished()
             return self
 
-class _WorkflowReporter_m(API.Reporter_d):
+class _WorkflowReporter_m:
     """ Methods for reporting the progress of a workflow """
     _out : Callable
 
-    def root(self) -> Self:
+    def root(self:Reporter_p) -> Reporter_p:
         assert(len(self._stack) == 1)
         self._out("root", level=6)
         return self
 
-    def wait(self) -> Self:
+    def wait(self:Reporter_p) -> Reporter_p:
         self._out("wait")
         return self
 
-    def act(self, info:str, msg:str, level:int=0) -> Self:
+    def act(self:Reporter_p, info:str, msg:str, level:int=0) -> Reporter_p:
         self._out("act", info=info, msg=msg, level=level)
         return self
 
-    def fail(self, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Self:
+    def fail(self:Reporter_p, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Reporter_p:
         self._out("fail", info=info, msg=msg, level=40)
         return self
 
-    def branch(self, name:str, info:Maybe[str]=None) -> Self:
+    def branch(self:Reporter_p, name:str, info:Maybe[str]=None) -> Reporter_p:
         self._out("branch", level=5)
         self._out("begin", info=info or "Start", msg=name, level=5)
         return self
 
-    def pause (self, reason:str) -> Self:
+    def pause (self:Reporter_p, reason:str) -> Reporter_p:
         self._out("pause", msg=reason, level=5)
         return self
 
-    def result(self, state:list[str], info:Maybe[str]=None) -> Self:
+    def result(self:Reporter_p, state:list[str], info:Maybe[str]=None) -> Reporter_p:
         assert(isinstance(state, list))
         self._out("result" , msg=",".join(str(x) for x in state), info=info, level=5)
         return self
 
-    def resume(self, name:str) -> Self:
+    def resume(self:Reporter_p, name:str) -> Reporter_p:
         self._out("resume", msg=name, level=5)
         return self
 
-    def finished(self) -> Self:
+    def finished(self:Reporter_p) -> Reporter_p:
         self._out("finished", level=5)
         return self
 
-    def queue(self, num:int) -> Self:
+    def queue(self:Reporter_p, num:int) -> Reporter_p:
         raise NotImplementedError()
 
-    def state_result(self, *vals:str) -> Self:
+    def state_result(self:Reporter_p, *vals:str) -> Reporter_p:
         raise NotImplementedError()
 
-class _GenReporter_m(API.Reporter_d):
+class _GenReporter_m:
     """ General """
     log : Logger
     active_level : Callable
 
-    def gap(self) -> Self:
+    def gap(self:Reporter_p) -> Reporter_p:
         self.log.info("")
         return self
 
-    def line(self, msg:Maybe[str]=None, char:Maybe[str]=None) -> Self:
+    def line(self:Reporter_p, msg:Maybe[str]=None, char:Maybe[str]=None) -> Reporter_p:
         char = char or LINE_CHAR
         match msg:
             case str() as x:
@@ -180,7 +192,7 @@ class _GenReporter_m(API.Reporter_d):
 
         return self
 
-    def header(self) -> Self:
+    def header(self:Reporter_p) -> Reporter_p:
         self.active_level(logmod.INFO)
         self.state.log_extra['colour'] = "green"
         self.line()
@@ -188,7 +200,7 @@ class _GenReporter_m(API.Reporter_d):
         self.line()
         return self
 
-    def summary(self) -> Self:
+    def summary(self:Reporter_p) -> Reporter_p:
         self.active_level(logmod.WARN)
         match self.state.state:
             case "fail":
@@ -202,19 +214,19 @@ class _GenReporter_m(API.Reporter_d):
         self.gap()
         return self
 
-    def user(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
+    def user(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
         self.log.warning(msg, *rest)
         return self
 
-    def trace(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
+    def trace(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
         self.log.info(msg, *rest)
         return self
 
-    def detail(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
+    def detail(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
         self.log.debug(msg, *rest)
         return self
 
-    def failure(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
+    def failure(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
         match doot.is_setup: # type: ignore
             case False:
                 print(msg % rest, file=sys.stderr)
@@ -223,7 +235,7 @@ class _GenReporter_m(API.Reporter_d):
 
         return self
 
-    def warn(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
+    def warn(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
         match doot.is_setup: # type: ignore
             case False:
                 print(msg % rest, file=sys.stderr)
@@ -232,7 +244,7 @@ class _GenReporter_m(API.Reporter_d):
 
         return self
 
-    def error(self, msg:str, *rest:str, **kwargs:str) -> Self:  # noqa: ARG002
+    def error(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
         match doot.is_setup: # type: ignore
             case False:
                 print(msg % rest, file=sys.stderr)
@@ -243,9 +255,9 @@ class _GenReporter_m(API.Reporter_d):
 
 ##--|
 
-@Proto(API.WorkflowReporter_p, API.GeneralReporter_p)
-@Mixin(_GenReporter_m, _WorkflowReporter_m, _TreeReporter_m, allow_inheritance=True)
-class BasicReporter(API.Reporter_d):
+@Proto(API.Reporter_i)
+@Mixin(_GenReporter_m, _WorkflowReporter_m, _TreeReporter_m, None, allow_inheritance=True)
+class BasicReporter:
     """ The initial reporter for prior to configuration """
 
     def __init__(self, *args:Any, logger:Maybe[Logger]=None, segments:Maybe[dict]=None, **kwargs:Any) -> None:
@@ -254,7 +266,6 @@ class BasicReporter(API.Reporter_d):
         self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
         self._stack             = []
         self._entry_count       = 0
-        self._act_trace         = []
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
                                                          data={},
