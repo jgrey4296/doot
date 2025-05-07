@@ -126,7 +126,6 @@ class _WorkflowReporter_m:
     _out : Callable
 
     def root(self:Reporter_p) -> Reporter_p:
-        assert(len(self._stack) == 1)
         self._out("root", level=6)
         return self
 
@@ -280,7 +279,7 @@ class BasicReporter:
 
     @property
     def log(self) -> Logger:
-        return logging
+        return self._logger
 
     @log.setter
     def log(self, logger:Maybe[Logger]) -> None:

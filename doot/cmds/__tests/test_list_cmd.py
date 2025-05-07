@@ -167,12 +167,13 @@ class TestListCmd:
             obj({}, {})
 
     def test_call_all_empty(self, caplog, mocker):
-        caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
+        caplog.set_level(logmod.NOTSET, logger=doot.report.log.name)
         guard = ChainGuard.read(minimal_example)
         mocker.patch("doot.args", new=guard)
+        mocker.patch("doot.loaded_tasks", new=guard)
         obj    = ListCmd()
         obj({}, {"reporter": [mocker.stub("Reporter Stub")]})
-        message_set = {x.message for x in caplog.records}
+        message_set = {x for x in caplog.messages}
         assert("!! No Tasks Defined" in message_set)
 
     def test_call_all_not_empty(self, caplog, mocker):

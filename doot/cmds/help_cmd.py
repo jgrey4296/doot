@@ -30,7 +30,7 @@ from jgdv.cli._interface import NON_DEFAULT_KEY
 # ##-- 1st party imports
 import doot
 from ._base import BaseCommand
-from ._interface import Command_p
+from ._interface import Command_i
 
 # ##-- end 1st party imports
 
@@ -223,7 +223,7 @@ class _HelpTask_m:
 
 
 ##--|
-@Proto(Command_p)
+@Proto(Command_i)
 @Mixin(_HelpDoot_m, _HelpCmd_m, _HelpTask_m)
 class HelpCmd(BaseCommand):
     _name      = "help"

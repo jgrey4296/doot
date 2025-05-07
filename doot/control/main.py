@@ -78,7 +78,7 @@ if TYPE_CHECKING:
 
 ##--|
 from doot.cmds._interface import Command_p
-from ._interface import Main_p
+from ._interface import Main_i
 # isort: on
 # ##-- end types
 
@@ -96,7 +96,7 @@ class Loading_m:
 
     _implicit_task_cmd : Maybe[str]
 
-    def _load(self:Main_p) -> None:
+    def _load(self:Main_i) -> None:
         # Load and initialise the config:
         doot.setup() # type: ignore[attr-defined]
         # Then use it for everything else:
@@ -115,7 +115,7 @@ class Loading_m:
         self._implicit_task_cmd      = doot.config.on_fail("run").startup.implicit_task_cmd() # type: ignore
 
     def load_cli_parser(self, *, target:str="default") -> None:
-        match plugin_selector(doot.plugins.on_fail([], list).parser(), # type: ignore
+        match plugin_selector(doot.loaded_plugins.on_fail([], list).parser(), # type: ignore
                               target=target,
                               fallback=None):
             case None:
@@ -157,10 +157,10 @@ class Loading_m:
 class CLIArgParsing_m:
     """ mixin for cli arg processing """
 
-    def parse_args(self:Main_p) -> None:
+    def parse_args(self:Main_i) -> None:
         """ use the found task and command arguments to make sense of sys.argv """
-        cmd_vals       = list(self.cmds.values())
-        subcmds        = [("run",x) for x in self.tasks.values()]
+        cmd_vals       = list(doot.loaded_cmds.values())
+        subcmds        = [("run",x) for x in doot.loaded_tasks.values()]
         unaliased_args = self._unalias_raw_args(self.raw_args[1:]) # type: ignore
 
         try:
@@ -227,7 +227,7 @@ class CLIArgParsing_m:
 
         help_lines.append("")
         help_lines.append("Commands: ")
-        help_lines += sorted(x.helpline for x in self.cmds.values())
+        help_lines += sorted(x.helpline for x in doot.loaded_cmds.values())
 
         return "\n".join(help_lines)
 
@@ -266,13 +266,13 @@ class CmdRun_m:
 
         assert(cmd is not None)
         logging.debug("Initial Retrieval attempt: %s", cmd)
-        match self.cmds.get(cmd, None):
+        match doot.loaded_cmds.get(cmd, None):
             case None if bool(doot.args.sub):
                 doot.report.detail("Falling Back to implicit: %s", self._implicit_task_cmd)
-                self.current_cmd = self.cmds.get(self._implicit_task_cmd, None)
+                self.current_cmd = doot.loaded_cmds.get(self._implicit_task_cmd, None)
             case None if cmd.startswith("_") and cmd.endswith("_"):
                 doot.report.detail("Falling back to empty: %s", self._empty_call_cmd)
-                self.current_cmd = self.cmds.get(self._empty_call_cmd, None)
+                self.current_cmd = doot.loaded_cmds.get(self._empty_call_cmd, None)
             case Command_p() as x:
                 self.current_cmd = x
             case x:
@@ -293,7 +293,7 @@ class CmdRun_m:
         try:
             # Do the cmd
             logging.info("Doot Calling Cmd: %s", cmd)
-            cmd(self.tasks, self.plugins)
+            cmd(doot.loaded_tasks, doot.loaded_plugins)
         except doot.errors.DootError as err:
             self._errored = err
             raise
@@ -312,18 +312,18 @@ class Shutdown_m:
             case None:
                 pass
             case Command_p() as cmd:
-                cmd.shutdown(self.tasks, self.plugins, errored=self._errored)
+                cmd.shutdown(doot.loaded_tasks, doot.loaded_plugins, errored=self._errored)
 
         self._record_defaulted_config_values()
 
         doot.report.line()
         match self._errored:
             case doot.errors.DootError() as err:
-                doot.report.set_state("fail", err=err, cb=self._announce_exit)
+                doot.report.push_state("fail", err=err, cb=self._announce_exit)
             case Exception() as err:
                 raise err
             case None:
-                doot.report.set_state("success", cb=self._announce_exit)
+                doot.report.push_state("success", cb=self._announce_exit)
 
         doot.report.summary()
 
@@ -436,7 +436,7 @@ class ExitHandlers_m:
 
 ##--|
 
-@Proto(Main_p)
+@Proto(Main_i)
 @Mixin(Loading_m, CLIArgParsing_m, CmdRun_m, ExitHandlers_m, Shutdown_m, ParamSpecMaker_m)
 class DootMain:
     """ doot.main and the associated exit handlers
@@ -448,6 +448,7 @@ class DootMain:
 
     """
     _errored     : Maybe[Exception]
+    _help_txt    = tuple(["A Toml Specified Task Runner"])
 
     def __init__(self, *, cli_args:Maybe[list]=None) -> None:
         match cli_args:
@@ -463,9 +464,7 @@ class DootMain:
         self.BIN_NAME           = pl.Path(self.raw_args[0]).name
         self.prog_name          = "doot"
         self.current_cmd        = None
-        self.plugins            = ChainGuard()
-        self.cmds               = ChainGuard()
-        self.tasks              = ChainGuard()
+        self.parser             = None
         self._errored           = None
         self._implicit_task_cmd = None
 

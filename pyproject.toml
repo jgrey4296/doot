@@ -130,8 +130,8 @@ tag                = false
 "doot/__docs/conf.py"         = ['^release\s+=\s+"{version}"']
 "doot/__data/aliases.toml"    = ['^doot_version\s+=\s+"{version}"']
 "doot/__data/constants.toml"  = ['^doot_version\s+=\s+"{version}"']
-"doot/__templates/basic_config_toml"  = ['^doot_version\s+=\s+"{version}"']
-"doot/__templates/tasks_toml"  = ['^doot_version\s+=\s+"{version}"']
+"doot/__data/templates/basic_config_toml"  = ['^doot_version\s+=\s+"{version}"']
+"doot/__data/templates/tasks_toml"  = ['^doot_version\s+=\s+"{version}"']
 
 
 ##-- end bumpver

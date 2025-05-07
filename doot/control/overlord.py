@@ -263,32 +263,32 @@ class Plugins_m:
         try:
             self.plugin_loader = PluginLoader()
             self.plugin_loader.setup()
-            self.plugins : ChainGuard = self.plugin_loader.load()
-            self.update_aliases(data=self.plugins) # type: ignore[attr-defined]
+            self.loaded_plugins : ChainGuard = self.plugin_loader.load()
+            self.update_aliases(data=self.loaded_plugins) # type: ignore[attr-defined]
         except DErr.PluginError as err:
             self.report.error("Plugins Not Loaded Due to Error: %s", err) # type: ignore[attr-defined]
             raise
 
     def load_reporter(self, target:str="default") -> None:
-        if not bool(self.plugins):
-            raise RuntimeError("Tried to Load Reporter without loading plugins")
+        if not bool(self.loaded_plugins):
+            raise RuntimeError("Tried to Load Reporter without loading loaded_plugins")
 
-        match plugin_selector(self.plugins.on_fail([], list).reporter(),
+        match plugin_selector(self.loaded_plugins.on_fail([], list).reporter(),
                               target=target): # type: ignore
             case type() as ctor:
-                self.report = ctor() # type: ignore[attr-defined]
+                self.report = ctor(logger=self.log_config.subprinter()) # type: ignore[attr-defined]
             case x:
                 raise TypeError(type(x))
 
 
     def load_commands(self, *, loader:str="default") -> None:
-        """ Select Commands from the discovered plugins,
+        """ Select Commands from the discovered loaded_plugins,
         using the preferred cmd loader or the default
         """
-        if not bool(self.plugins):
+        if not bool(self.loaded_plugins):
             raise RuntimeError("Tried to Load Commands without having loaded Plugins")
 
-        match plugin_selector(self.plugins.on_fail([], list).command_loader(), # type: ignore
+        match plugin_selector(self.loaded_plugins.on_fail([], list).command_loader(), # type: ignore
                               target=loader):
             case type() as ctor:
                 self.cmd_loader = ctor()
@@ -299,11 +299,11 @@ class Plugins_m:
         match self.cmd_loader:
             case Loader_p():
                 try:
-                    self.cmd_loader.setup(self.plugins)
-                    self.cmds = self.cmd_loader.load()
+                    self.cmd_loader.setup(self.loaded_plugins)
+                    self.loaded_cmds = self.cmd_loader.load()
                 except DErr.PluginError as err:
                     self.report.error("Commands Not Loaded due to Error: %s", err) # type: ignore[attr-defined]
-                    self.cmds = ChainGuard()
+                    self.loaded_cmds = ChainGuard()
             case x:
                 raise TypeError("Unrecognized loader type", x)
 
@@ -311,7 +311,7 @@ class Plugins_m:
         """ Load task entry points, using the preferred task loader,
         or the default
         """
-        match plugin_selector(self.plugins.on_fail([], list).task_loader(), # type: ignore
+        match plugin_selector(self.loaded_plugins.on_fail([], list).task_loader(), # type: ignore
                               target=loader):
             case type() as ctor:
                 self.task_loader = ctor()
@@ -321,8 +321,8 @@ class Plugins_m:
         from .loaders._interface import Loader_p
         match self.task_loader:
             case Loader_p():
-                self.task_loader.setup(self.plugins)
-                self.tasks = self.task_loader.load()
+                self.task_loader.setup(self.loaded_plugins)
+                self.loaded_tasks = self.task_loader.load()
             case x:
                 raise TypeError("Unrecognised loader type", x)
 
@@ -393,8 +393,8 @@ class WorkflowUtil_m:
         self.report.trace("Updating Import Path")
         match paths:
             case None | []:
-                task_sources = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [self.locs[y] for y in x])
-                task_code    = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
+                task_sources = self.config.on_fail([self.locs[".loaded_tasks"]], list).startup.sources.loaded_tasks(wrapper=lambda x: [self.locs[y] for y in x])
+                task_code    = self.config.on_fail([self.locs[".loaded_tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
                 paths = set(task_sources + task_code) # type: ignore
             case [*xs]:
                 paths = set(paths) # type: ignore
@@ -423,7 +423,7 @@ class WorkflowUtil_m:
 
 ##--|
 
-@Proto(ControlAPI.Overlord_p)
+@Proto(ControlAPI.Overlord_i)
 @Mixin(Startup_m, Plugins_m, WorkflowUtil_m)
 class DootOverlord:
     """
@@ -435,38 +435,28 @@ class DootOverlord:
 
     Adapted from https://stackoverflow.com/questions/880530
     """
-    __version__         : str
-    config              : ChainGuard
-    constants           : ChainGuard
-    aliases             : ChainGuard
-    cmd_aliases         : ChainGuard
-    args                : ChainGuard
-    log_config          : JGDVLogConfig
-    locs                : JGDVLocator
-    configs_loaded_from : list[str|pl.Path]
-    global_task_state   : dict
-    path_ext            : list[str]
-    is_setup            : bool
-    _reporter           : Reporter_i
 
     def __init__(self, *args:Any, **kwargs:Any):
         super().__init__(*args, **kwargs)
         logging.info("Creating Overlord")
-        self.__version__                      = DootAPI.__version__
-        self.global_task_state                = {}
-        self.path_ext                         = []
-        self.is_setup                         = False
-        self.config                           = ChainGuard()
-        self.constants                        = ChainGuard()
-        self.aliases                          = ChainGuard()
+        self.__version__                             = DootAPI.__version__
+        self.global_task_state   : dict[str, Any]    = {}
+        self.path_ext            : list[str]         = []
+        self.configs_loaded_from : list[str|pl.Path] = []
+        self.is_setup                                = False
+        self.config                                  = ChainGuard()
+        self.constants                               = ChainGuard()
+        self.aliases                                 = ChainGuard()
+        self.loaded_plugins                          = ChainGuard()
+        self.loaded_cmds                             = ChainGuard()
+        self.loaded_tasks                            = ChainGuard()
         # TODO Remove this:
         self.cmd_aliases                      = ChainGuard()
         self.args                             = ChainGuard() # parsed arg access
-        self.log_config                       = JGDVLogConfig()
         self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
+        self.log_config                       = JGDVLogConfig()
         # TODO fix this:
-        self._reporter                        = BasicReporter() # type: ignore
-        self.configs_loaded_from              = []
+        self.report                           = BasicReporter() # type: ignore
 
         self.null_setup()
 
@@ -482,7 +472,6 @@ class DootOverlord:
         match rep:
             case Reporter_p():
                 self._reporter = rep
-                self._reporter.log = self.log_config.subprinter()
             case x:
                 raise TypeError(type(x))
 
@@ -492,11 +481,11 @@ class OverlordFacade(types.ModuleType):
     of the root package 'doot'.
 
     """
-    _overlord : ControlAPI.Overlord_p
+    _overlord : ControlAPI.Overlord_i
 
     def __init__(self, *args, **kwargs) -> None: # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
-        self._overlord = cast("ControlAPI.Overlord_p", DootOverlord())
+        self._overlord = cast("ControlAPI.Overlord_i", DootOverlord())
 
     def __getattr__(self, key):
         return getattr(self._overlord, key)

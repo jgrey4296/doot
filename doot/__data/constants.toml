@@ -22,7 +22,7 @@ DEFAULT_COMMAND_LOADER      = "doot.control.loaders.cmd:CommandLoader"
 DEFAULT_TASK_LOADER         = "doot.control.loaders.task:TaskLoader"
 
 [doot.constants.paths]
-TEMPLATE_PATH           =  "doot.__templates"
+TEMPLATE_PATH           =  "doot.__data.templates"
 TOML_TEMPLATE           =  "basic_config_toml"
 DEFAULT_LOAD_TARGETS    =  ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]
 MARKER_FILE_NAME        =  ".doot_marker"

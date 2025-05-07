@@ -43,7 +43,23 @@ from jgdv.cli._interface import CLIParamProvider_p
 # isort: on
 # ##-- end types
 
-class Command_d:
+
+@runtime_checkable
+class Command_p(CLIParamProvider_p, Protocol):
+    """
+    Holds command information and performs it
+    """
+
+    def __call__(self, jobs:ChainGuard, plugins:ChainGuard):
+        pass
+
+    def shutdown(self, tasks:ChainGuard, plugins:ChainGuard, errored:Maybe[Exception]=None) -> None:
+        """
+          A Handler called on doot shutting down. only the triggered cmd's shutdown gets called
+        """
+        pass
+
+class Command_i(Command_p, Protocol):
     _name    : Maybe[str]           = None
     _help    : Maybe[Iterable[str]] = None
 
@@ -61,19 +77,4 @@ class Command_d:
     @property
     def helpline(self) -> str:
         """ get just the first line of the help text """
-        pass
-
-@runtime_checkable
-class Command_p(CLIParamProvider_p, Protocol):
-    """
-    Holds command information and performs it
-    """
-
-    def __call__(self, jobs:ChainGuard, plugins:ChainGuard):
-        pass
-
-    def shutdown(self, tasks:ChainGuard, plugins:ChainGuard, errored:Maybe[Exception]=None) -> None:
-        """
-          A Handler called on doot shutting down. only the triggered cmd's shutdown gets called
-        """
         pass

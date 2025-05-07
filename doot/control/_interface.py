@@ -80,6 +80,40 @@ class Overlord_p(Protocol):
     protocol for the doot accesspoint,
     used for setting up and using Doot programmatically
     """
+
+    def setup(self, *, targets:Maybe[list[Loadable]]=None, prefix:str) -> None: ...
+
+    def load_config(self, *, targets:Maybe[list[Loadable]], prefix:Maybe[str]) -> None: ...
+
+    def load_constants(self, *, target:Maybe[Loadable]=None) -> None: ...
+
+    def load_aliases(self, *, target:Maybe[Loadable]=None, force:bool=False) -> None: ...
+
+    def update_aliases(self, *, data:dict|ChainGuard) -> None: ...
+
+    def load_locations(self) -> None: ...
+
+    def load_plugins(self) -> None: ...
+
+    def load_reporter(self) -> None: ...
+
+    def load_commands(self) -> None: ...
+
+    def load_tasks(self) -> None: ...
+
+    def set_parsed_cli_args(self, data:ChainGuard) -> None: ...
+
+    def update_global_task_state(self, data:ChainGuard, *, source:Maybe[str]=None) -> None: ...
+
+    def verify_config_version(self, ver:Maybe[str], source:str|pl.Path, *, override:Maybe[str]=None) -> None: ...
+
+    def update_import_path(self, *paths:pl.Path) -> None: ...
+
+class Overlord_i(Overlord_p, Protocol):
+    """
+    protocol for the doot accesspoint,
+    used for setting up and using Doot programmatically
+    """
     __version__         : str
     config              : ChainGuard
     constants           : ChainGuard
@@ -92,44 +126,15 @@ class Overlord_p(Protocol):
     global_task_state   : dict
     path_ext            : list[str]
     is_setup            : bool
-    plugins             : ChainGuard
-    cmds                : ChainGuard
-    tasks               : ChainGuard
-
-    def setup(self, *, targets:Maybe[list[Loadable]]=None, prefix:str) -> None: ...
-    def load_config(self, *, targets:Maybe[list[Loadable]], prefix:Maybe[str]) -> None: ...
-    def load_constants(self, *, target:Maybe[Loadable]=None) -> None: ...
-    def load_aliases(self, *, target:Maybe[Loadable]=None, force:bool=False) -> None: ...
-    def update_aliases(self, *, data:dict|ChainGuard) -> None: ...
-    def load_locations(self) -> None: ...
-
-    def load_plugins(self) -> None: ...
-
-    def load_reporter(self) -> None: ...
-
-    def load_commands(self) -> None: ...
-
-    def load_tasks(self) -> None: ...
-
-    def set_parsed_cli_args(self, data:ChainGuard) -> None: ...
-    def update_global_task_state(self, data:ChainGuard, *, source:Maybe[str]=None) -> None: ...
-
-    def verify_config_version(self, ver:Maybe[str], source:str|pl.Path, *, override:Maybe[str]=None) -> None: ...
-
-    def update_import_path(self, *paths:pl.Path) -> None: ...
+    loaded_plugins      : ChainGuard
+    loaded_cmds         : ChainGuard
+    loaded_tasks        : ChainGuard
 
 @runtime_checkable
 class Main_p(Protocol):
     """
     protocol for doot as a main program
     """
-
-    result_code       : int
-    BIN_NAME          : pl.Path
-    prog_name         : str
-    raw_args          : list[str]
-    current_cmd       : Maybe[Command_p]
-    parser            : ParseMachine
 
     def __init__(self, *, args:Maybe[list]=None) -> None: ...
 
@@ -150,3 +155,15 @@ class Main_p(Protocol):
     def help(self) -> str: ...
 
     def set_command_aliases(self) -> None: ...
+
+class Main_i(Main_p, Protocol):
+    """
+    protocol for doot as a main program
+    """
+
+    result_code       : int
+    BIN_NAME          : pl.Path
+    prog_name         : str
+    raw_args          : list[str]
+    current_cmd       : Maybe[Command_p]
+    parser            : Maybe[ParseMachine]

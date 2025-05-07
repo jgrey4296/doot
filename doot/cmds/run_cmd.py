@@ -35,7 +35,7 @@ from doot.workflow.check_locs import CheckLocsTask
 
 # ##-| Local
 from ._base import BaseCommand
-from ._interface import Command_p
+from ._interface import Command_i
 
 # # End of Imports.
 
@@ -77,7 +77,7 @@ interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", b
 check_locs               = doot.config.on_fail(False).settings.commands.run.location_check.active()
 
 ##--|
-@Proto(Command_p)
+@Proto(Command_i)
 class RunCmd(BaseCommand):
     _name                        = "run"
     _help : ClassVar[tuple[str]] = tuple(["Will perform the tasks/jobs targeted.",
@@ -99,7 +99,7 @@ class RunCmd(BaseCommand):
         doot.load_reporter(target=reporter_target)
 
         doot.report.active_level(logmod.INFO)
-        doot.report.set_state("cmd")
+        doot.report.push_state("cmd")
         doot.report.gap()
         doot.report.line("Starting Run Cmd", char="=")
         tracker, runner = self._create_tracker_and_runner(plugins)

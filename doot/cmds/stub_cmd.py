@@ -2,6 +2,7 @@
 """
 
 """
+# mypy: disable-error-code="attr-defined"
 # ruff: noqa: B009
 # Imports:
 from __future__ import annotations
@@ -34,16 +35,17 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.util.dkey import DKey, DKeyed
-from .structs.task_stub import TaskStub
+from doot.util.dkey import DKey
+from doot.util.dkey import DKeyed
 from doot.workflow.job import DootJob
 from doot.workflow.structs.task_name import TaskName
 from doot.workflow.task import DootTask
 
-# ##-- end 1st party imports
+# ##-- end 0st party imports
 
 # ##-| Local
 from ._base import BaseCommand
+from .structs import TaskStub
 
 # # End of Imports.
 
@@ -59,7 +61,8 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, ChainGuard, Lambda
+    from jgdv import Maybe, Lambda
+    from jgdv.structs.chainguard import ChainGuard
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -71,7 +74,7 @@ if TYPE_CHECKING:
 ##--|
 from doot.control.loaders._interface import PluginLoader_p
 from doot.workflow._interface import Task_p
-from .._interface import Command_p
+from ._interface import Command_i
 # isort: on
 # ##-- end types
 
@@ -80,19 +83,19 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##-- data
-data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE)
+data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE) # type: ignore[attr-defined]
 ##-- end data
 
-PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS
+PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS # type: ignore[attr-defined]
 NL = None
 ##--|
 
 class _StubDoot_m:
 
-    def param_specs(self) -> list:
+    def param_specs(self:Command_i) -> list:
         return [
-            *super().param_specs(),
-            self.build_param(name="--config", type=bool, default=False, desc="Stub a doot.toml"),
+            *super().param_specs(), # type: ignore[safe-super]
+            self.build_param(name="--config", type=bool, default=False, desc="Stub a doot.toml"), # type: ignore[attr-defined]
         ]
 
     def _stub_doot_toml(self) -> list[str]:
@@ -102,7 +105,7 @@ class _StubDoot_m:
         if doot_toml.exists():
             return [
                 data_text,
-                "# doot.toml it already exists, printed to stdout instead"
+                "# doot.toml it already exists, printed to stdout instead",
             ]
 
         with doot_toml.open("a") as f:
@@ -115,7 +118,7 @@ class _StubParam_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(),
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--param", type=bool, default=False, desc="Generate a stub cli arg dict"),
         ]
 
@@ -137,13 +140,13 @@ class _StubAction_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(),
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--action", type=bool, default=False, desc="Help Stub Actions"),
         ]
 
-    def _stub_action(self, plugins) -> list[str]:
+    def _stub_action(self, plugins:ChainGuard) -> list[Maybe[str]]:
         logging.info("---- Stubbing Actions")
-        result = []
+        result : list[Maybe[str]] = []
         target_name = doot.args.cmd.args.name
         unaliased = doot.aliases.on_fail(target_name).action[target_name]
         matched = [x for x in plugins.action
@@ -151,7 +154,7 @@ class _StubAction_m:
                    or x.value == unaliased]
         if bool(matched):
             loaded = matched[0].load()
-            result.append("- {} (Action, {})".format(matched[0].name, matched[0].value))
+            result.append(f"- {matched[0].name} (Action, {matched[0].value})")
             match getattr(loaded, "_toml_help", []):
                 case [] if bool(getattr(loaded, "__doc__")):
                     result.append(loaded.__doc__)
@@ -161,21 +164,21 @@ class _StubAction_m:
                     for x in xs:
                         result.append(x)
 
-            loaded = getattr(loaded, "__call__", loaded)
+            loaded = getattr(loaded, "__call__", loaded)  # noqa: B004
             match DKeyed.get_keys(loaded):
                 case []:
                     result.append("-- No Declared Kwargs")
                 case [*xs]:
                     result += [
                         "-- Declared kwargs for action:",
-                        *(f"---- {repr(x)}" for x in sorted(xs, key=lambda x: repr(x)))
+                        *(f"---- {x!r}" for x in sorted(xs, key=lambda x: repr(x))),
                     ]
 
         result.append(NL)
         result.append("-- Toml Form of an action: ")
         # TODO customize this with declared annotations
         if bool(matched):
-            result.append("{ do=\"%s\", args=[], key=val } " % matched[0].name)
+            result.append(f"{{ do=\"{matched[0].name}\", args=[], key=val }} ")
         else:
             result.append("{ do=\"action name/import path\", args=[]} # plus any kwargs a specific action uses")
 
@@ -185,7 +188,7 @@ class _StubTask_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(),
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--task", type=bool, desc="Stub a Task Specification"),
             self.build_param(name="-out",   type=str, default="", desc="If set, append the stub to this file"),
 
@@ -193,7 +196,7 @@ class _StubTask_m:
             self.build_param(name="<2>ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
         ]
 
-    def _stub_task_toml(self, tasks, plugins) -> list[str]:
+    def _stub_task_toml(self, tasks, plugins) -> list[str]:  # noqa: PLR0912
         """
         This creates a toml stub using default values, as best it can
         """
@@ -219,7 +222,11 @@ class _StubTask_m:
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         # works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
         try:
-            task_mro = task_ctor().mro()
+            match task_ctor():
+                case type() as ctor:
+                    task_mro = ctor.mro()
+                case Exception() as err:
+                    raise err
         except TypeError as err:
             logging.exception(err.args[0].replace("\n", ""))
             task_mro = []
@@ -270,11 +277,11 @@ class _StubPrinter_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(),
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--doot.report", type=bool, default=False, desc="Generate a stub doot.report config"),
         ]
 
-    def _stub_printer(self) -> list[str]:
+    def _stub_printer(self) -> list[Maybe[str|tuple]]:
         logging.info("---- Printing Printer Spec Info")
         result = [
             ("- Printer Config Spec Form. Use in doot.toml [logging], [logging.subprinters], and [logging.extra]", {"colour":"blue"}),
@@ -285,16 +292,16 @@ class _StubPrinter_m:
 
 ##--|
 
-@Proto(Command_p)
+@Proto(Command_i)
 @Mixin(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinter_m)
 class StubCmd(BaseCommand):
     """ Called to interactively create a stub task definition
       with a `target`, outputs to that file, else to stdout for piping
     """
-    _name      = "stub"
-    _help      = ["Create a new stub task either to stdout, or path",
-                  "args allow stubbing a config file, cli parameter, or action",
-                  ]
+    _name : ClassVar[str]           = "stub" # type: ignore[misc]
+    _help : ClassVar[list[str]]     = ["Create a new stub task either to stdout, or path",
+                                       "args allow stubbing a config file, cli parameter, or action",
+                                       ]
 
     def param_specs(self) -> list:
         return [

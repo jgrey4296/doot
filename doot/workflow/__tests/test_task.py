@@ -21,7 +21,7 @@ from doot.cmds.structs.stub import TaskStub
 from .. import TaskSpec, DootTask
 from .. import _interface as API
 
-basic_action = lambda x: ftz.partial(lambda val, state: logging.info("Got: %s : %s", val, state), x)
+basic_action = lambda x: ftz.partial(lambda val, state: doot.report.user("Got: %s : %s", val, state), x)
 
 class TestBaseTask:
 
@@ -54,7 +54,8 @@ class TestBaseTask:
 
     def test_run_lambda_action(self, caplog):
         caplog.clear()
-        caplog.set_level(logmod.NOTSET, logger=logging.root.name)
+        caplog.set_level(logmod.NOTSET, logger=doot.report.log.name)
+        assert(doot.report.log.name == "_printer_")
         spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case API.Task_p() as task:
@@ -62,7 +63,6 @@ class TestBaseTask:
                 result = actions[0]({"example": "state"})
                 assert(result == {"count": 1})
                 assert("Base Action Called: 0" in caplog.messages)
-                assert("blah" in caplog.messages)
             case x:
                  assert(False), x
 

@@ -30,43 +30,43 @@ basic    =   "jgdv.cli.arg_parser:CLIParser"
 [[doot.aliases.action]] # basic actions
 # Map {alias} -> CodeRef String
 basic    =       "doot.workflow.actions:DootBaseAction"
-user     =       "doot.workflow.actions.io:UserInput"
-read     =       "doot.workflow.actions.io:ReadAction"
-copy     =       "doot.workflow.actions.io:CopyAction"
-move     =       "doot.workflow.actions.io:MoveAction"
-touch    =       "doot.workflow.actions.io:TouchFileAction"
+user     =       "doot.workflow.actions.io.io:UserInput"
+read     =       "doot.workflow.actions.io.io:ReadAction"
+copy     =       "doot.workflow.actions.io.io:CopyAction"
+move     =       "doot.workflow.actions.io.io:MoveAction"
+touch    =       "doot.workflow.actions.io.io:TouchFileAction"
 
 [[doot.aliases.action]] # ! actions
 # Map {alias} -> CodeRef String
-"link!"   =  "doot.workflow.actions.io:LinkAction"
-"backup!" =  "doot.workflow.actions.io:BackupAction"
-"write!"  =  "doot.workflow.actions.io:WriteAction"
-"append!" =  "doot.workflow.actions.io:AppendAction"
-"dir!"    =  "doot.workflow.actions.io:EnsureDirectory"
-"delete!" =  "doot.workflow.actions.io:DeleteAction"
-"break!"  =  "doot.workflow.actions.util:action_debugger"
-"type!"   =  "doot.workflow.actions.util:typecheck"
+"link!"   =  "doot.workflow.actions.io.io:LinkAction"
+"backup!" =  "doot.workflow.actions.io.io:BackupAction"
+"write!"  =  "doot.workflow.actions.io.io:WriteAction"
+"append!" =  "doot.workflow.actions.io.io:AppendAction"
+"dir!"    =  "doot.workflow.actions.io.io:EnsureDirectory"
+"delete!" =  "doot.workflow.actions.io.io:DeleteAction"
+"break!"  =  "doot.workflow.actions.util.util:action_debugger"
+"type!"   =  "doot.workflow.actions.util.util:typecheck"
 
 [[doot.aliases.action]] # control flow
 # Map {alias} -> CodeRef String
-"exists?"       = "doot.workflow.actions.control_flow:FileExistsCheck"
-"ext?"          = "doot.workflow.actions.control_flow:SuffixCheck"
-"relative?"     = "doot.workflow.actions.control_flow:RelativeCheck"
-"pred?"         = "doot.workflow.actions.control_flow:PredicateCheck"
-"installed?"    = "doot.workflow.actions.control_flow:AssertInstalled"
-"dir?"          = "doot.workflow.actions.io:EnsureDirectory"
-"wait"          = "doot.workflow.actions.control_flow:WaitAction"
+"exists?"       = "doot.workflow.actions.control_flow.control_flow:FileExistsCheck"
+"ext?"          = "doot.workflow.actions.control_flow.control_flow:SuffixCheck"
+"relative?"     = "doot.workflow.actions.control_flow.control_flow:RelativeCheck"
+"pred?"         = "doot.workflow.actions.control_flow.control_flow:PredicateCheck"
+"installed?"    = "doot.workflow.actions.control_flow.control_flow:AssertInstalled"
+"dir?"          = "doot.workflow.actions.io.io:EnsureDirectory"
+"wait"          = "doot.workflow.actions.control_flow.control_flow:WaitAction"
 
 [[doot.aliases.action]] # state
 # Map {alias} -> CodeRef String
-"state.add"                   =  "doot.workflow.actions.state:AddStateAction"
-"state.add.fn"                =  "doot.workflow.actions.state:AddStateFn"
-"path.elements"               =  "doot.workflow.actions.state:PathParts"
-"path.shadow"                 =  "doot.workflow.actions.state:ShadowPath"
+"state.add"                   =  "doot.workflow.actions.state.state:AddStateAction"
+"state.add.fn"                =  "doot.workflow.actions.state.state:AddStateFn"
+"path.elements"               =  "doot.workflow.actions.state.state:PathParts"
+"path.shadow"                 =  "doot.workflow.actions.state.state:ShadowPath"
 
 [[doot.aliases.action]] # misc
 # Map {alias} -> CodeRef String
-"log"      = "doot.workflow.actions.control_flow:LogAction"
+"log"      = "doot.workflow.actions.control_flow.control_flow:LogAction"
 
 [[doot.aliases.task]] # task types
 # Map {alias} -> CodeRef String

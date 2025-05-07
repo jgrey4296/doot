@@ -27,9 +27,9 @@ from jgdv import Mixin, Proto
 from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
 # ##-- end 3rd party imports
 
-# ##-- 0st party imports
+# ##-- 1st party imports
 import doot
-from ._interface import Command_p, Command_d
+from ._interface import Command_p, Command_i
 
 # ##-- end 1st party imports
 
@@ -65,9 +65,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(Command_p, check=False)
+@Proto(Command_i, check=False)
 @Mixin(ParamSpecMaker_m)
-class BaseCommand(Command_d):
+class BaseCommand:
     """ Generic implementations of command methods """
     build_param : Callable
 
@@ -80,7 +80,7 @@ class BaseCommand(Command_d):
         return self._name or self.__class__.__name__.lower()
 
     @property
-    def help(self) -> list[str]:
+    def help(self:Command_i) -> list[str]:
         help_lines : list[str] = [
             "", f"Command: {self.name}", "",
             *list(self._help or []),
@@ -95,7 +95,7 @@ class BaseCommand(Command_d):
         return help_lines
 
     @property
-    def helpline(self) -> str:
+    def helpline(self:Command_i) -> str:
         """ get just the first line of the help text """
         match self._help:
             case [x, *_]:

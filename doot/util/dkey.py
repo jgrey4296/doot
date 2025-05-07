@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
-from jgdv.structs.dkey import DKeyed as DKeyed_Base
+from jgdv.structs.dkey import DKeyed
 from jgdv.structs.dkey import ExpInst_d
 from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
 # ##-- end 3rd party imports
@@ -148,7 +148,7 @@ class DootPathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
-class DootKeyed(DKeyed_Base):
+class DootKeyed(DKeyed):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
     specific for doot
     """
