@@ -20,19 +20,24 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Proto
-from jgdv.structs.strang import CodeReference
 from jgdv.debugging.timeblock_ctx import TimeBlock_ctx
+from jgdv.structs.strang import CodeReference
+from jgdv.util.plugins.selector import plugin_selector
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-from doot._abstract import Command_p
-from doot.cmds.core.cmd import BaseCommand
-from doot.task.check_locs import CheckLocsTask
-from jgdv.util.plugins.selector import plugin_selector
-from doot.control.step_runner import DootStepRunner
+from doot.control.runner.step_runner import DootStepRunner
+from doot.workflow.check_locs import CheckLocsTask
 
 # ##-- end 1st party imports
+
+# ##-| Local
+from ._base import BaseCommand
+from ._interface import Command_p
+
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -54,7 +59,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from jgdv.structs.chainguard import ChainGuard
-    from doot._abstract import TaskRunner_p, TaskTracker_p
+    from doot.control.runner._inteface import TaskRunner_p
+    from doot.control.tracker._interface import TaskTracker_p
 
 # isort: on
 # ##-- end types
@@ -90,7 +96,7 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        self._set_reporter(plugins)
+        doot.load_reporter(target=reporter_target)
 
         doot.report.active_level(logmod.INFO)
         doot.report.set_state("cmd")
@@ -111,20 +117,6 @@ class RunCmd(BaseCommand):
             if not self._confirm_plan(runner):
                 return
             runner(handler=interrupt)
-
-    def _set_reporter(self, plugins) -> None:
-        match reporter_target:
-            case None:
-                return
-            case _:
-                pass
-
-        reporters = plugins.on_fail([], list).reporter()
-        match plugin_selector(reporters, target=reporter_target):
-            case type() as x:
-                doot.set_reporter(x(logger=doot.report.log))
-            case x:
-                raise TypeError(type(x))
 
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_p, TaskRunner_p]:

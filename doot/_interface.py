@@ -48,7 +48,10 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from importlib.resources.abc import Traversable
     from jgdv import Maybe, VerStr
+
+    type Loadable = pl.Path | Traversable
 
 ##--|
 
@@ -63,20 +66,20 @@ logging = logmod.getLogger(__name__)
 __version__ : Final[str] = "1.1.1"
 
 # -- data
-data_path      = files("doot.__data")
-constants_file = data_path.joinpath("constants.toml")
-aliases_file   = data_path.joinpath("aliases.toml")
-template_path   = files("doot.__templates")
+data_path                  = files("doot.__data")
+constants_file : Loadable  = data_path.joinpath("constants.toml")
+aliases_file   : Loadable  = data_path.joinpath("aliases.toml")
+template_path  : Loadable  = files("doot.__data.templates")
 
 # -- Can't be in doot.constants, because that isn't loaded yet
-CONSTANT_PREFIX       : Final[str]         = "doot.constants"
-ALIAS_PREFIX          : Final[str]         = "doot.aliases"
-TOOL_PREFIX           : Final[str]         = "tool.doot"
-DEFAULT_FILENAMES     : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
+CONSTANT_PREFIX       : Final[str]             = "doot.constants"
+ALIAS_PREFIX          : Final[str]             = "doot.aliases"
+TOOL_PREFIX           : Final[str]             = "tool.doot"
+DEFAULT_FILENAMES     : Final[tuple[str, ...]] = ("doot.toml", "pyproject.toml")
 
-fail_prefix           : Final[str]         = "!!!"
-GLOBAL_STATE_KEY      : Final[str]         = "global"
-LASTERR               : Final[str]         = "doot.lasterror"
+fail_prefix           : Final[str]             = "!!!"
+GLOBAL_STATE_KEY      : Final[str]             = "global"
+LASTERR               : Final[str]             = "doot.lasterror"
 
 ##--|
 class ExitCodes(enum.IntEnum):

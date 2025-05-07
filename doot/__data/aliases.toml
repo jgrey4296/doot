@@ -17,11 +17,11 @@ default = "doot.reporters:BasicReporter"
 
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
-basic = "doot.control.split_tracker:SplitTracker"
+basic = "doot.control.tracker.tracker:SplitTracker"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String
-basic = "doot.control.runner:DootRunner"
+basic = "doot.control.runner.runner:DootRunner"
 
 [[doot.aliases.parser]]
 # Map {alias} -> CodeRef String
@@ -29,48 +29,46 @@ basic    =   "jgdv.cli.arg_parser:CLIParser"
 
 [[doot.aliases.action]] # basic actions
 # Map {alias} -> CodeRef String
-basic    =       "doot.actions.base_action:DootBaseAction"
-user     =       "doot.actions.io:UserInput"
-read     =       "doot.actions.io:ReadAction"
-copy     =       "doot.actions.io:CopyAction"
-move     =       "doot.actions.io:MoveAction"
-touch    =       "doot.actions.io:TouchFileAction"
+basic    =       "doot.workflow.actions:DootBaseAction"
+user     =       "doot.workflow.actions.io:UserInput"
+read     =       "doot.workflow.actions.io:ReadAction"
+copy     =       "doot.workflow.actions.io:CopyAction"
+move     =       "doot.workflow.actions.io:MoveAction"
+touch    =       "doot.workflow.actions.io:TouchFileAction"
 
 [[doot.aliases.action]] # ! actions
 # Map {alias} -> CodeRef String
-"link!"   =  "doot.actions.io:LinkAction"
-"backup!" =  "doot.actions.io:BackupAction"
-"write!"  =  "doot.actions.io:WriteAction"
-"append!" =  "doot.actions.io:AppendAction"
-"dir!"    =  "doot.actions.io:EnsureDirectory"
-"delete!" =  "doot.actions.io:DeleteAction"
-"break!"  =  "doot.actions.util:action_debugger"
-"type!"   =  "doot.actions.util:typecheck"
+"link!"   =  "doot.workflow.actions.io:LinkAction"
+"backup!" =  "doot.workflow.actions.io:BackupAction"
+"write!"  =  "doot.workflow.actions.io:WriteAction"
+"append!" =  "doot.workflow.actions.io:AppendAction"
+"dir!"    =  "doot.workflow.actions.io:EnsureDirectory"
+"delete!" =  "doot.workflow.actions.io:DeleteAction"
+"break!"  =  "doot.workflow.actions.util:action_debugger"
+"type!"   =  "doot.workflow.actions.util:typecheck"
 
 [[doot.aliases.action]] # control flow
 # Map {alias} -> CodeRef String
-"exists?"       = "doot.actions.control_flow:FileExistsCheck"
-"ext?"          = "doot.actions.control_flow:SuffixCheck"
-"relative?"     = "doot.actions.control_flow:RelativeCheck"
-"pred?"         = "doot.actions.control_flow:PredicateCheck"
-"installed?"    = "doot.actions.control_flow:AssertInstalled"
-"dir?"          = "doot.actions.io:EnsureDirectory"
-"wait"          = "doot.actions.control_flow:WaitAction"
+"exists?"       = "doot.workflow.actions.control_flow:FileExistsCheck"
+"ext?"          = "doot.workflow.actions.control_flow:SuffixCheck"
+"relative?"     = "doot.workflow.actions.control_flow:RelativeCheck"
+"pred?"         = "doot.workflow.actions.control_flow:PredicateCheck"
+"installed?"    = "doot.workflow.actions.control_flow:AssertInstalled"
+"dir?"          = "doot.workflow.actions.io:EnsureDirectory"
+"wait"          = "doot.workflow.actions.control_flow:WaitAction"
 
 [[doot.aliases.action]] # state
 # Map {alias} -> CodeRef String
-"state.add"                   =  "doot.actions.state:AddStateAction"
-"state.add.fn"                =  "doot.actions.state:AddStateFn"
-"path.elements"               =  "doot.actions.state:PathParts"
-"path.shadow"                 =  "doot.actions.state:ShadowPath"
+"state.add"                   =  "doot.workflow.actions.state:AddStateAction"
+"state.add.fn"                =  "doot.workflow.actions.state:AddStateFn"
+"path.elements"               =  "doot.workflow.actions.state:PathParts"
+"path.shadow"                 =  "doot.workflow.actions.state:ShadowPath"
 
 [[doot.aliases.action]] # misc
 # Map {alias} -> CodeRef String
-"log"      = "doot.actions.control_flow:LogAction"
+"log"      = "doot.workflow.actions.control_flow:LogAction"
 
 [[doot.aliases.task]] # task types
 # Map {alias} -> CodeRef String
-"job"   = "doot.task.core.job:DootJob"
-"task"  = "doot.task.core.task:DootTask"
-
-[[doot.aliases.mixin]]
+"job"   = "doot.workflow:DootJob"
+"task"  = "doot.workflow:DootTask"

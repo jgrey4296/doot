@@ -10,10 +10,6 @@ skip_plugin_search   = false
 empty_cmd            = "list"
 implicit_task_cmd    = "run"
 
-[startup.plugins]
-# Allows for defining aliases
-command        = { tasks="doot.cmds.list_cmd:ListCmd"}
-
 [shutdown]
 notify           = { speak=false } # success_msg="", fail_msg=""
 defaulted_values = { write=false, path=".defaulted_values.toml" }
@@ -67,4 +63,3 @@ src     = "protect::>doot"
 temp    = "clean::>.temp"
 logs    = "{temp}/logs"
 build   = "{temp}/build"
-data    = "data"

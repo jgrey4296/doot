@@ -17,7 +17,7 @@ def main():
     import doot
     from doot.control.main import DootMain
     main_obj = DootMain()
-    main_obj.main()
+    main_obj()
 
 if __name__ == "__main__":
     main()

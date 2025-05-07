@@ -39,16 +39,16 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.logging import JGDVLogConfig
 from jgdv.structs.dkey import DKey
 from jgdv.structs.locator import JGDVLocator
+from jgdv.util.plugins.selector import plugin_selector
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-import doot._interface as API#  noqa: N812
+from doot import _interface as DootAPI#  noqa: N812
+from . import _interface as ControlAPI  # noqa: N812
 import doot.errors as DErr  # noqa: N812
 from doot.reporters import BasicReporter
 # ##-- end 1st party imports
-
-import sys
 
 # ##-- types
 # isort: off
@@ -61,8 +61,7 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, overload
-from doot._abstract import (Command_p, Overlord_p)
-from doot.reporters._interface import WorkflowReporter_p
+from doot.reporters._interface import Reporter_p
 
 if TYPE_CHECKING:
     from typing import Final
@@ -71,12 +70,13 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from logmod import Logger
 
     from jgdv import Maybe
-    from doot._abstract.loader import Loader_p
+    from doot.errors import DootError
+    from doot.reporters._interface import Reporter_i
 
-    type Logger                            = logmod.Logger
-    type DootError                         = DErr.DootError
+    type Loadable = DootAPI.Loadable
 
 ##--|
 
@@ -88,8 +88,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-PYPROJ    : Final[pl.Path] = pl.Path("pyproject.toml")
-ROOT_ELEM : Final[str]     = "doot"
+
 # Body:
 
 class Startup_m:
@@ -109,10 +108,10 @@ class Startup_m:
         if self.is_setup:
             return
 
-        self._load_constants()
-        self._load_aliases()
+        self.load_constants(target=DootAPI.constants_file)
+        self.load_aliases(target=DootAPI.aliases_file)
 
-    def setup(self, *, targets:Maybe[list[pl.Path]]=None, prefix:Maybe[str]=API.TOOL_PREFIX) -> None:
+    def setup(self, *, targets:Maybe[list[Loadable]]=None, prefix:str=DootAPI.TOOL_PREFIX) -> None:
         """
         The core requirement to call before any other doot code is run.
         loads the config files, so everything else can retrieve values when imported.
@@ -125,18 +124,18 @@ class Startup_m:
         if self.is_setup:
             self.report.user("doot.setup called even though doot is already set up") # type: ignore
 
-        self._load_config(targets, prefix)
-        self._setup_logging() # type: ignore
-        self._load_constants()
-        self._load_aliases()
-        self._load_locations()
-        self._update_import_path()
+        self.load_config(targets=targets, prefix=prefix)
+        self.setup_logging() # type: ignore
+        self.load_constants(target=self.config.on_fail(None).startup.constants_file(wrapper=pl.Path)) # type: ignore
+        self.load_aliases(target=self.config.on_fail(None).startup.aliases_file(wrapper=pl.Path), force=True) # type: ignore
+        self.load_locations()
+        self.update_import_path()
 
         # add global task state as a DKey expansion source
         DKey.add_sources(self.global_task_state)
         self.is_setup = True
 
-    def _load_config(self, targets:Maybe[list[pl.Path]], prefix:Maybe[str]) -> None:
+    def load_config(self, *, targets:Maybe[list[Loadable]], prefix:Maybe[str]) -> None:
         """ Load a specified config, or one of the defaults if it exists """
         match targets:
             case list() if bool(targets) and all([isinstance(x, pl.Path) for x in targets]):
@@ -146,10 +145,10 @@ class Startup_m:
             case None | []:
                 targets : list[pl.Path] = [pl.Path(x) for x in self.constants.paths.DEFAULT_LOAD_TARGETS] # type: ignore
 
-        logging.log(0, "Loading Doot Config, version: %s targets: %s", API.__version__, targets)
+        logging.log(0, "Loading Doot Config, version: %s targets: %s", DootAPI.__version__, targets)
 
         assert(isinstance(targets, list))
-        match [x for x in targets if x.exists()]:
+        match [x for x in targets if x.is_file()]:
             case [] if bool(targets):
                 raise DErr.MissingConfigError("No Doot data found")
             case []:
@@ -165,7 +164,7 @@ class Startup_m:
         except OSError as err:
             raise DErr.InvalidConfigError(existing_targets, *err.args) from err
         else:
-            if existing_targets == [PYPROJ] and ROOT_ELEM not in config:
+            if existing_targets == [ControlAPI.PYPROJ] and ControlAPI.ROOT_ELEM not in config:
                 raise DErr.MissingConfigError("Pyproject has no doot config")
 
             self.configs_loaded_from   += existing_targets
@@ -174,62 +173,73 @@ class Startup_m:
             if bool(existing_targets):
                 self.verify_config_version(self.config.on_fail(None).startup.doot_version(), source=targets)
 
-    def _load_constants(self) -> None:
+    def load_constants(self, *, target:Maybe[Loadable]=None) -> None:
         """ Load the override constants if the loaded base config specifies one
         Modifies the global `doot.constants`
         """
-        match self.config.on_fail(None).startup.constants_file(wrapper=pl.Path):
+        match target:
             case None:
                 pass
             case pl.Path() as const_file if const_file.exists():
                 self.report.trace("Loading Constants")
                 base_data = ChainGuard.load(const_file)
                 self.verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
-                self.constants = base_data.remove_prefix(API.CONSTANT_PREFIX)
+                self.constants = base_data.remove_prefix(DootAPI.CONSTANT_PREFIX)
 
-    def _load_aliases(self, *, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None:
-        """ Load plugin aliases.
-        if given the kwarg `data`, will *append* to the aliases
+    def load_aliases(self, *, target:Maybe[Loadable]=None, force:bool=False) -> None:
+        """ Load plugin aliases from a toml file
+
+        if forced, will append additional aliases on top of existing
         """
-        if not bool(self.aliases):
-            match self.config.on_fail(API.aliases_file).startup.aliases_file(wrapper=pl.Path):
-                case _ if bool(self.aliases) and not force:
-                    base_data = {}
-                    pass
-                case pl.Path() as source if source.exists():
-                    self.report.trace("Loading Aliases: %s", source)
-                    base_data = ChainGuard.load(source)
-                    self.verify_config_version(base_data.on_fail(None).doot_version(), source=source)
-                    base_data = base_data.remove_prefix(API.ALIAS_PREFIX)
-                case source:
-                    self.report.trace("Alias File Not Found: %s", source)
-                    base_data = {}
+        final_aliases : dict            = defaultdict(dict)
+        base_data     : dict|ChainGuard = {}
+        target                          = target or DootAPI.aliases_file
 
-            # Flatten the lists
-            flat = {}
-            for key,val in base_data.items():
-                flat[key] = {k:v for x in val for k,v in x.items()}
-
-            # Then override with config specified plugin items:
-            for key,val in self.config.on_fail({}).startup.plugins().items():
-                flat[key].update(dict(val))
-
-            self.aliases = ChainGuard(flat) # type: ignore
-
-        match data:
-            case None:
+        match bool(self.aliases), force:
+            case False, _:
                 pass
-            case _ if bool(data):
-                self.report.trace("Updating Aliases")
-                base : dict = defaultdict(dict)
-                base.update(dict(self.aliases._table()))
-                for key,eps in data.items():
-                    update = {x.name:x.value for x in eps}
-                    base[key].update(update)
+            case True, True:
+                final_aliases.update(dict(self.aliases._table()))
+            case True, _:
+                raise RuntimeError("Tried to re-initialise aliases")
 
-                self.aliases = ChainGuard(base)
+        self.report.trace("Initalising Aliases")
+        match target:
+            case pl.Path() as source if source.exists():
+                self.report.trace("Loading Aliases: %s", source)
+                base_data = ChainGuard.load(source)
+                assert(isinstance(base_data, ChainGuard))
+                self.verify_config_version(base_data.on_fail(None).doot_version(), source=source)
+                base_data = base_data.remove_prefix(DootAPI.ALIAS_PREFIX)
+            case pl.Path() as source:
+                self.report.user("Alias File Not Found: %s", source)
+            case x:
+                raise TypeError(type(x))
 
-    def _load_locations(self) -> None:
+        ##--|
+        # Flatten the lists
+        for key,val in base_data.items():
+            final_aliases[key] = {k:v for x in val for k,v in x.items()} # type: ignore
+        else:
+            self.aliases = ChainGuard(final_aliases)
+
+    def update_aliases(self, *, data:dict|ChainGuard) -> None:
+        """
+        Update aliases with a dict-like of loaded mappings
+        """
+        if not bool(data):
+            return
+
+        final_aliases : dict = defaultdict(dict)
+        final_aliases.update(dict(self.aliases._table()))
+
+        for key,eps in data.items():
+            update = {x.name:x.value for x in eps} # type: ignore
+            final_aliases[key].update(update)
+        else:
+            self.aliases = ChainGuard(final_aliases)
+
+    def load_locations(self) -> None:
         """ Load and update the JGDVLocator db
         """
         self.report.trace("Loading Locations")
@@ -242,7 +252,141 @@ class Startup_m:
             except (JGDVError, ValueError) as err:
                 self.report.error("Location Loading Failed: %s (%s)", loc, err)
 
-    def _update_import_path(self, *paths:pl.Path) -> None:
+    def setup_logging(self) -> None:
+        self.log_config.setup(self.config)
+
+class Plugins_m:
+
+    def load_plugins(self) -> None:
+        """ Use the plugin loader to find all applicable `importlib.EntryPoint`s  """
+        from doot.control.loaders.plugin import PluginLoader
+        try:
+            self.plugin_loader = PluginLoader()
+            self.plugin_loader.setup()
+            self.plugins : ChainGuard = self.plugin_loader.load()
+            self.update_aliases(data=self.plugins) # type: ignore[attr-defined]
+        except DErr.PluginError as err:
+            self.report.error("Plugins Not Loaded Due to Error: %s", err) # type: ignore[attr-defined]
+            raise
+
+    def load_reporter(self, target:str="default") -> None:
+        if not bool(self.plugins):
+            raise RuntimeError("Tried to Load Reporter without loading plugins")
+
+        match plugin_selector(self.plugins.on_fail([], list).reporter(),
+                              target=target): # type: ignore
+            case type() as ctor:
+                self.report = ctor() # type: ignore[attr-defined]
+            case x:
+                raise TypeError(type(x))
+
+
+    def load_commands(self, *, loader:str="default") -> None:
+        """ Select Commands from the discovered plugins,
+        using the preferred cmd loader or the default
+        """
+        if not bool(self.plugins):
+            raise RuntimeError("Tried to Load Commands without having loaded Plugins")
+
+        match plugin_selector(self.plugins.on_fail([], list).command_loader(), # type: ignore
+                              target=loader):
+            case type() as ctor:
+                self.cmd_loader = ctor()
+            case x:
+                raise TypeError(type(x))
+
+        from .loaders._interface import Loader_p
+        match self.cmd_loader:
+            case Loader_p():
+                try:
+                    self.cmd_loader.setup(self.plugins)
+                    self.cmds = self.cmd_loader.load()
+                except DErr.PluginError as err:
+                    self.report.error("Commands Not Loaded due to Error: %s", err) # type: ignore[attr-defined]
+                    self.cmds = ChainGuard()
+            case x:
+                raise TypeError("Unrecognized loader type", x)
+
+    def load_tasks(self, *, loader:str="default") -> None:
+        """ Load task entry points, using the preferred task loader,
+        or the default
+        """
+        match plugin_selector(self.plugins.on_fail([], list).task_loader(), # type: ignore
+                              target=loader):
+            case type() as ctor:
+                self.task_loader = ctor()
+            case x:
+                raise TypeError(type(x))
+
+        from .loaders._interface import Loader_p
+        match self.task_loader:
+            case Loader_p():
+                self.task_loader.setup(self.plugins)
+                self.tasks = self.task_loader.load()
+            case x:
+                raise TypeError("Unrecognised loader type", x)
+
+class WorkflowUtil_m:
+    """ util methods on the overlord used when running a workflow """
+    args : ChainGuard
+
+    def set_parsed_cli_args(self, data:ChainGuard) -> None:
+        match data:
+            case _ if bool(self.args):
+                raise ValueError("Setting Parsed args but its already set")
+            case ChainGuard() as x if bool(x):
+                self.args = data
+            case x:
+                raise TypeError(type(x))
+
+    def update_global_task_state(self, data:ChainGuard, *, source:Maybe[str]=None) -> None:
+        """ Try to Update the shared global state.
+        Will try to get data[doot._interface.GLOBAL_STATE_KEY] data and add it to the global task state
+
+        toml in [[state]] segments is merged here
+        """
+        if source is None:
+            raise ValueError("Updating Global Task State must  have a source")
+
+        self.report.detail("Updating Global State from: %s", source)
+        if not isinstance(data, dict|ChainGuard):
+            raise DErr.GlobalStateMismatch("Not a dict", data)
+
+        match data.on_fail([])[DootAPI.GLOBAL_STATE_KEY]():
+            case []:
+                return
+            case [*xs]:
+                updates = xs
+            case dict() as x:
+                updates = [x]
+            case x:
+                raise TypeError(type(x))
+
+        for up in updates:
+            for x,y in up.items():
+                if x not in self.global_task_state:
+                    self.global_task_state[x] = y
+                elif self.global_task_state[x] != y:
+                    raise DErr.GlobalStateMismatch(x, y, source)
+
+    def verify_config_version(self, ver:Maybe[str], source:str|pl.Path, *, override:Maybe[str]=None) -> None:
+        """Ensure the config file is compatible with doot
+
+        Compatibility is based on MAJOR.MINOR and discards PATCH
+
+        Raises a VersionMismatchError otherwise if they aren't compatible
+        """
+        doot_ver = Version(override or DootAPI.__version__)
+        test_ver = SpecifierSet(f"~={doot_ver.major}.{doot_ver.minor}.0")
+        match ver:
+            case str() as x if x in test_ver:
+                return
+            case str() as x:
+                raise DErr.VersionMismatchError("Config File is incompatible with this version of doot (%s, %s) : %s : %s", DootAPI.__version__, test_ver, x, source)
+            case _:
+                raise DErr.VersionMismatchError("No Doot Version Found in config file: %s", source)
+
+    def update_import_path(self, *paths:pl.Path) -> None:
         """ Add locations to the python path for task local code importing
         Modifies the global `sys.path`
         """
@@ -277,116 +421,10 @@ class Startup_m:
         else:
             self.report.trace("Import Path Updated")
 
-class Logging_m:
-    """
-    Overlord management of logging and printing
-    """
-
-    def subprinter(self, name:Maybe[str]=None, *, prefix=None) -> Logger:
-        """ Get a sub-printer at position `name`.
-        Names are registered using JGDV.logging.LogConfig
-        """
-        try:
-            return self.log_config.subprinter(name, prefix=prefix)
-        except ValueError as err:
-            raise DErr.ConfigError("Invalid Subprinter", name) from err
-
-    def _setup_logging(self) -> None:
-        self.log_config.setup(self.config)
-
-class WorkflowUtil_m:
-    """ util methods on the overlord used when running a workflow """
-    args : ChainGuard
-
-    def set_parsed_cli_args(self, data:ChainGuard) -> None:
-        match data:
-            case _ if bool(self.args):
-                raise ValueError("Setting Parsed args but its already set")
-            case ChainGuard() as x if bool(x):
-                self.args = data
-            case x:
-                raise TypeError(type(x))
-
-    def update_global_task_state(self, data:ChainGuard, *, source:Maybe[str]=None) -> None:
-        """ Try to Update the shared global state.
-        Will try to get data[doot._interface.GLOBAL_STATE_KEY] data and add it to the global task state
-
-        toml in [[state]] segments is merged here
-        """
-        if source is None:
-            raise ValueError("Updating Global Task State must  have a source")
-
-        self.report.detail("Updating Global State from: %s", source)
-        if not isinstance(data, dict|ChainGuard):
-            raise DErr.GlobalStateMismatch("Not a dict", data)
-
-        match data.on_fail([])[API.GLOBAL_STATE_KEY]():
-            case []:
-                return
-            case [*xs]:
-                updates = xs
-            case dict() as x:
-                updates = [x]
-            case x:
-                raise TypeError(type(x))
-
-        for up in updates:
-            for x,y in up.items():
-                if x not in self.global_task_state:
-                    self.global_task_state[x] = y
-                elif self.global_task_state[x] != y:
-                    raise DErr.GlobalStateMismatch(x, y, source)
-
-    def record_defaulted_config_values(self) -> None:
-        if not self.config.on_fail(False).shutdown.write_defaulted_values():  # noqa: FBT003
-            return
-
-        defaulted_file : str     = self.config.on_fail("{logs}/.doot_defaults.toml", str).shutdown.defaulted_values.path()
-        expanded_path  : pl.Path = self.locs[defaulted_file]
-        if not expanded_path.parent.exists():
-            self.report.error("Couldn't log defaulted config values to: %s", expanded_path)
-            return
-
-        defaulted_toml = ChainGuard.report_defaulted()
-        with pl.Path(expanded_path).open('w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
-
-    def verify_config_version(self, ver:Maybe[str], source:str|pl.Path, *, override:Maybe[str]=None) -> None:
-        """Ensure the config file is compatible with doot
-
-        Compatibility is based on MAJOR.MINOR and discards PATCH
-
-        Raises a VersionMismatchError otherwise if they aren't compatible
-        """
-        doot_ver = Version(override or API.__version__)
-        test_ver = SpecifierSet(f"~={doot_ver.major}.{doot_ver.minor}.0")
-        match ver:
-            case str() as x if x in test_ver:
-                return
-            case str() as x:
-                raise DErr.VersionMismatchError("Config File is incompatible with this version of doot (%s, %s) : %s : %s", API.__version__, test_ver, x, source)
-            case _:
-                raise DErr.VersionMismatchError("No Doot Version Found in config file: %s", source)
 ##--|
 
-class OverlordFacade(types.ModuleType):
-    """
-    A Facade for the overlord, to be used as the module class
-    of the root package 'doot'.
-
-    """
-    _overlord : Overlord_p
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._overlord = DootOverlord()
-
-    def __getattr__(self, key):
-        return getattr(self._overlord, key)
-
-@Proto(Overlord_p)
-@Mixin(Startup_m, Logging_m, WorkflowUtil_m)
+@Proto(ControlAPI.Overlord_p)
+@Mixin(Startup_m, Plugins_m, WorkflowUtil_m)
 class DootOverlord:
     """
     The main control point of Doot
@@ -409,43 +447,56 @@ class DootOverlord:
     global_task_state   : dict
     path_ext            : list[str]
     is_setup            : bool
-    _reporter           : WorkflowReporter_p
+    _reporter           : Reporter_i
 
     def __init__(self, *args:Any, **kwargs:Any):
         super().__init__(*args, **kwargs)
         logging.info("Creating Overlord")
-        self.__version__                      = API.__version__
+        self.__version__                      = DootAPI.__version__
+        self.global_task_state                = {}
+        self.path_ext                         = []
+        self.is_setup                         = False
         self.config                           = ChainGuard()
-        self.constants                        = ChainGuard.load(API.constants_file).remove_prefix(API.CONSTANT_PREFIX)
+        self.constants                        = ChainGuard()
         self.aliases                          = ChainGuard()
         # TODO Remove this:
         self.cmd_aliases                      = ChainGuard()
         self.args                             = ChainGuard() # parsed arg access
-        subprinters                           = self.constants.on_fail(None).printer.PRINTER_CHILDREN()
-        self.log_config                       = JGDVLogConfig(subprinters=subprinters)
+        self.log_config                       = JGDVLogConfig()
         self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
         # TODO fix this:
         self._reporter                        = BasicReporter() # type: ignore
         self.configs_loaded_from              = []
-        self.global_task_state                = {}
-        self.path_ext                         = []
-        self.is_setup                         = False
 
         self.null_setup()
 
     @property
-    def report(self) -> WorkflowReporter_p:
+    def report(self) -> Reporter_i:
         return self._reporter
 
     @report.setter
-    def report(self, rep:WorkflowReporter_p) -> None:
+    def report(self, rep:Reporter_i) -> None:
         self.set_reporter(rep)
 
-    def set_reporter(self, rep:WorkflowReporter_p) -> None:
-        curr_logger = self._reporter.log
+    def set_reporter(self, rep:Reporter_i) -> None:
         match rep:
-            case WorkflowReporter_p():
+            case Reporter_p():
                 self._reporter = rep
-                self._reporter.log = curr_logger
+                self._reporter.log = self.log_config.subprinter()
             case x:
                 raise TypeError(type(x))
+
+class OverlordFacade(types.ModuleType):
+    """
+    A Facade for the overlord, to be used as the module class
+    of the root package 'doot'.
+
+    """
+    _overlord : ControlAPI.Overlord_p
+
+    def __init__(self, *args, **kwargs) -> None: # noqa: ANN002, ANN003
+        super().__init__(*args, **kwargs)
+        self._overlord = cast("ControlAPI.Overlord_p", DootOverlord())
+
+    def __getattr__(self, key):
+        return getattr(self._overlord, key)

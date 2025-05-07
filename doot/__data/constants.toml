@@ -1,3 +1,4 @@
+## constants.toml -*- mode: Toml -*-
 # Doot Constants
 doot_version = "1.1.1"
 
@@ -17,8 +18,8 @@ DEFAULT_TASK_LOADER_KEY     = "task-loader"
 DEFAULT_PLUGIN_LOADER_KEY   = "plugin-loader"
 DEFAULT_TASK_CTOR_ALIAS     = "task"
 
-DEFAULT_COMMAND_LOADER      = "doot.loaders.cmd:DootCommandLoader"
-DEFAULT_TASK_LOADER         = "doot.loaders.task:DootTaskLoader"
+DEFAULT_COMMAND_LOADER      = "doot.control.loaders.cmd:CommandLoader"
+DEFAULT_TASK_LOADER         = "doot.control.loaders.task:TaskLoader"
 
 [doot.constants.paths]
 TEMPLATE_PATH           =  "doot.__templates"

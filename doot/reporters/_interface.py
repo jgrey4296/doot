@@ -107,17 +107,7 @@ class ReportStackEntry_d:
         self.depth     = kwargs.pop("depth", 1)
         self.extra     = dict(kwargs)
 
-
-class Reporter_d:
-    _act_trace      : list
-    _fmt            : TraceFormatter_p
-    _stack          : list[ReportStackEntry_d]
-    _entry_count    : int
-    _logger         : Logger
-    _log_level      : int
-
-@runtime_checkable
-class WorkflowReporter_p(Protocol):
+class _WorkflowReporter_p(Protocol):
     """
     A Re-entrant ctx manager,
     used for reporting user-level information about a
@@ -125,97 +115,68 @@ class WorkflowReporter_p(Protocol):
 
     """
 
-    def __enter__(self) -> Self:
-        # calls branch|resume
-        # level+
-        pass
+    def __enter__(self) -> Self: ...
 
-    def __exit__(self, *exc:Any) -> bool:
-        # pause|result|fail|return
-        # level-
-        pass
+    def __exit__(self, *exc:Any) -> bool: ...
 
-    def root(self) -> Self:
-        # pass fmt
-        pass
+    def root(self) -> Self: ...
 
-    def wait(self) -> Self:
-        # pass fmt
-        pass
+    def wait(self) -> Self: ...
 
-    def act(self, info:str, msg:str) -> Self:
-        # msg fmt
-        pass
+    def act(self, info:str, msg:str) -> Self: ...
 
-    def fail(self, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Self:
-        # msg fmt
-        pass
+    def fail(self, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Self: ...
 
-    def branch(self, name:str) -> Self:
-        # pass fmt
-        pass
+    def branch(self, name:str, info:Maybe[str]=None) -> Self: ...
 
-    def pause (self, reason:str) -> Self:
-        # msg fmt
-        pass
+    def pause (self, reason:str) -> Self: ...
 
-    def result(self, state:list[str]) -> Self:
-        # Maybe msg fmt
-        pass
+    def result(self, state:list[str]) -> Self: ...
 
-    def resume(self, name:str) -> Self:
-        # msg fmt
-        pass
+    def resume(self, name:str) -> Self: ...
 
-    def finished(self) -> Self:
-        # pass fmt
-        pass
+    def finished(self) -> Self: ...
 
-    def queue(self, num:int) -> Self:
-        raise NotImplementedError()
+    def queue(self, num:int) -> Self: ...
 
-    def state_result(self, *vals:str) -> Self:
-        raise NotImplementedError()
+    def state_result(self, *vals:str) -> Self: ...
 
-@runtime_checkable
-class GeneralReporter_p(Protocol):
+class _GeneralReporter_p(Protocol):
     """ Reporter Methods for general user facing messages """
 
-    def header(self) -> Self:
-        pass
+    def header(self) -> Self: ...
 
-    def summary(self) -> Self:
-        pass
+    def summary(self) -> Self: ...
 
-    def trace(self, msg:str, *rest:str) -> Self:
-        pass
+    def trace(self, msg:str, *rest:str) -> Self: ...
 
-    def failure(self, msg:str, *rest:str) -> Self:
-        pass
+    def failure(self, msg:str, *rest:str) -> Self: ...
 
-    def warn(self, msg:str, *rest:str) -> Self:
-        pass
+    def warn(self, msg:str, *rest:str) -> Self: ...
 
 @runtime_checkable
-class Reporter_p(WorkflowReporter_p, GeneralReporter_p, Protocol):
+class Reporter_p(_WorkflowReporter_p, _GeneralReporter_p, Protocol):
+
     @property
-    def state(self) -> ReportStackEntry_d:
-        pass
+    def state(self) -> ReportStackEntry_d: ...
 
-    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
-        pass
+    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None: ...
 
-    def push_state(self, state:str, **kwargs:Any) -> Self:
-        pass
+    def push_state(self, state:str, **kwargs:Any) -> Self: ...
 
-    def pop_state(self) -> Self:
-        pass
+    def pop_state(self) -> Self: ...
+
+class Reporter_i(Reporter_p, Protocol):
+    _fmt            : TraceFormatter_p
+    _stack          : list[ReportStackEntry_d]
+    _entry_count    : int
+    _logger         : Logger
+    _log_level      : int
+
+
 @runtime_checkable
 class TraceFormatter_p(Protocol):
 
-    def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str:
-        pass
+    def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str: ...
 
-
-    def get_segment(self, key:str) -> Maybe[str]:
-        pass
+    def get_segment(self, key:str) -> Maybe[str]: ...

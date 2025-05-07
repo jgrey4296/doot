@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import sys
 import logging as logmod
+import typing
 from ._interface import __version__
 from .control.overlord import OverlordFacade
+
 
 import __main__
 
@@ -22,7 +24,9 @@ match getattr(__main__, "doot_setup", False):
     # Initialises the overlord as the 'doot' module
     case False:
         sys.modules[__name__].__class__ = OverlordFacade
-        sys.modules[__name__].__init__(__name__)
-        setattr(__main__, "doot_setup", True)
+        # Initialise the module manually
+        sys.modules[__name__].__init__(__name__) # type: ignore
+        __main__.doot_setup = True
     case True:
+        # Nothing to do
         pass
