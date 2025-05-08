@@ -46,7 +46,6 @@ if TYPE_CHECKING:
 
     from .structs import TaskSpec
 ##--|
-from ._interface import Job_i
 # isort: on
 # ##-- end types
 
@@ -54,7 +53,6 @@ from ._interface import Job_i
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(Job_i)
 class GroupJob(DootJob):
     """ A Group of task specs, none of which require params """
 
@@ -80,7 +78,6 @@ class GroupJob(DootJob):
         for x in other:
             self.tasks.append(other)
 
-@Proto(Job_i)
 class WatchJob(DootJob):
     """
     Job that watches for conditions, *then*

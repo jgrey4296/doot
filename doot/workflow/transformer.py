@@ -54,7 +54,6 @@ if TYPE_CHECKING:
     from .structs import TaskStub, TaskSpec
 
 ##--|
-from ._interface  import Job_i, Task_i
 # isort: on
 # ##-- end types
 
@@ -62,7 +61,6 @@ from ._interface  import Job_i, Task_i
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(Task_i)
 class DootTransformer(DootTask):
     """
       Transformers have an abstract artifact dependency and product,

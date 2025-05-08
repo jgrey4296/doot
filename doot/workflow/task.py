@@ -37,7 +37,7 @@ from doot.errors import StructLoadError, TaskError
 # ##-- end 1st party imports
 
 # ##-| Local
-from ._interface import (Action_p, Job_p, QueueMeta_e, Task_d, Task_p,
+from ._interface import (Action_p, Job_p, QueueMeta_e, Task_i, Task_p,
                          TaskMeta_e, TaskStatus_e)
 from .structs import RelationSpec, TaskArtifact, ActionSpec, TaskName
 
@@ -163,7 +163,7 @@ class _TaskHelp_m:
         return help_lines
 
 ##--|
-@Proto(Task_p)
+@Proto(Task_i)
 @Mixin(ParamSpecMaker_m, _TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
 class DootTask:
     """
@@ -259,7 +259,7 @@ class DootTask:
                 case []:
                     pass
                 case [*xs]:
-                    raise doot.errors.TaskError("Action Spec preparation failures", xs)
+                    raise doot.errors.TaskError("Action Spec preparation failures", self.name.readable, xs)
 
     def add_execution_record(self, arg:Any) -> None:
         """ Record some execution record information for display or debugging """

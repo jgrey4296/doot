@@ -27,7 +27,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from ._interface import Job_p, Task_p, TaskMeta_e
+from ._interface import Job_p, Task_i, TaskMeta_e
 from .structs.task_name import TaskName
 from .structs.task_spec import TaskSpec
 from .task  import DootTask

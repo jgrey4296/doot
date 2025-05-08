@@ -243,18 +243,6 @@ class TaskName_p(Strang_p, Protocol):
 ##--|
 
 @runtime_checkable
-class Task_d(Protocol):
-    """ Core Interface for Tasks """
-
-    _version         : str       = "0.1"
-    _help            : tuple[str, ...]
-    doc              : tuple[str, ...]
-    state            : dict
-    spec             : SpecStruct_p
-    status           : TaskStatus_e
-    priority         : int
-
-@runtime_checkable
 class Task_p(Protocol):
 
     def __init__(self, spec:SpecStruct_p):
@@ -297,3 +285,15 @@ class Job_p(Task_p, Protocol):
 
     def expand_job(self) -> list:
         pass
+
+
+class Task_i(Task_p, Protocol):
+    """ Core Interface for Tasks """
+
+    _version         : str       = "0.1"
+    _help            : tuple[str, ...]
+    doc              : tuple[str, ...]
+    state            : dict
+    spec             : SpecStruct_p
+    status           : TaskStatus_e
+    priority         : int
