@@ -393,8 +393,8 @@ class WorkflowUtil_m:
         self.report.trace("Updating Import Path")
         match paths:
             case None | []:
-                task_sources = self.config.on_fail([self.locs[".loaded_tasks"]], list).startup.sources.loaded_tasks(wrapper=lambda x: [self.locs[y] for y in x])
-                task_code    = self.config.on_fail([self.locs[".loaded_tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
+                task_sources = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [self.locs[y] for y in x])
+                task_code    = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
                 paths = set(task_sources + task_code) # type: ignore
             case [*xs]:
                 paths = set(paths) # type: ignore
