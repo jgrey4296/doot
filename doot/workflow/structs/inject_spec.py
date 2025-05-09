@@ -47,6 +47,7 @@ from typing import TYPE_CHECKING, no_type_check, final, override, overload
 # from dataclasses import InitVar, dataclass, field
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from jgdv import Maybe
+from .._interface import Task_p
 
 if TYPE_CHECKING:
    from typing import Final
@@ -56,7 +57,6 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-   from .._interface import Task_p
    from .. import TaskName, TaskSpec
    type ConstraintData = TaskSpec | dict | ChainGuard
 
@@ -92,7 +92,6 @@ class InjectSpec(BaseModel):
     Dict RHS keys are *explicit* form
 
     """
-    from_cli     : dict       = Field(default_factory=dict)
     from_spec    : dict       = Field(default_factory=dict)
     from_state   : dict       = Field(default_factory=dict)
     from_target  : dict       = Field(default_factory=dict)
@@ -150,10 +149,6 @@ class InjectSpec(BaseModel):
             self._mapping[str(x)] = str(y)
         else:
             return self
-
-    @field_validator("from_cli", mode="before")
-    def _validate_from_cli(cls, val:Any) -> dict:
-        return cls._prep_keys(val)
 
     @field_validator("from_spec", mode="before")
     def _validate_from_spec(cls, val:Any) -> dict:
@@ -240,14 +235,6 @@ class InjectSpec(BaseModel):
         else:
             return data
 
-
-    def apply_from_cli(self, source:TaskName|str) -> dict:
-        data = {}
-        source_args = doot.args.on_fail({}).sub[source]() # type: ignore
-        for x,y in self.from_cli.items():
-            data[str(x)] = y(source_args)
-        else:
-            return data
 
     def apply_literal(self, val:Any) -> dict:
         """ Takes a value and sets it for any keys in self.literal  """

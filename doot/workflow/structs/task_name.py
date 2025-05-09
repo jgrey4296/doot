@@ -23,8 +23,9 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import field_validator, model_validator
-from jgdv import Maybe
+from jgdv import Maybe, Proto
 from jgdv.structs.strang import Strang
+from jgdv.structs.strang._interface import Strang_i
 from jgdv.mixins.enum_builders import FlagsBuilder_m
 
 # ##-- end 3rd party imports
@@ -101,12 +102,14 @@ class _TaskNameOps_m:
         return API.CLEANUP_MARKER in self
 
 
+
+@Proto(API.TaskName_p, Strang_i)
 class TaskName(_TaskNameOps_m, Strang):
     """
       A Task Name.
     """
 
-    _separator          : ClassVar[str]           = DEFAULT_SEP
+    _separator : ClassVar[str] = DEFAULT_SEP
 
     @ftz.cached_property
     def readable(self) -> str:

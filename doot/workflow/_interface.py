@@ -27,13 +27,11 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang._interface import Strang_p
 from jgdv.mixins.enum_builders import EnumBuilder_m
 # ##-- end 3rd party imports
@@ -41,7 +39,6 @@ from jgdv.mixins.enum_builders import EnumBuilder_m
 # ##-- 1st party imports
 import doot
 import doot.errors
-
 # ##-- end 1st party imports
 
 # ##-- types
@@ -54,17 +51,22 @@ from typing import Generic, NewType, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+# Other:
+from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv.structs.chainguard import ChainGuard
+    from jgdv.structs.strang import CodeReference
+    import pathlib as pl
+    from jgdv import Maybe, Func
     from typing import Final
-    from typing import ClassVar, Any, LiteralString
+    from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from jgdv.cli._interface import ParamStruct_p
-    from jgdv._abstract.protocols import SpecStruct_p, StubStruct_p
+    from jgdv._abstract.protocols import StubStruct_p
 
     from doot.workflow import ActionSpec, TaskName
     type ActionReturn = Maybe[dict|bool|ActionResponse_e]
@@ -88,7 +90,6 @@ MUST_INJECT_K   : Final[str]         = "must_inject"
 NAME_K          : Final[str]         = "name"
 NONE_S          : Final[str]         = "None"
 PARTIAL         : Final[str]         = "<partial>"
-SPECIAL_KEYS    : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
 SPECIAL_KEYS    : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
 SUFFIX_K        : Final[str]         = "_add_suffix"
 USCORE_S        : Final[str]         = "_"
@@ -121,7 +122,7 @@ class RelationMeta_e(enum.Enum):
     """
     needs            = enum.auto()
     blocks           = enum.auto()
-    # excludes         = enum.auto()
+    # excludes         = enum.auto() # noqa: ERA001
 
     default          = needs
 
@@ -219,6 +220,67 @@ class ActionResponse_e(enum.Enum):
     # Aliases
     SUCCESS  = SUCCEED
 
+##--| Spec Interfaces
+
+Artifact_i = NewType("Artifact_i", object)
+
+class ActionSpec_i(Buildable_p, Protocol):
+    do         : Maybe[CodeReference]
+    args       : list[Any]
+    kwargs     : ChainGuard
+    fun        : Maybe[Func]
+
+class InjectSpec_i(Buildable_p, Protocol):
+    from_spec    : dict
+    from_state   : dict
+    from_target  : dict
+    literal      : dict
+    with_suffix  : Maybe[str]
+
+    def apply_from_spec(self, parent:dict|TaskSpec_i) -> dict: ...
+
+    def apply_from_state(self, parent:dict|Task_i) -> dict: ...
+
+    def apply_literal(self, val:Any) -> dict: ...
+
+class RelationSpec_i(Protocol):
+
+    mark_e        : ClassVar[type[enum.Enum]]
+    target        : TaskName_p|Artifact_i
+    relation      : RelationMeta_e
+    object        : Maybe[TaskName_p|Artifact_i]
+    constraints   : dict[str, str]
+    inject        : Maybe[InjectSpec_i]
+
+class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
+    name                              : TaskName_p
+    doc                               : Maybe[list[str]]
+    sources                           : list[Maybe[TaskName_p|pl.Path]]
+
+    # Action Groups:
+    actions                           : list[ActionSpec_i]
+    required_for                      : list[ActionSpec_i|RelationSpec_i]
+    depends_on                        : list[ActionSpec_i|RelationSpec_i]
+    setup                             : list[ActionSpec_i|RelationSpec_i]
+    cleanup                           : list[ActionSpec_i|RelationSpec_i]
+    on_fail                           : list[ActionSpec_i|RelationSpec_i]
+
+    # Any additional information:
+    version                           : str
+    priority                          : int
+    ctor                              : CodeReference
+    queue_behaviour                   : QueueMeta_e
+    meta                              : set[TaskMeta_e]
+    _transform                        : Maybe[Literal[False]|tuple[RelationSpec_i, RelationSpec_i]]
+
+    # task specific extras to use in state
+    _default_ctor                     : ClassVar[str]
+    # Action Groups that are depended on, rather than are dependencies of, this task:
+    _blocking_groups                  : ClassVar[tuple[str]]
+
+    mark_e                            : ClassVar[enum.Enum]
+
+    extra                             : ChainGuard
 ##--|
 
 @runtime_checkable
@@ -251,7 +313,7 @@ class Task_p(Protocol):
     def __hash__(self):
         pass
 
-    def __lt__(self, other:TaskName|Task_d) -> bool:
+    def __lt__(self, other:TaskName|Task_p) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
         pass
 
@@ -285,7 +347,6 @@ class Job_p(Task_p, Protocol):
 
     def expand_job(self) -> list:
         pass
-
 
 class Task_i(Task_p, Protocol):
     """ Core Interface for Tasks """

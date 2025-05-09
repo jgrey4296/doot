@@ -65,7 +65,7 @@ from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler, ConfigDict,
                       WrapValidator, field_validator, model_validator)
 from jgdv import Maybe
-from .._interface import Task_p, Job_p
+from .._interface import TaskSpec_i, Task_p, Job_p
 
 if TYPE_CHECKING:
     import enum
@@ -95,8 +95,9 @@ def _dicts_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=RelationMeta
         match x:
             case ActionSpec() | RelationSpec():
                 results.append(x)
-            case { "do": action  }:
-                results.append(ActionSpec.build(x))
+            case { "do": action  } as d:
+                assert(isinstance(d, dict))
+                results.append(ActionSpec.build(d))
             case _:
                 results.append(RelationSpec.build(x, relation=relation))
 
@@ -117,10 +118,10 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
             return []
         case [*xs] if info.field_name in TaskSpec._blocking_groups:
             relation_type = RelationMeta_e.blocks
-            results = _dicts_to_specs(group, relation=relation_type)
+            results = _dicts_to_specs(cast("list[str|dict]", group), relation=relation_type)
         case [*xs]:
             relation_type = RelationMeta_e.needs
-            results = _dicts_to_specs(group, relation=relation_type)
+            results = _dicts_to_specs(cast("list[str|dict]", group), relation=relation_type)
 
     return handler(results)
 
@@ -131,11 +132,12 @@ ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_ac
 class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
 
-    def get_source_names(self) -> list[TaskName]:
+    def get_source_names(self:TaskSpec_i) -> list[TaskName]:
         """ Get from the spec's sources just its source tasks """
-        return [x for x in self.sources if isinstance(x, TaskName)]
+        val = [x for x in self.sources if isinstance(x, TaskName)]
+        return cast("list[TaskName]", val)
 
-    def gen_job_head(self) -> list[TaskSpec]:
+    def gen_job_head(self:TaskSpec_i) -> list[TaskSpec]:
         """
           Generate a top spec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
@@ -179,7 +181,7 @@ class _JobUtils_m:
         tasks.append(head)
         return tasks
 
-    def gen_cleanup_task(self) -> list[TaskSpec]:
+    def gen_cleanup_task(self:TaskSpec_i) -> list[TaskSpec]:
         """ Generate a cleanup task, shifting the 'cleanup' actions and dependencies
           to 'depends_on' and 'actions'
         """
@@ -211,7 +213,7 @@ class _JobUtils_m:
 class _TransformerUtils_m:
     """Utilities for artifact transformers"""
 
-    def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> Maybe[TaskSpec]:
+    def instantiate_transformer(self:TaskSpec_i, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> Maybe[TaskSpec]:
         """ Create an instantiated transformer spec.
           ie     : ?.txt -> spec -> ?.blah
           becomes: a.txt -> spec -> a.blah
@@ -245,7 +247,7 @@ class _TransformerUtils_m:
 
         return instance
 
-    def transformer_of(self) -> Maybe[tuple[RelationSpec, RelationSpec]]:
+    def transformer_of(self:TaskSpec_i) -> Maybe[tuple[RelationSpec, RelationSpec]]:
         """ If this spec can transform an artifact,
           return those relations.
 
@@ -317,7 +319,7 @@ class _SpecUtils_m:
             case str():
                 return cls(name=TaskName(data))
 
-    def instantiate(self) -> TaskSpec:
+    def instantiate(self:TaskSpec_i) -> TaskSpec:
         """
         Return this spec, copied with a uniq name
         """
@@ -325,7 +327,7 @@ class _SpecUtils_m:
         instance.name = self.name.to_uniq()
         return instance
 
-    def reify_partial(self, actual:TaskSpec) -> TaskSpec:
+    def reify_partial(self:TaskSpec_i, actual:TaskSpec) -> TaskSpec:
         if self.name[-1] != API.PARTIAL:
             raise ValueError("Tried to reify a non-partial spec", self.name)
 
@@ -337,7 +339,7 @@ class _SpecUtils_m:
         adjusted['name'] = self.name.pop()
         return actual.under(adjusted, suffix=False)
 
-    def over(self, data:TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
+    def over(self:TaskSpec_i, data:TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
         """ data + self -> TaskSpec """
         if data is self:
             raise doot.errors.TrackingError("Tried to apply a spec over itself ", self.name, data.name)
@@ -353,7 +355,7 @@ class _SpecUtils_m:
                 result.name = self.name.push(suffix)
         return result
 
-    def under(self, data:dict|TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
+    def under(self:TaskSpec_i, data:dict|TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
         """ self + data -> TaskSpec """
         match data:
             case TaskSpec() if data is self:
@@ -376,7 +378,7 @@ class _SpecUtils_m:
 
         return result
 
-    def _specialize_merge(self, data:TaskSpec) -> TaskSpec:
+    def _specialize_merge(self:TaskSpec_i, data:TaskSpec) -> TaskSpec:
         """
           Apply data over the top of self
 
@@ -405,18 +407,7 @@ class _SpecUtils_m:
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
 
-    def param_specs(self) -> list:
-        result = []
-        for x in self.extra.on_fail([]).cli():
-            result.append(ParamSpec.build(x))
-        else:
-            return result
-
-    @property
-    def params(self) -> dict:
-        return self.model_extra
-
-    def make(self, *, ensure:type=Any, inject:Maybe[Tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:
+    def make(self:TaskSpec_i, *, ensure:type=Any, inject:Maybe[tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:
         """ Create actual task instance
 
         """
@@ -438,18 +429,17 @@ class _SpecUtils_m:
             case InjectSpec()  as inj, Task_p() as control:
                 task.state |= inj.apply_from_state(control)
 
-        match self.extra.on_fail([]).cli(): # Apply CLI args
+        match self.param_specs(): # Apply CLI params
             case []:
                 pass
             case [*xs]:
                 source    = str(self.name.root())
                 task_args = doot.args.on_fail({}).sub[source]()
-                for cli in self.extra.on_fail([]).cli():
+                for cli in xs:
                     task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
 
                 if API.CLI_K in task.state:
                     del task.state[API.CLI_K]
-
 
         match self.extra.on_fail([])[API.MUST_INJECT_K](): # Verify all required keys have values
             case []:
@@ -457,15 +447,25 @@ class _SpecUtils_m:
             case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
                 raise doot.errors.TrackingError("Task did not receive required injections", self.name, xs, task.state.keys())
 
-
         return task
 
 ##--|
 
-@Proto(SpecStruct_p, Buildable_p, check=True)
+@Proto(API.TaskSpec_i, check=True)
 @Mixin(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m)
 class _TaskSpecBase:
-    pass
+
+    def param_specs(self) -> list:
+        result = []
+        for x in self.extra.on_fail([]).cli():
+            result.append(ParamSpec.build(x))
+        else:
+            return result
+
+    @property
+    def params(self) -> dict:
+        return self.model_extra
+
 
 class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.

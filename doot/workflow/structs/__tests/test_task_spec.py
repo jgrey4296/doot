@@ -119,7 +119,10 @@ class TestTaskSpec:
         assert(obj.sources[0] == pl.Path("a/path.txt"))
         assert(obj.sources[1] == "other::task")
 
-class TestTaskSpecValidation:
+class TestTaskSpec_Validation:
+    """ Tests the validation methods of the spec
+
+    """
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -142,6 +145,9 @@ class TestTaskSpecValidation:
             TaskSpec.build({"name":"simple::test", "sources": ["basic::some.other..<partial>"]})
 
 class TestTaskSpec_Joining:
+    """ Tests combining a TaskSpec with other data
+
+    """
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -246,7 +252,6 @@ class TestTaskSpec_Joining:
             case x:
                  assert(False), x
 
-
     def test_reify_incorrect(self):
         bad_base      = TaskSpec.build({"name": "agroup::base.bad", "a": 0, "actions"    : [{"do":"log", "msg":"blah"}]})
         partial   = TaskSpec.build({"name": "agroup::base.blah..<partial>", "a": 20, "b": "blah", "sources": ["agroup::base"]})
@@ -254,38 +259,21 @@ class TestTaskSpec_Joining:
         with pytest.raises(ValueError):
             partial.reify_partial(bad_base)
 
-class TestTaskSpecInstantiation:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_instantiation(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
-
-        instance = override_task.over(base_task)
-        assert(instance is not base_task)
-        assert(instance is not override_task)
-        assert(instance.name != base_task.name)
-        assert(override_task.name < instance.name)
-        assert("a" in instance.extra)
-        assert("b" in instance.extra)
-        assert(instance.sources == ["agroup::base", "agroup::base.a"])
-
-    def test_instantiation_extends_sources(self):
+    def test_over_extends_sources(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources":[ "agroup::base"]})
         instance = override_task.over(base_task)
         assert(instance.sources == ["agroup::base", "agroup::base.a"])
 
-    def test_instantiation_prefers_newer_extra_vals(self):
+    def test_over_prefers_newer_vals(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = TaskSpec.build({"name": "agroup::base.a", "a": 100, "b": 2, "sources":[ "agroup::base"]})
         instance = override_task.over(base_task)
         assert(instance.extra['a'] == 100)
         assert(instance.sources == ["agroup::base", "agroup::base.a"])
 
-    def test_specialize_from_fail_unrelated(self):
+    def test_under_fails_from_when_unrelated(self):
+        """ Trying to apply base under an unrelated task errors """
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = TaskSpec.build({"name": "agroup::not.base", "b": 2, "sources":["agroup::not.base"]})
 
@@ -293,35 +281,35 @@ class TestTaskSpecInstantiation:
         with pytest.raises(doot.errors.TrackingError):
             base_task.under(override_task)
 
-    def test_specialize_keeps_base_actions(self):
+    def test_under_keeps_base_actions(self):
+        """ Applying a task under another will use the most specific set of actions """
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "actions":[{"do":"basic"}]})
         override_task = TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources":["agroup::base"]})
 
         instance = base_task.under(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
-        assert(bool(instance.actions))
+        assert(len(instance.actions) == 1)
+        assert("DootBaseAction" in instance.actions[0].do)
 
-    def test_specialize_keeps_override_actions(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = TaskSpec.build({"name": "agroup::base.a", "b": 2, "actions":[{"do":"basic"}], "sources":["agroup::base"]})
-
-        instance = base_task.under(override_task)
-        assert(instance is not base_task)
-        assert(instance is not override_task)
-        assert(bool(instance.actions))
-
-    def test_specialize_source_as_taskname(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = TaskSpec.build({"name": "agroup::base.a", "b": 2, "sources" :[ "agroup::base"]})
+    def test_under_merges_actions(self):
+        """ Applying a task under another will use the most specific set of actions """
+        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0,
+                                        "actions":[{"do":"basic"}]})
+        override_task = TaskSpec.build({"name": "agroup::base.a", "b": 2,
+                                        "sources":["agroup::base"],
+                                        "actions": [{"do":"log", "msg":"not base action"}],
+                                        })
 
         instance = base_task.under(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
-        assert(not isinstance(instance.ctor, TaskName))
-        assert(instance.ctor == base_task.ctor)
+        assert(len(instance.actions) == 2)
+        assert("DootBaseAction" in instance.actions[0].do)
+        assert("LogAction" in instance.actions[1].do)
 
-    def test_dependency_merge(self):
+    def test_under_merges_dependencies(self):
+
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "depends_on": ["basic::dep"]})
         override_task = TaskSpec.build({"name": "agroup::base.a", "depends_on": ["extra::dep"], "b": 2, "sources" :[ "agroup::base"]})
 
@@ -330,7 +318,7 @@ class TestTaskSpecInstantiation:
         assert(instance is not override_task)
         assert(len(instance.depends_on) == 2)
 
-    def test_simple_data_extension(self):
+    def test_under_simple_data_extension(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
         data = {"a": 2, "b": 3}
         instance = base_task.under(data)
@@ -340,24 +328,51 @@ class TestTaskSpecInstantiation:
         assert(instance.b == 3)
         assert(instance.c == "blah")
 
-    def test_sources_independece(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
-        second = TaskSpec.build(dict(base_task))
-        assert(base_task.sources is not second.sources)
-        second.sources.append("blah")
-        assert("blah" not in base_task.sources)
+    def test_under_keeps_spec_independence(self):
+        base          = TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
+        second        = base.under({})
+        assert(base is not second)
+        base.sources.append("testing")
+        assert("testing" not in second.sources)
 
-    def test_dict_sources_independence(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
-        instance = base_task.under({})
-        assert(base_task.sources is not instance.sources)
-        instance.sources.append("blah")
-        assert("blah" not in base_task.sources)
-
-    def test_self_sources_independence(self):
+    def test_under_cant_apply_to_self(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
         with pytest.raises(doot.errors.TrackingError):
             base_task.under(base_task)
+
+class TestTaskSpec_Instantiation:
+    """ Tests the instantiation of a spec from abstract to concrete
+    and from concrete to a task
+    """
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_instantiation(self):
+        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
+        match base_task.instantiate():
+            case TaskSpec() as inst:
+                assert(inst.name.is_uniq())
+                assert(inst is not base_task)
+                assert(base_task.name < inst.name)
+                assert("a" in inst.extra)
+            case x:
+                assert(False), x
+
+    def test_task_make(self):
+        base = TaskSpec.build({"name": "basic::task", "a":0})
+        concrete = base.instantiate()
+        assert(concrete.name.is_uniq())
+        match concrete.make():
+            case Task_p() as inst:
+                assert(inst.name == concrete.name)
+            case x:
+                 assert(False), x
+
+class TestTaskSpec_CLIParams:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_cli_arg_application(self, mocker):
         """
@@ -367,7 +382,7 @@ class TestTaskSpecInstantiation:
         data = {"sub":{"agroup::base": {"blah":"bloo"}}}
         mocker.patch("doot.args", ChainGuard(data))
         base     = TaskSpec.build({"name":"agroup::base",
-                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           "cli" : [{"name":"--blah", "default":"aweg", "type":"str"}],
                                            })
         instance = base.under({})
         assert(not hasattr(instance, "blah"))
@@ -395,7 +410,6 @@ class TestTaskSpecInstantiation:
             case x:
                  assert(False), x
 
-
     def test_cli_arg_override(self, mocker):
         """
         When a value is already provided for a cli arg,
@@ -405,7 +419,7 @@ class TestTaskSpecInstantiation:
         data = {"sub":{"agroup::base": {}}}
         mocker.patch("doot.args", ChainGuard(data))
         base     = TaskSpec.build({"name":"agroup::base",
-                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           "cli" : [{"name":"-blah", "default":"aweg", "type":"str"}],
                                            })
         instance = base.under({})
         other_inst = instance.make()
@@ -417,8 +431,10 @@ class TestTaskSpecInstantiation:
             case x:
                  assert(False), x
 
-class TestTaskGeneration:
-    """ eg: job heads and cleanup tasks
+class TestSubTask_Generation:
+    """ Tests a spec can build related specs,
+    such as it's head task (if it is a job),
+    or it's cleanup task (if it is a task)
 
     """
 
