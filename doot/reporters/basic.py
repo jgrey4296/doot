@@ -267,7 +267,7 @@ class BasicReporter:
         self._logger            = logger or logging
         self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
         self._stack             = []
-        self._entry_count       = -1
+        self._entry_count       = 0
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
                                                          data={},
