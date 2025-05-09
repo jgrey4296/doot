@@ -29,7 +29,7 @@ import doot
 import doot.errors
 from doot.workflow._interface import TaskStatus_e
 from doot.util import mock_gen
-from ..tracker import SplitTracker
+from ..tracker import Tracker
 from doot.workflow.structs.task_spec import TaskSpec
 from doot.workflow.structs.task_name import TaskName
 
@@ -68,23 +68,23 @@ class TestSplitTracker:
         assert(not False)
 
     def test_basic(self):
-        obj = SplitTracker()
-        assert(isinstance(obj, SplitTracker))
+        obj = Tracker()
+        assert(isinstance(obj, Tracker))
 
     def test_next_for_fails_with_unbuilt_network(self):
-        obj = SplitTracker()
+        obj = Tracker()
         with pytest.raises(doot.errors.TrackingError) as ctx:
             obj.next_for()
 
         assert(ctx.value.args[0] == "Network is in an invalid state")
 
     def test_next_for_empty(self):
-        obj = SplitTracker()
+        obj = Tracker()
         obj.build_network()
         assert(obj.next_for() is None)
 
     def test_next_for_no_connections(self):
-        obj  = SplitTracker()
+        obj  = Tracker()
         spec = TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
@@ -99,7 +99,7 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_simple_dependendency(self):
-        obj  = SplitTracker()
+        obj  = Tracker()
         spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -115,7 +115,7 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
 
     def test_next_dependency_success_produces_ready_state_(self):
-        obj  = SplitTracker()
+        obj  = Tracker()
         spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -134,7 +134,7 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_artificial_success(self):
-        obj  = SplitTracker()
+        obj  = Tracker()
         spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -153,7 +153,7 @@ class TestSplitTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_halt(self):
-        obj  = SplitTracker()
+        obj  = Tracker()
         spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -181,7 +181,7 @@ class TestSplitTracker:
             assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
     def test_next_fail(self):
-        obj  = SplitTracker()
+        obj  = Tracker()
         spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -209,7 +209,7 @@ class TestSplitTracker:
             assert(x.status in [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
     def test_next_job_head(self):
-        obj       = SplitTracker()
+        obj       = Tracker()
         job_spec  = TaskSpec.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
         task_spec = TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
         obj.register_spec(job_spec)
@@ -246,7 +246,7 @@ class TestSplitTracker:
                 assert(False), x
 
     def test_next_job_head_with_subtasks(self):
-        obj       = SplitTracker()
+        obj       = Tracker()
         job_spec  = TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
         sub_spec1 = TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
         sub_spec2 = TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
@@ -274,3 +274,87 @@ class TestSplitTracker:
         result = obj.next_for()
         # Next task is one of the new subtasks
         assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
+
+
+class TestTrackingStates:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_cleanup_shares_spec(self):
+        obj       = Tracker()
+        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"do":"log", "msg":"{blah}"}], "blah":"aweg"})
+        obj.register_spec(spec)
+        obj.queue_entry(spec, from_user=True)
+        obj.build_network()
+        match obj.next_for():
+            case Task_p() as task:
+                assert("basic::task" < task.name)
+                assert(task.state["blah"] == "aweg")
+                obj.set_status(task, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task2:
+                assert(task2.name.is_cleanup())
+                assert(task2.state["blah"] == "aweg")
+            case x:
+                 assert(False), x
+
+
+    def test_cleanup_shares_state(self):
+
+        obj       = Tracker()
+        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[]})
+        obj.register_spec(spec)
+        obj.queue_entry(spec, from_user=True)
+        obj.build_network()
+        match obj.next_for():
+            case Task_p() as task:
+                assert("basic::task" < task.name)
+                assert("blah" not in task.state)
+                task.state["blah"] = "aweg"
+                obj.set_status(task, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task2:
+                assert(task2.name.is_cleanup())
+                assert(task2.state["blah"] == "aweg")
+            case x:
+                 assert(False), x
+
+
+    def test_cleanup_shares_state_to_deps(self):
+
+        obj       = Tracker()
+        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        obj.queue_entry(spec, from_user=True)
+        obj.build_network()
+        match obj.next_for():
+            case Task_p() as task:
+                assert("basic::task" < task.name)
+                assert("blah" not in task.state)
+                task.state["blah"] = "aweg"
+                obj.set_status(task, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task2:
+                assert(dep.name < task2.name)
+                assert(task2.state["blah"] == "aweg")
+                obj.set_status(task2, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task3:
+                assert(task3.name.is_cleanup())
+                assert(task3.state["blah"] == "aweg")
+            case x:
+                 assert(False), x

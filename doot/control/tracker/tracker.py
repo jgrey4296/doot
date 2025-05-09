@@ -82,15 +82,18 @@ logging    = logmod.getLogger(__name__)
 
 ##--|
 
-@Proto(TaskTracker_p)
-class SplitTracker:
-    """ The public part of the standard tracker implementation
+@Proto(API.TaskTracker_p, check=False)
+class Tracker_abs:
+    """ A public base implementation of most of a tracker
     Has three components:
     _registry : db for specs and tasks
     _network  : the links between specs in the registry
     _queue    : the logic for determining what task to run next
 
     """
+    _register : TrackRegistry
+    _network  : TrackNetwork
+    _queue    : TrackQueue
 
     def __init__(self):
         self._registry = TrackRegistry()
@@ -141,6 +144,18 @@ class SplitTracker:
     def validate_network(self) -> None:
         self._network.validate_network()
 
+    def generate_plan(self, *args):
+        raise NotImplementedError()
+
+    def clear_queue(self):
+        self._queue.clear_queue()
+
+
+
+##--|
+@Proto(API.TaskTracker_p)
+class Tracker(Tracker_abs):
+
     def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:
         """ ask for the next task that can be performed
 
@@ -170,15 +185,20 @@ class SplitTracker:
 
             match status:
                 case TaskStatus_e.DEAD:
+                    # Clear state
                     del self._registry.tasks[focus]
                 case TaskStatus_e.DISABLED:
                     pass
                 case TaskStatus_e.TEARDOWN:
                     for succ in self._network.succ[focus]:
-                        if not self._network.edges[focus, succ].get(API.CLEANUP, False):
-                            self.set_status(succ, TaskStatus_e.HALTED)
-                        self.queue_entry(succ)
+                        match self.queue_entry(succ):
+                            case TaskName() as x if x.is_cleanup():
+                                self._registry._make_task(x)
+                                self._registry.tasks[x].state.update(self._registry.tasks[focus].state)
+                            case _:
+                                pass
                     else:
+                        # TODO for cleanup succ, move focus.state -> succ.state
                         self._queue.active_set.remove(focus)
                         self._registry.set_status(focus, TaskStatus_e.DEAD)
                 case ArtifactStatus_e.EXISTS:
@@ -250,9 +270,3 @@ class SplitTracker:
         else:
             logging.info("[Next.For] <- %s", result)
             return result
-
-    def generate_plan(self, *args):
-        raise NotImplementedError()
-
-    def clear_queue(self):
-        self._queue.clear_queue()

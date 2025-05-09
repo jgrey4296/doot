@@ -26,7 +26,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- 1st party imports
 import doot
-from doot.control.tracker.tracker import SplitTracker
+from doot.control.tracker import SplitTracker
 from doot.control.runner.runner import DootRunner
 from doot.workflow._interface import TaskStatus_e
 from doot.workflow import ActionSpec, TaskName, TaskSpec, DootTask, DootJob

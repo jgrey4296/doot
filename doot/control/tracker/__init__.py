@@ -1,4 +1,6 @@
 """
 
 """
-from .tracker import SplitTracker
+from .tracker import Tracker_abs, Tracker
+
+SplitTracker = Tracker

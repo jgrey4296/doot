@@ -100,6 +100,7 @@ SUCCESS_STATUSES : Final[set[TaskStatus_e|ArtifactStatus_e]]  = {
 # Body:
 
 
+
 class TaskTracker_p(Protocol):
     """
     Track tasks that have run, need to run, are running,
@@ -119,11 +120,11 @@ class TaskTracker_p(Protocol):
     def set_status(self, task:Concrete[Ident]|Task_p, state:TaskStatus_e) -> bool:
         pass
 
-    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Actual]:
-        pass
-
     def build_network(self) -> None:
         pass
 
     def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[PlanEntry]:
+        pass
+
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Actual]:
         pass
