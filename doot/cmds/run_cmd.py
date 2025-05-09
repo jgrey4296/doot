@@ -99,7 +99,6 @@ class RunCmd(BaseCommand):
         doot.load_reporter(target=reporter_target)
 
         doot.report.active_level(logmod.INFO)
-        doot.report.push_state("cmd")
         doot.report.gap()
         doot.report.line("Starting Run Cmd", char="=")
         tracker, runner = self._create_tracker_and_runner(plugins)

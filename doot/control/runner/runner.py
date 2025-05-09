@@ -178,9 +178,9 @@ class _ActionExecution_m:
         task.state['_action_step'] = count
         match group:
             case str():
-                doot.report.act(f"Action: {self.step}.{group}.{count}", action.do)
+                doot.report.act(f"{self.step}.{group}.{count}", action.do)
             case None:
-                doot.report.act(f"Action: {self.step}.{count}", action.do)
+                doot.report.act(f"{self.step}._.{count}", action.do)
 
         logging.debug("Action Executing for Task: %s", task.shortname)
         logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))

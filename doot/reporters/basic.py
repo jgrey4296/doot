@@ -5,7 +5,6 @@ The Basic implementation of a reporter.
 _WorkflowReporter_m implements WorkflowReporter_p methods,
 while _GenReporter_m implements GeneralReporter_p methods.
 
-
 The BasicReporter has both:
 - _stack
 - _entry_count
@@ -123,7 +122,6 @@ class _TreeReporter_m:
 
 class _WorkflowReporter_m:
     """ Methods for reporting the progress of a workflow """
-    _out : Callable
 
     def root(self:Reporter_p) -> Reporter_p:
         self._out("root", level=6)
@@ -138,25 +136,30 @@ class _WorkflowReporter_m:
         return self
 
     def fail(self:Reporter_p, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Reporter_p:
+        self.pop_state()
         self._out("fail", info=info, msg=msg, level=40)
         return self
 
     def branch(self:Reporter_p, name:str, info:Maybe[str]=None) -> Reporter_p:
         self._out("branch", level=5)
         self._out("begin", info=info or "Start", msg=name, level=5)
+        self.push_state("branch")
         return self
 
     def pause (self:Reporter_p, reason:str) -> Reporter_p:
+        self.pop_state()
         self._out("pause", msg=reason, level=5)
         return self
 
     def result(self:Reporter_p, state:list[str], info:Maybe[str]=None) -> Reporter_p:
         assert(isinstance(state, list))
+        self.pop_state()
         self._out("result" , msg=",".join(str(x) for x in state), info=info, level=5)
         return self
 
     def resume(self:Reporter_p, name:str) -> Reporter_p:
         self._out("resume", msg=name, level=5)
+        self.push_state("resume")
         return self
 
     def finished(self:Reporter_p) -> Reporter_p:
@@ -264,7 +267,7 @@ class BasicReporter:
         self._logger            = logger or logging
         self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
         self._stack             = []
-        self._entry_count       = 0
+        self._entry_count       = -1
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
                                                          data={},
@@ -272,6 +275,7 @@ class BasicReporter:
                                                          log_level=INIT_LEVEL,
                                                          )
         self._stack.append(initial_entry)
+        pass
 
     @property
     def state(self) -> API.ReportStackEntry_d:
