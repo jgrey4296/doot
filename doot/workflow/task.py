@@ -163,6 +163,7 @@ class _TaskHelp_m:
         return help_lines
 
 ##--|
+
 @Proto(Task_i)
 @Mixin(ParamSpecMaker_m, _TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
 class DootTask:
@@ -182,8 +183,6 @@ class DootTask:
     COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS}
     INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
     _help                                         = tuple(["The Simplest Task"])
-
-
 
     def __init__(self, spec:TaskSpec, *, job:Any=None, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
         self.spec        = spec

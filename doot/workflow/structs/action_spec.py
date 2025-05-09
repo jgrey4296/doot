@@ -124,6 +124,8 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
                 return CodeReference(alias) # type: ignore
             case str():
                 return CodeReference(val) # type: ignore
+            case x if callable(x):
+                return CodeReference.from_value(x)
             case _:
                 raise TypeError("Unrecognized action spec do type", val)
 
