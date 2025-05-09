@@ -193,8 +193,8 @@ class Tracker(Tracker_abs):
                     for succ in self._network.succ[focus]:
                         match self.queue_entry(succ):
                             case TaskName() as x if x.is_cleanup():
-                                self._registry._make_task(x)
-                                self._registry.tasks[x].state.update(self._registry.tasks[focus].state)
+                                # make the cleanup task early, to apply shared state
+                                self._registry._make_task(x, parent=focus)
                             case _:
                                 pass
                     else:

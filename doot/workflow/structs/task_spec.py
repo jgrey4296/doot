@@ -45,6 +45,7 @@ import doot.errors
 from .. import _interface as API
 from .._interface import TaskMeta_e
 from .action_spec import ActionSpec
+from .inject_spec import InjectSpec
 from .artifact import TaskArtifact
 from .relation_spec import RelationMeta_e, RelationSpec
 from .task_name import TaskName
@@ -86,6 +87,7 @@ logging = logmod.getLogger(__name__)
 DEFAULT_ALIAS     : Final[str]             = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS # type: ignore
 DEFAULT_BLOCKING  : Final[tuple[str, ...]] = tuple(["required_for", "on_fail"])
 ##--| Utils
+
 def _dicts_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
     """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
     results = []
@@ -414,33 +416,49 @@ class _SpecUtils_m:
     def params(self) -> dict:
         return self.model_extra
 
-    def make(self, ensure:type=Any) -> Task_p:
-        """ Create actual task instance """
-        match self.ctor(check=ensure):
+    def make(self, *, ensure:type=Any, inject:Maybe[Tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:
+        """ Create actual task instance
+
+        """
+        match self.ctor(check=ensure): # Make the task object
             case ImportError() as err:
                 raise err
             case task_ctor:
-                return task_ctor(self)
+                task = task_ctor(self)
 
-    def apply_cli_args(self, *, override:Maybe[str]=None) -> TaskSpec:
-        logging.debug("Applying CLI Args to: %s", self.name)
-        spec_extra : dict = dict(self.extra.items() or [])
-        if API.CLI_K in spec_extra:
-            del spec_extra[API.CLI_K]
+        match parent: # Apply parent state (eg: for cleanup tasks)
+            case None:
+                pass
+            case Task_p():
+                task.state.update(parent.state)
 
-        # Apply any cli defined args
-        for cli in self.extra.on_fail([]).cli():
-            if cli.name not in spec_extra:
-                spec_extra[cli.name] = cli.default
+        match inject: # Apply state injections
+            case None:
+                pass
+            case InjectSpec()  as inj, Task_p() as control:
+                task.state |= inj.apply_from_state(control)
 
-        source = str(override or self.name.pop(top=True))
+        match self.extra.on_fail([]).cli(): # Apply CLI args
+            case []:
+                pass
+            case [*xs]:
+                source    = str(self.name.root())
+                task_args = doot.args.on_fail({}).sub[source]()
+                for cli in self.extra.on_fail([]).cli():
+                    task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
 
-        tasks = doot.args.on_fail({})
-        for key,val in doot.args.on_fail({}).sub[source]().items():
-            spec_extra[key] = val
-        else:
-            cli_spec = self.under(spec_extra)
-            return cli_spec
+                if API.CLI_K in task.state:
+                    del task.state[API.CLI_K]
+
+
+        match self.extra.on_fail([])[API.MUST_INJECT_K](): # Verify all required keys have values
+            case []:
+                pass
+            case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
+                raise doot.errors.TrackingError("Task did not receive required injections", self.name, xs, task.state.keys())
+
+
+        return task
 
 ##--|
 

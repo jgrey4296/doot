@@ -190,7 +190,7 @@ class TrackQueue:
             case TaskName() as x if x not in self._registry.specs:
                 raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", name)
             case TaskName() as x if not x.is_uniq():
-                inst_name = self._registry._instantiate_spec(x, add_cli=from_user)
+                inst_name = self._registry._instantiate_spec(x)
             case TaskName() as x:
                 inst_name = x
 

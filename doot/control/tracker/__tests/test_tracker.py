@@ -358,3 +358,143 @@ class TestTrackingStates:
                 assert(task3.state["blah"] == "aweg")
             case x:
                  assert(False), x
+
+
+    def test_cleanup_shares_to_deps_cleanup(self):
+
+        obj       = Tracker()
+        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        obj.queue_entry(spec, from_user=True)
+        obj.build_network()
+        match obj.next_for():
+            case Task_p() as task:
+                assert("basic::task" < task.name)
+                assert("blah" not in task.state)
+                task.state["blah"] = "aweg"
+                obj.set_status(task, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task2:
+                assert(dep.name < task2.name)
+                assert(task2.state["blah"] == "aweg")
+                task2.state['aweg'] = "qqqq"
+                obj.set_status(task2, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task3:
+                assert(task3.name.is_cleanup())
+                assert(task3.state["blah"] == "aweg")
+                assert("aweg" not in task3.state)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task4:
+                assert(task4.name.is_cleanup())
+                assert(dep.name < task4.name)
+                assert(task4.state['blah'] == "aweg")
+                assert("aweg" in task4.state)
+            case x:
+                 assert(False), x
+
+
+    def test_cleanup_dep_must_injects(self):
+
+        obj       = Tracker()
+        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = TaskSpec.build({"name":"basic::dep", "must_inject": ["blah"]})
+        obj.register_spec(spec, dep)
+        obj.queue_entry(spec, from_user=True)
+        obj.build_network()
+        match obj.next_for():
+            case Task_p() as task:
+                assert("basic::task" < task.name)
+                assert("blah" not in task.state)
+                task.state["blah"] = "aweg"
+                obj.set_status(task, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task2:
+                assert("basic::dep" < task2.name)
+                assert(task2.state["blah"] == "aweg")
+                task2.state['aweg'] = "qqqq"
+                task2.state["qqqq"] = "blah"
+                obj.set_status(task2, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task3:
+                assert("basic::task" < task3.name)
+                assert(task3.name.is_cleanup())
+                assert(task3.state["blah"] == "aweg")
+                assert("aweg" not in task3.state)
+                assert("qqqq" not in task3.state)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task4:
+                assert("basic::dep" < task4.name)
+                assert(task4.name.is_cleanup())
+                assert(task4.state['blah'] == "aweg")
+                assert(task4.state["aweg"] == "qqqq")
+                assert(task4.state["qqqq"] == "blah")
+            case x:
+                 assert(False), x
+
+
+    def test_cleanup_injections(self):
+
+        obj       = Tracker()
+        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = TaskSpec.build({"name":"basic::dep", "must_inject": ["blah"]})
+        obj.register_spec(spec, dep)
+        obj.queue_entry(spec, from_user=True)
+        obj.build_network()
+        match obj.next_for():
+            case Task_p() as task:
+                assert("basic::task" < task.name)
+                assert("blah" not in task.state)
+                task.state["blah"] = "aweg"
+                obj.set_status(task, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task2:
+                assert("basic::dep" < task2.name)
+                assert(task2.state["blah"] == "aweg")
+                task2.state['aweg'] = "qqqq"
+                task2.state["qqqq"] = "blah"
+                obj.set_status(task2, state=TaskStatus_e.SUCCESS)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task3:
+                assert("basic::task" < task3.name)
+                assert(task3.name.is_cleanup())
+                assert(task3.state["blah"] == "aweg")
+                assert("aweg" not in task3.state)
+                assert("qqqq" not in task3.state)
+            case x:
+                 assert(False), x
+
+        match obj.next_for():
+            case Task_p() as task4:
+                assert("basic::dep" < task4.name)
+                assert(task4.name.is_cleanup())
+                assert(task4.state['blah'] == "aweg")
+                assert(task4.state["aweg"] == "qqqq")
+                assert(task4.state["qqqq"] == "blah")
+            case x:
+                 assert(False), x

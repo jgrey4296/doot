@@ -234,20 +234,20 @@ class _Instantiation_m(_RegistryData):
         chain.reverse()
         return chain
 
-    def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[TaskName]]:
+    def _maybe_reuse_instantiation(self, name:TaskName, *, extra:bool=False) -> Maybe[Concrete[TaskName]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         no_spec       = name not in self.specs
-        invalid_reuse = extra or add_cli
+        invalid_reuse = extra
         uniq_spec     = name.is_uniq()
         no_instances  = not bool(self.concrete[name])
 
         return None
 
-    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:Maybe[dict|ChainGuard]=None) -> Concrete[TaskName]:
+    def _instantiate_spec(self, name:Abstract[TaskName], *, extra:Maybe[dict|ChainGuard]=None) -> Concrete[TaskName]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
           """
-        match self._maybe_reuse_instantiation(name, add_cli=add_cli, extra=bool(extra)):
+        match self._maybe_reuse_instantiation(name, extra=bool(extra)):
             case None:
                 pass
             case TaskName() as existing:
@@ -259,9 +259,6 @@ class _Instantiation_m(_RegistryData):
 
         logging.debug("[Instance] %s into %s", name, instance_spec.name.readable)
         assert(instance_spec is not None)
-        if add_cli:
-            # only add cli args explicitly. ie: when the task has been queued by the user
-            instance_spec = instance_spec.apply_cli_args()
 
         if extra:
             # apply additional settings onto the instance
@@ -310,7 +307,7 @@ class _Instantiation_m(_RegistryData):
                 case _:
                     return self._instantiate_spec(rel.target)
 
-    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None) -> Concrete[TaskName]:
+    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 
@@ -318,36 +315,32 @@ class _Instantiation_m(_RegistryData):
           """
         task : Task_p
 
-        if not isinstance(name, TaskName):
-            raise doot.errors.TrackingError("Tried to add a not-task", name)
-        if not name.is_uniq():
-            raise doot.errors.TrackingError("Tried to add a task using a non-concrete spec", name)
-        if name in self.tasks:
-            return name
+        match name, task_obj:
+            case TaskName() as x, _ if not x.is_uniq():
+                raise doot.errors.TrackingError("Tried to build a task using a non-concrete spec", name)
+            case TaskName() as x, Task_p() as obj if x not in self.tasks:
+                self.tasks[x] = obj
+                return x
+            case TaskName() as x, Task_p() as obj:
+                raise doot.errors.TrackingError("Tried to provide a task object for already existing task", name)
+            case TaskName() as x, _ if x not in self.specs:
+                raise doot.errors.TrackingError("Tried to make a task from a non-existent spec name", name)
+            case TaskName() as x, _ if x in self.tasks:
+                return self.tasks[name]
+            case TaskName() as x, _ if x not in self.tasks:
+                pass
+            case name, _:
+                raise doot.errors.TrackingError("Tried to make a task from a not-task name", name, task_obj)
 
         logging.debug("[Instance] Task Object: %s", name)
-        match task_obj:
-            case None:
-                spec = self.specs[name]
-                task = spec.make()
-            case Task_p():
-                task = task_obj
-            case _:
-                raise doot.errors.TrackingError("Supplied task object isn't a task_i", task_obj)
-
+        spec = self.specs[name]
         match self._late_injections.get(name, None):
+            case None:
+                late_inject = None
             case InjectSpec() as inj, TaskName() as control:
-                task.state |= inj.apply_from_state(self.tasks[control])
-            case _:
-                pass
+                late_inject = (inj, self.tasks[control])
 
-        must_inject = spec.extra.on_fail([])[S_API.MUST_INJECT_K]()
-        match [x for x in must_inject if x not in task.state]:
-            case []:
-                pass
-            case xs:
-                raise doot.errors.TrackingError("Task did not receive required injections", spec.name, xs)
-
+        task = spec.make(ensure=Task_p, inject=late_inject, parent=self.tasks.get(parent, None))
         # Store it
         self.tasks[name] = task
         return name

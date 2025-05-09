@@ -19,7 +19,7 @@ import doot
 import doot.errors
 
 from ... import DootJob
-from ..._interface import TaskMeta_e
+from ..._interface import TaskMeta_e, Task_p
 from .. import TaskSpec, TaskName
 
 logging = logmod.root
@@ -360,6 +360,10 @@ class TestTaskSpecInstantiation:
             base_task.under(base_task)
 
     def test_cli_arg_application(self, mocker):
+        """
+        With appropriate value in doot.args.tasks[name],
+        the spec uses that
+        """
         data = {"sub":{"agroup::base": {"blah":"bloo"}}}
         mocker.patch("doot.args", ChainGuard(data))
         base     = TaskSpec.build({"name":"agroup::base",
@@ -367,11 +371,17 @@ class TestTaskSpecInstantiation:
                                            })
         instance = base.under({})
         assert(not hasattr(instance, "blah"))
-        with_cli = instance.apply_cli_args()
-        assert(hasattr(with_cli, "blah"))
-        assert(with_cli.blah == "bloo")
+        match instance.make():
+            case Task_p() as task:
+                assert(task.state['blah'] == "bloo")
+            case x:
+                 assert(False), x
 
     def test_cli_arg_fallback_to_default(self, mocker):
+        """
+        Missing a value in doot.args.tasks[name],
+        the spec uses the default
+        """
         data = {"sub":{"agroup::base": {}}}
         mocker.patch("doot.args", ChainGuard(data))
         base     = TaskSpec.build({"name":"agroup::base",
@@ -379,9 +389,33 @@ class TestTaskSpecInstantiation:
                                            })
         instance = base.under({})
         assert(not hasattr(instance, "blah"))
-        with_cli = instance.apply_cli_args()
-        assert(hasattr(with_cli, "blah"))
-        assert(with_cli.blah == "aweg")
+        match instance.make():
+            case Task_p() as task:
+                assert(task.state['blah'] == "aweg")
+            case x:
+                 assert(False), x
+
+
+    def test_cli_arg_override(self, mocker):
+        """
+        When a value is already provided for a cli arg,
+        (ie: through injection)
+        the spec does not override it
+        """
+        data = {"sub":{"agroup::base": {}}}
+        mocker.patch("doot.args", ChainGuard(data))
+        base     = TaskSpec.build({"name":"agroup::base",
+                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           })
+        instance = base.under({})
+        other_inst = instance.make()
+        other_inst.state["blah"] = "qqqq"
+        assert(not hasattr(instance, "blah"))
+        match instance.make(parent=other_inst):
+            case Task_p() as task:
+                assert(task.state['blah'] == "qqqq")
+            case x:
+                 assert(False), x
 
 class TestTaskGeneration:
     """ eg: job heads and cleanup tasks
