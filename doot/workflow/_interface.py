@@ -336,7 +336,7 @@ class Job_p(Task_p, Protocol):
 class Task_i(Task_p, Protocol):
     """ Core Interface for Tasks """
 
-    _version         : str       = "0.1"
+    _version         : str = "0.1"
     _help            : tuple[str, ...]
     doc              : tuple[str, ...]
     state            : dict

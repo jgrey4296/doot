@@ -31,6 +31,7 @@ from jgdv.cli._interface import NON_DEFAULT_KEY
 import doot
 from ._base import BaseCommand
 from ._interface import Command_i
+from doot.workflow._interface import Task_p
 
 # ##-- end 1st party imports
 
@@ -98,11 +99,11 @@ class _HelpCmd_m:
         result.append(None)
         result.append("%s Parameters:" % GROUP_INDENT)
 
-        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, cmd.param_specs)), 0)
+        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, cmd.param_specs())), 0)
         fmt_str       = f"> %{max_param_len}s : (%-5s) : %s "
         args = doot.args.cmd.args # type: ignore
         last_prefix = None
-        for param in sorted([x for x in cmd.param_specs], key=ParamSpec.key_func):
+        for param in sorted([x for x in cmd.param_specs()], key=ParamSpec.key_func):
             if last_prefix and last_prefix != param.prefix:
                 result.append(None)
             last_prefix = param.prefix
@@ -189,18 +190,18 @@ class _HelpTask_m:
         return result
 
     def _task_param_assignments(self, spec:TaskSpec) -> list:
-        if not bool(spec.param_specs):
+        if not bool(spec.param_specs()):
             return []
 
         result = []
         result.append(None)
         result.append("%s Parameters:" % GROUP_INDENT)
 
-        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.key_str, spec.param_specs)), 0)
+        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.key_str, spec.param_specs())), 0)
         fmt_str       = f"> %{max_param_len}s : (%5s) : %s "
         args          = doot.args.sub[spec.name]
         last_prefix   = None
-        for param in sorted([x for x in spec.param_specs], key=ParamSpec.key_func):
+        for param in sorted([x for x in spec.param_specs()], key=ParamSpec.key_func):
             if last_prefix and last_prefix != param.prefix:
                 result.append(None)
             match param.type_:

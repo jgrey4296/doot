@@ -129,7 +129,8 @@ class DootJob(DootTask):
     @classmethod
     def class_help(cls) -> list[str]:
         """ Job *class* help. """
-        help_lines = [f"Job : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
+        version = getattr(cls, "_version", "0.1")
+        help_lines = [f"Job : {cls.__qualname__} v{version}    ({cls.__module__}:{cls.__qualname__})", ""]
 
         mro = " -> ".join(x.__name__ for x in cls.mro())
         help_lines.append(f"Job MRO: {mro}")
