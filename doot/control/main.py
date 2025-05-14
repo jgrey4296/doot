@@ -319,13 +319,20 @@ class Shutdown_m:
         doot.report.line()
         match self._errored:
             case doot.errors.DootError() as err:
-                doot.report.push_state("fail", err=err, cb=self._announce_exit)
+                doot.report.log.exception("fail")
             case Exception() as err:
                 raise err
             case None:
-                doot.report.push_state("success", cb=self._announce_exit)
+                pass
 
         doot.report.summary()
+
+    def _install_at_exit(self) -> None:
+
+        def goodbye(*args, **kwargs) -> None: # noqa: ARG001, ANN002, ANN003
+            doot.report.line("Dooted")
+
+        atexit.register(goodbye)
 
     def _announce_exit(self, message:str) -> None:
         """ triggers speech synthesis on exiting doot """
@@ -339,13 +346,6 @@ class Shutdown_m:
                 sh.espeak(message)
             case "darwin":
                 sh.say("-v", "Moira", "-r", "50", message)
-
-    def _install_at_exit(self) -> None:
-
-        def goodbye(*args, **kwargs) -> None: # noqa: ARG001, ANN002, ANN003
-            doot.report.line("Dooted")
-
-        atexit.register(goodbye)
 
     def _record_defaulted_config_values(self) -> None:
         if not doot.config.on_fail(False).shutdown.write_defaulted_values():  # noqa: FBT003
