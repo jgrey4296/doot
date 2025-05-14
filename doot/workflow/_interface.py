@@ -307,37 +307,22 @@ class TaskName_p(Strang_p, Protocol):
 @runtime_checkable
 class Task_p(Protocol):
 
-    def __init__(self, spec:SpecStruct_p):
-        pass
+    def __init__(self, spec:SpecStruct_p) -> None: ...
 
-    def __hash__(self):
-        pass
+    def __hash__(self): ...
 
-    def __lt__(self, other:TaskName|Task_p) -> bool:
-        """ Task A < Task B iff A ∈ B.run_after   """
-        pass
+    def __lt__(self, other:TaskName|Task_p) -> bool: ...
+    """ Task A < Task B iff A ∈ B.run_after   """
 
-    def __eq__(self, other:object) -> bool:
-        pass
+    def __eq__(self, other:object) -> bool: ...
 
-    def add_execution_record(self, arg:Any) -> None:
-        """ Record some execution record information for display or debugging """
-        pass
+    def add_execution_record(self, arg:Any) -> None: ...
+    """ Record some execution record information for display or debugging """
 
-    def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None:
-        """
-          utility method to log a message, useful as tasks are running
-        """
-        pass
+    def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None: ...
+    """ utility method to log a message, useful as tasks are running """
 
-    def shortname(self) -> str:
-        pass
-
-    def name(self) -> TaskName:
-        pass
-
-    def get_action_group(self, group_name:str) -> list[ActionSpec]:
-        pass
+    def get_action_group(self, group_name:str) -> list[ActionSpec]: ...
 
 @runtime_checkable
 class Job_p(Task_p, Protocol):
@@ -358,3 +343,10 @@ class Task_i(Task_p, Protocol):
     spec             : SpecStruct_p
     status           : TaskStatus_e
     priority         : int
+
+
+    @property
+    def name(self) -> TaskName: ...
+
+    @property
+    def state(self) -> dict: ...

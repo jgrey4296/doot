@@ -41,13 +41,17 @@ class TaskExecutionError(ControlError):
     def task_name(self):
         if not self.task:
             return ""
-        return self.task.shortname
+        return self.task.name
 
     @property
     def task_source(self):
         if not self.task:
             return ""
-        return self.task.source
+        match [x for x in self.task.sources if x is not None]:
+            case []:
+                return ""
+            case [*xs, x]:
+                return x
 
 class JobExpansionError(TaskExecutionError):
     pass

@@ -33,7 +33,7 @@ class TaskError(BackendError):
     def task_name(self):
         if not self.task:
             return ""
-        return self.task.shortname
+        return self.task.name
 
     @property
     def task_source(self):

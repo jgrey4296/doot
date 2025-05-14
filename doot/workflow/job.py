@@ -79,7 +79,7 @@ class _JobStubbing_m:
 
     def stub_instance(self, stub:TaskStub) -> TaskStub:
         stub                      = self.__class__.stub_class(stub)
-        stub['name'].default      = self.shortname
+        stub['name'].default      = self.name.de_uniq()
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         return stub
@@ -112,7 +112,7 @@ class DootJob(DootTask):
             case TaskName():
                 task_name = name
             case _:
-                raise doot.errors.StructError("Bad value used to make a subtask in %s : %s", self.shortname, name)
+                raise doot.errors.StructError("Bad value used to make a subtask in %s : %s", self.name.de_uniq(), name)
 
         assert(task_name is not None)
         return TaskSpec(name=task_name, extra=ChainGuard(extra))

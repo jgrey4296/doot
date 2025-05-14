@@ -39,7 +39,7 @@ from doot.workflow._interface import ActionResponse_e as ActRE
 # ##-- end 1st party imports
 
 # ##-| Local
-from . import _runner_util as RU
+from . import util as RU
 
 # # End of Imports.
 
@@ -163,7 +163,7 @@ class _ActionExecution_m:
 
         if bool(new_nodes):
             self.tracker.build_network(sources=new_nodes)
-            doot.report.result([f"{len(new_nodes)} Tasks"], info="Queued")
+            # doot.report.result([f"{len(new_nodes)} Tasks"], info="Queued")
 
         return None
 
@@ -182,14 +182,14 @@ class _ActionExecution_m:
             case None:
                 doot.report.act(f"{self.step}._.{count}", action.do)
 
-        logging.debug("Action Executing for Task: %s", task.shortname)
+        logging.debug("Action Executing for Task: %s", task.name)
         logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
         result = action(task.state)
         match result:
             case None | True:
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
-                raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
+                raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.name, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
                 doot.report.result(["Skip"])
@@ -200,7 +200,7 @@ class _ActionExecution_m:
             case list() if all(isinstance(x, TaskName|TaskSpec) for x in result):
                 pass
             case _:
-                raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
+                raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
 
         return result
 
@@ -281,10 +281,10 @@ class DootRunner:
 
     def _expand_job(self, job:Job_p) -> None:
         """ turn a job into all of its tasks, including teardowns """
-        logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
+        logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
         assert(isinstance(job, Job_p))
         try:
-            doot.report.branch(job.spec.name.readable, info=f"Job {self.step}")
+            doot.report.branch(job.spec.name, info=f"Job {self.step}")
             if not self._test_conditions(job):
                 doot.report.trace(skip_msg, self.step, job.name.root())
                 return
@@ -297,10 +297,10 @@ class DootRunner:
 
     def _execute_task(self, task:Task_p) -> None:
         """ execute a single task's actions """
-        logmod.debug("-- Expanding Task %s: %s", self.step, task.shortname)
+        logmod.debug("-- Expanding Task %s: %s", self.step, task.name)
         assert(not isinstance(task, Job_p))
         try:
-            doot.report.branch(task.spec.name.readable, info=f"Task {self.step}")
+            doot.report.branch(task.spec.name, info=f"Task {self.step}")
             if not self._test_conditions(task):
                 doot.report.result([skip_msg, self.step, task.name.root()])
                 return

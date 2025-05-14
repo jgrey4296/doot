@@ -179,3 +179,16 @@ class TaskArtifact(Location):
             return False
         else:
             return True
+
+
+    def get_status(self) -> ArtifactStatus_e:
+        """ Get the status of the artifact,
+        To start, either declared,  or exists.
+        TODO: add a stale check
+        TODO: add a to-clean check
+        """
+        if self.exists():
+            return ArtifactStatus_e.EXISTS
+
+
+        return ArtifactStatus_e.DECLARED
