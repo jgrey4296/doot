@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, B011
 # Imports:
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ from jgdv.structs.locator import Location
 import doot
 import doot.errors
 from ..._interface import RelationMeta_e
-from .. import TaskName, InjectSpec, RelationSpec
+from .. import TaskName, InjectSpec, RelationSpec, TaskSpec
 
 logging = logmod.root
 
@@ -139,3 +140,183 @@ class TestRelationSpec:
         assert(isinstance(obj.target, TaskName))
         assert(obj.target == "agroup::atask")
         assert(obj.relation is RelationMeta_e.blocks)
+
+class TestRelationSpec_Acceptance:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_accepts_basic(self):
+        obj          = RelationSpec.build({"task": "basic::target"})
+        control_spec = TaskSpec.build({"name":"basic::control"})
+        control_i    = control_spec.instantiate()
+        target_spec  = TaskSpec.build({"name":"basic::target"})
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case True:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_fails_on_non_target(self):
+        obj          = RelationSpec.build({"task": "basic::target"})
+        control_spec = TaskSpec.build({"name":"basic::control"})
+        control_i    = control_spec.instantiate()
+        target_spec  = TaskSpec.build({"name":"basic::not.target"})
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case False:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_fails_on_non_instance_target(self):
+        obj          = RelationSpec.build({"task": "basic::target"})
+        control_spec = TaskSpec.build({"name":"basic::control"})
+        control_i    = control_spec.instantiate()
+        target_spec  = TaskSpec.build({"name":"basic::target"})
+        match obj.accepts(control_i, target_spec):
+            case False:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_fails_on_non_instance_control(self):
+        obj          = RelationSpec.build({"task": "basic::target"})
+        control_spec = TaskSpec.build({"name":"basic::control"})
+        target_spec  = TaskSpec.build({"name":"basic::target"})
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_spec, target_i):
+            case False:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_with_constraints(self):
+        """
+        The relation accepts two specs when the constraint key matches
+        """
+        obj          = RelationSpec.build({"task": "basic::target",
+                                           "constraints": ["blah"],
+                                           })
+        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = TaskSpec.build({"name":"basic::target", "blah":"bloo"})
+        control_i    = control_spec.instantiate()
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case True:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_with_constraints_fail(self):
+        """
+        The relation doesnt accept two specs if the constraint key
+        doesnt match
+        """
+        obj          = RelationSpec.build({"task": "basic::target",
+                                           "constraints": ["blah"],
+                                           })
+        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = TaskSpec.build({"name":"basic::target", "blah":"aweg"})
+        control_i    = control_spec.instantiate()
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case False:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_with_constraints_dict(self):
+        """
+        The relation accepts two specs
+        if target[lhs_key] == control[rhs_key]
+
+        so target.qqqq == control.blah
+        *not* target.blah === control.qqqq
+        """
+        obj          = RelationSpec.build({"task": "basic::target",
+                                           "constraints": {"qqqq": "blah"},
+                                           })
+        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = TaskSpec.build({"name":"basic::target",
+                                       "blah":"aweg",
+                                       "qqqq":"bloo",
+                                       })
+        control_i    = control_spec.instantiate()
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case True:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_with_contraints_dict_fail(self):
+        """
+        The relation fails to accept two specs
+        if target[lhs_key] == control[rhs_key]
+
+        so target.qqqq != control.blah
+        """
+        obj          = RelationSpec.build({"task": "basic::target",
+                                           "constraints": {"qqqq": "blah"},
+                                           })
+        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = TaskSpec.build({"name":"basic::target",
+                                       "blah":"aweg",
+                                       "qqqq":"blahaweg",
+                                       })
+        control_i    = control_spec.instantiate()
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case False:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_accepts_with_control_missing_constraint_only(self):
+        """
+        The relation fails to accept two specs
+        if target[lhs_key] == control[rhs_key]
+
+        so target.qqqq != control.blah
+        """
+        obj          = RelationSpec.build({"task": "basic::target",
+                                           "constraints": ["blah"],
+                                           })
+        control_spec = TaskSpec.build({"name":"basic::control"})
+        target_spec  = TaskSpec.build({"name":"basic::target",
+                                       "blah":"aweg",
+                                       })
+        control_i    = control_spec.instantiate()
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case True:
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_accepts_with_injection(self):
+        """
+        The relation fails to accept two specs
+        if target[lhs_key] == control[rhs_key]
+
+        so target.qqqq != control.blah
+        """
+        obj          = RelationSpec.build({"task": "basic::target",
+                                           "inject": {"from_spec":["blah"]},
+                                           })
+        control_spec = TaskSpec.build({"name":"basic::control",
+                                       "blah": "qqqq",
+                                       })
+        target_spec  = TaskSpec.build({"name":"basic::target",
+                                       "blah":"qqqq",
+                                       })
+        control_i    = control_spec.instantiate()
+        target_i     = target_spec.instantiate()
+        match obj.accepts(control_i, target_i):
+            case True:
+                assert(True)
+            case x:
+                 assert(False), x

@@ -70,6 +70,7 @@ def network():
     return TrackNetwork(registry)
 
 ##--|
+
 class TestTrackerNetwork:
 
     def test_sanity(self, network):
@@ -178,10 +179,10 @@ class TestTrackerNetwork:
             "depends_on":[{"task":"basic::dep", "inject":{"from_spec": {"test_key":"{test_key}"}}}],
             "required_for": ["basic::chained"],
             "test_key": "bloo"
-                                            })
+        })
         spec2 = TaskSpec.build({"name":"basic::dep",
-                                             "depends_on": [{"task":"basic::chained", "inject":{"from_spec":{"test_key":"{test_key}"}}}],
-                                             })
+                                "depends_on": [{"task":"basic::chained", "inject":{"from_spec":{"test_key":"{test_key}"}}}],
+                                })
         spec3 = TaskSpec.build({"name":"basic::chained", "must_inject":["test_key"]})
         obj._registry.register_spec(spec, spec2, spec3)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -208,12 +209,12 @@ class TestTrackerNetworkBuild:
         assert(obj.is_valid)
 
     def test_build_task(self, network):
-        """ a simple task, should also have a ..$cleanup$ successor """
+        """ $cleanup$ successors are not built till a task is instantiated """
         obj          = network
         spec         = TaskSpec.build({"name":"basic::task"})
         obj._registry.register_spec(spec)
         assert(len(obj) == 1) # Root node
-        assert(len(obj._registry.specs) == 2)
+        assert(len(obj._registry.specs) == 1) # Just the spec
         assert(not bool(obj.adj[obj._root_node]))
         instance = obj._registry._instantiate_spec(spec.name)
         obj.connect(instance)
@@ -222,22 +223,21 @@ class TestTrackerNetworkBuild:
         assert(len(obj) == 3)
         assert(instance in obj)
 
-
     def test_build_cleanup(self, network):
-        """ a simple task, should also have a ..$cleanup$ successor """
-        obj          = network
-        spec         = TaskSpec.build({"name":"basic::task"})
+        """ $cleanup$ successors are not built till a task is instantiated """
+        obj  = network
+        spec = TaskSpec.build({"name":"basic::task"})
         cleanup_name = spec.name.with_cleanup()
         obj._registry.register_spec(spec)
-        instance = obj._registry._instantiate_spec(spec.name)
+        instance     = obj._registry._instantiate_spec(spec.name)
         obj.connect(instance)
         obj.build_network()
         match obj._registry.concrete.get(cleanup_name, None):
-            case [TaskName() as cleanup_instance]:
-                assert(cleanup_instance.is_cleanup())
-                cleanup_spec = obj._registry.specs[cleanup_instance]
-                assert(cleanup_name < cleanup_instance)
-                assert(cleanup_instance in obj.succ[instance])
+            case [TaskName() as cleanup_inst]:
+                cleanup_spec = obj._registry.specs[cleanup_inst]
+                assert(cleanup_spec.name.is_cleanup())
+                assert(cleanup_name < cleanup_spec.name)
+                assert(any(cleanup_name < x for x in obj.succ[instance]))
             case x:
                 assert(False), x
 
@@ -247,7 +247,7 @@ class TestTrackerNetworkBuild:
         spec2 = TaskSpec.build({"name":"basic::dep"})
         obj._registry.register_spec(spec, spec2)
         assert(len(obj) == 1)
-        assert(len(obj._registry.specs) == 4)
+        assert(len(obj._registry.specs) == 2)
         assert(not bool(obj.adj[obj._root_node]))
         instance = obj._registry._instantiate_spec(spec.name)
         obj.connect(instance)
@@ -320,7 +320,53 @@ class TestTrackerNetworkBuild:
             case x:
                 assert(False), x
 
-class TestTrackerNetworkBuildConstraints:
+
+    def test_build_separate_dependencies_from_spec(self, network):
+        """
+        For a task, T, with dependency D,
+        T1->D1
+        T2->D2
+
+        """
+        obj      = network
+        relation = {"task":"basic::dep", "inject":{"from_spec":["blah"]}}
+        spec     = TaskSpec.build({"name":"basic::task", "depends_on":[relation]})
+        dep      = TaskSpec.build({"name":"basic::dep", "must_inject":["blah"]})
+        obj._registry.register_spec(spec, dep)
+        T1 = obj._registry._instantiate_spec(spec.name, extra={"blah":"bloo"})
+        T2 = obj._registry._instantiate_spec(spec.name, extra={"blah":"aweg"})
+
+        obj.connect(T1)
+        obj.connect(T2)
+        obj.build_network()
+        assert(len(obj._registry.concrete["basic::dep"]) == 2)
+
+
+    def test_build_separate_dependencies_from_state(self, network):
+        """
+        For a task, T, with dependency D,
+        T1->D1
+        T2->D2
+
+        """
+        obj      = network
+        relation = {"task":"basic::dep", "inject":{"from_state":["blah"]}}
+        spec     = TaskSpec.build({"name":"basic::task", "depends_on":[relation]})
+        dep      = TaskSpec.build({"name":"basic::dep", "must_inject":["blah"]})
+        obj._registry.register_spec(spec, dep)
+        T1 = obj._registry._instantiate_spec(spec.name, extra={"blah":"bloo"})
+        T2 = obj._registry._instantiate_spec(spec.name, extra={"blah":"aweg"})
+
+        obj.connect(T1)
+        obj.connect(T2)
+        obj.build_network()
+        assert(len(obj._registry.concrete["basic::dep"]) == 2)
+        for dep in obj._registry.concrete["basic::dep"]:
+            assert(len(obj.succ[dep]) == 2)
+
+
+
+class TestTrackerNetworkBuild_Constraints:
 
     def test_build_dep_match_no_constraints(self, network):
         obj = network
@@ -361,12 +407,12 @@ class TestTrackerNetworkBuildConstraints:
             case x:
                 assert(False), x
 
-    @pytest.mark.xfail
     def test_build_dep_match_with_constraint_fail(self, network):
         obj = network
+        relation = {"task":"basic::dep", "constraints":["test_key"]}
         spec  = TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}],
-                                             "test_key": "bloo"})
+                                "depends_on":[relation],
+                                "test_key": "bloo"})
         spec2 = TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -374,14 +420,15 @@ class TestTrackerNetworkBuildConstraints:
         assert(not bool(obj.adj[obj._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
-        with pytest.raises(doot.errors.TrackingError):
-            obj.build_network()
+        assert(not bool(obj._registry.concrete[spec2.name]))
+        obj.build_network()
+        assert(bool(obj._registry.concrete[spec2.name]))
 
     def test_build_dep_match_with_injection(self, network):
         obj = network
         spec  = TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{test_key}"}}}],
-                                             "test_key": "bloo"})
+                                "depends_on":[{"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{test_key}"}}}],
+                                "test_key": "bloo"})
         spec2 = TaskSpec.build({"name":"basic::dep", "must_inject":["inj_key"]})
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -393,17 +440,19 @@ class TestTrackerNetworkBuildConstraints:
         assert(len(obj) == 5)
         match list(obj.pred[instance]):
             case [TaskName() as dep_inst]:
+                dep_inst_spec = obj._registry.specs[dep_inst]
                 assert(spec2.name < dep_inst)
-                assert(spec.test_key == obj._registry.specs[dep_inst].inj_key)
+                assert(spec.test_key == dep_inst_spec.inj_key)
             case x:
                 assert(False), x
 
-    @pytest.mark.xfail
+
     def test_build_dep_match_with_injection_fail(self, network):
         obj = network
+        relation = {"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{bad_key}"}}}
         spec  = TaskSpec.build({"name":"basic::task",
-                                             "depends_on":[{"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{bad_key}"}}}],
-                                             "test_key": "bloo"})
+                                "depends_on":[relation],
+                                "test_key": "bloo"})
         spec2 = TaskSpec.build({"name":"basic::dep"})
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -411,6 +460,7 @@ class TestTrackerNetworkBuildConstraints:
         assert(not bool(obj.adj[obj._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
+        assert(not bool(obj._registry.concrete[spec2.name]))
         with pytest.raises(doot.errors.TrackingError):
             obj.build_network()
 
@@ -492,7 +542,10 @@ class TestTrackerNetworkBuildConstraints:
             case x:
                 assert(False), x
 
-class TestTrackerNetworkBuildJobs:
+class TestTrackerNetworkBuild_Jobs:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_build_job(self, network):
         """ a job should build a ..$head$ as well,
@@ -503,7 +556,7 @@ class TestTrackerNetworkBuildJobs:
         job_cleanup = job_head.with_cleanup()
         obj._registry.register_spec(spec)
         assert(len(obj) == 1) # Root node
-        assert(len(obj._registry.specs) == 3)
+        assert(len(obj._registry.specs) == 1)
         assert(not bool(obj.adj[obj._root_node]))
         instance = obj._registry._instantiate_spec(spec.name)
         obj.connect(instance)
@@ -526,8 +579,9 @@ class TestTrackerNetworkBuildJobs:
 
     def test_build_with_head_dep(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":["basic::+.job..$head$"], "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"]})
+        spec  = TaskSpec.build({"name":"basic::task",
+                                "depends_on":["basic::+.job..$head$"]})
+        spec2 = TaskSpec.build({"name":"basic::+.job"})
         assert(TaskMeta_e.JOB in spec2.name)
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -541,12 +595,15 @@ class TestTrackerNetworkBuildJobs:
         assert(spec2.name in obj._registry.concrete)
         obj.validate_network()
 
-class TestTrackerNetworkBuildArtifacts:
+class TestTrackerNetworkBuild_Artifacts:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_build_dep_chain_with_artifact(self, network):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
-        obj = network
-        spec = TaskSpec.build({"name":"basic::task", "depends_on":["file::>test.blah"]})
+        obj   = network
+        spec  = TaskSpec.build({"name":"basic::task", "depends_on":["file::>test.blah"]})
         spec2 = TaskSpec.build({"name":"basic::dep", "required_for":["file::>test.blah"]})
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -555,7 +612,7 @@ class TestTrackerNetworkBuildArtifacts:
         assert(len(obj) == 2)
         obj.build_network()
         obj.validate_network()
-        assert(len(obj) == 7)
+        assert(len(obj) == 6)
         # Check theres a path between the specs, via the artifact
         match obj._registry.concrete.get(spec2.name, None):
             case [TaskName() as dep_inst]:
@@ -599,7 +656,7 @@ class TestTrackerNetworkBuildArtifacts:
         obj.build_network()
         assert(spec.depends_on[0].target in obj.pred[instance])
 
-    def test_build_artifact_chain(self, network):
+    def test_build_abstract_artifact_chain(self, network):
         obj = network
         consumer     = TaskSpec.build({"name":"basic::consumer", "depends_on":["file::>*.txt"]})
         producer     = TaskSpec.build({"name":"basic::producer", "required_for":["file::>blah.txt"]})

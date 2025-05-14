@@ -27,8 +27,7 @@ from jgdv.structs.dkey import DKey
 # ##-- 1st party imports
 import doot
 import doot.errors
-from ..inject_spec import InjectSpec
-from ..task_spec import TaskSpec
+from .. import InjectSpec, TaskSpec, TaskName
 from ...task import DootTask
 
 # ##-- end 1st party imports
@@ -90,13 +89,258 @@ class TestInjectSpec:
             case x:
                 assert(False), x
 
-@pytest.mark.xfail
-class TestInjectSpecConstraintChecking:
+    def test_build_with_bad_rhs_keys(self):
+        with pytest.raises(doot.errors.InjectionError):
+            InjectSpec.build({"from_spec":{"a":"b"}})
+
+    def test_build_with_bad_lhs_keys(self):
+        with pytest.raises(doot.errors.InjectionError):
+            InjectSpec.build({"from_spec":{"{a}":"{b}"}})
+
+class TestInjectSpec_Validation:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-class TestInjectionApplication:
+    def test_basic(self):
+        inj     = InjectSpec.build({
+            "from_spec"   : ["bloo"],
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "bloo": "blah",
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "bloo": "blah",
+                                  })
+
+        match inj.validate(control, target):
+            case True:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_pass_redirects(self):
+        """
+        inject(from_target={bloo:blah})
+        v = control[blah]
+        target[v] must exist
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : [],
+            "from_state"  : [],
+            "from_target" : ["blah"],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "blah" : "aweg"
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "aweg": "qqqq",
+                                  })
+
+        match inj.validate_details(control, target):
+            case dict() as x if not any(bool(v) for v in x.values()):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_pass_with_remap(self):
+        """
+        Checks a mapping of {target <- control}
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : {"bloo":"{blah}"},
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "blah": 5,
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "bloo": 5,
+                                  })
+
+        match inj.validate_details(control, target):
+            case dict() as x if not any(bool(v) for v in x.values()):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_pass_tasks(self):
+        """
+        Checks a mapping of {target <- control}
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : {"bloo":"{blah}"},
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "blah": 5,
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "bloo": 5,
+                                  })
+        control_task = control.make()
+        target_task  = target.make()
+        match inj.validate_details(control_task, target_task):
+            case dict() as x if not any(bool(v) for v in x.values()):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_fail_tasks_because_of_state(self):
+        """
+        Checks a mapping of {target <- control}
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : {"bloo":"{blah}"},
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "blah": 5,
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "bloo": 5,
+                                  })
+        control_task = control.make()
+        target_task  = target.make()
+        target_task.state['bloo'] = 10
+        match inj.validate_details(control_task, target_task):
+            case dict() as x if any(bool(v) for v in x.values()):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_fail_surplus(self):
+        inj     = InjectSpec.build({
+            "from_spec"   : ["bloo"],
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "bloo": "blah",
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  })
+
+        match inj.validate_details(control, target):
+            case {"lhs_surplus": set() as x } if "bloo" in x:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_fail_with_surplus_when_must_inject(self):
+        inj     = InjectSpec.build({
+            "from_spec"   : ["bloo"],
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "bloo": "blah",
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "must_inject":["bloo"],
+                                  })
+
+        match inj.validate_details(control, target):
+            case {"lhs_surplus": set() as x } if bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_fail_missing(self):
+        inj     = InjectSpec.build({
+            "from_spec"   : ["bloo"],
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control"})
+        target  = TaskSpec.build({"name":"basic::target"})
+
+        match inj.validate_details(control, target):
+            case {"rhs_missing": set() as x } if "bloo" in x:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_fail_rhs_redirects(self):
+        """
+        inject(from_target={bloo:blah})
+        v = control[blah]
+        target[v] must exist
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : [],
+            "from_state"  : [],
+            "from_target" : ["blah"],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "aweg": "qqqq",
+                                  })
+
+        match inj.validate_details(control, target):
+            case {"rhs_redirect": set() as x } if bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_fail_lhs_redirects(self):
+        """
+        inject(from_target={bloo:blah})
+        v = control[blah]
+        target[v] doesnt exist
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : [],
+            "from_state"  : [],
+            "from_target" : ["blah"],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "blah": "aweg",
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  })
+
+        match inj.validate_details(control, target):
+            case {"lhs_redirect": set() as x } if bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_fail_from_mismatches(self):
+        """
+        if the specs have the correct structure,
+        but not the correct values, fail
+        """
+        inj     = InjectSpec.build({
+            "from_spec"   : ["blah"],
+            "from_state"  : [],
+            "from_target" : [],
+        })
+        control = TaskSpec.build({"name":"basic::control",
+                                  "blah": "aweg",
+                                  })
+        target  = TaskSpec.build({"name":"basic::target",
+                                  "blah": "not.aweg"
+                                  })
+
+        match inj.validate_details(control, target):
+            case {"mismatches": set() as x } if bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
+class TestInjection_Application:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -110,17 +354,20 @@ class TestInjectionApplication:
 
     def test_apply_from_spec(self):
         injection = InjectSpec.build({"from_spec":["blah"]})
-        parent    = TaskSpec.build({"name": "simple::parent", "blah": "bloo"})
-        match injection.apply_from_spec(parent):
+        control   = TaskSpec.build({"name": "simple::control",
+                                    "blah": "bloo"})
+        match injection.apply_from_spec(control):
             case {"blah":"bloo"}:
                 assert(True)
             case x:
                  assert(False), x
 
     def test_apply_from_spec_only(self):
-        injection = InjectSpec.build({"from_spec":["blah"], "from_state":["aweg"]})
-        parent    = TaskSpec.build({"name": "simple::parent", "blah": "bloo", "aweg": "other"})
-        match injection.apply_from_spec(parent):
+        injection = InjectSpec.build({"from_spec":["blah"],
+                                      "from_state":["aweg"]})
+        control = TaskSpec.build({"name": "simple::control",
+                                    "blah": "bloo", "aweg": "other"})
+        match injection.apply_from_spec(control):
             case {"aweg": "other"}:
                 assert(False)
             case {"blah":"bloo"}:
@@ -129,14 +376,23 @@ class TestInjectionApplication:
                  assert(False), x
 
     def test_apply_from_state(self):
-        injection   = InjectSpec.build({"from_spec":["blah"], "from_state":["aweg"]})
-        parent_spec = TaskSpec.build({"name": "simple::parent", "blah": "bloo", "aweg": "other"})
-        parent_task = DootTask(parent_spec)
-        parent_task.state['aweg'] = "task_state"
-        match injection.apply_from_state(parent_task):
-            case {"aweg": "other"}:
-                assert(False)
+        injection   = InjectSpec.build({"from_state":["aweg"]})
+        control = TaskSpec.build({"name": "simple::control",
+                                  "aweg": "other"})
+        control_task = DootTask(control)
+        control_task.state['aweg'] = "task_state"
+        match injection.apply_from_state(control_task):
             case {"aweg": "task_state"}:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_apply_from_target(self):
+        injection   = InjectSpec.build({"from_target":["blah"]})
+        control = TaskSpec.build({"name": "simple::control",
+                                  "blah": "bloo"})
+        match injection.apply_from_spec(control):
+            case {"blah_": "bloo"}:
                 assert(True)
             case x:
                 assert(False), x

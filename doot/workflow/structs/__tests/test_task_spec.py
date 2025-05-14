@@ -144,6 +144,36 @@ class TestTaskSpec_Validation:
         with pytest.raises(ValueError):
             TaskSpec.build({"name":"simple::test", "sources": ["basic::some.other..<partial>"]})
 
+
+    def test_action_group_sorting(self):
+        spec = TaskSpec.build({"name":"simple::test",
+                               "actions": [
+                                   {"do":"log:log"},
+                                   {"do":"blah:bloo"},
+                                   {"do":"aweg:aweg"},
+                               ]})
+        for x,y in zip(spec.actions, ["fn::log:log", "fn::blah:bloo", "fn::aweg:aweg"]):
+            assert(x.do == y)
+
+
+    def test_implicit_job_relations(self):
+        spec = TaskSpec.build({"name":"simple::test",
+                               "depends_on" : ["simple::+.job..$head$"],
+                               })
+        assert(len(spec.depends_on) == 2)
+        assert(spec.depends_on[0].target == "simple::+.job")
+        assert(spec.depends_on[1].target == "simple::+.job..$head$")
+
+
+    def test_implicit_cleanup_relations(self):
+        spec = TaskSpec.build({"name":"simple::test",
+                               "depends_on" : ["simple::task..$cleanup$"],
+                               })
+        assert(len(spec.depends_on) == 2)
+        assert(spec.depends_on[0].target == "simple::task")
+        assert(spec.depends_on[1].target == "simple::task..$cleanup$")
+
+
 class TestTaskSpec_Joining:
     """ Tests combining a TaskSpec with other data
 
@@ -445,39 +475,52 @@ class TestSubTask_Generation:
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         assert(isinstance(base_task, TaskSpec))
 
-    def test_empty_cleanup_gen(self):
+
+    def test_abstract_spec_dont_generate_extra(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
-        match base_task.gen_cleanup_task():
+        assert(isinstance(base_task, TaskSpec))
+        match base_task.generate_specs():
+            case []:
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_empty_cleanup_gen(self):
+        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0}).instantiate()
+        match base_task.generate_specs():
             case [cleanup_task]:
                 assert(isinstance(cleanup_task, TaskSpec))
                 assert(not bool(cleanup_task.actions))
                 assert(base_task.name in cleanup_task.depends_on[0])
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
 
     def test_cleanup_gen(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
-        match base_task.gen_cleanup_task():
+        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]}).instantiate()
+        match base_task.generate_specs():
             case [cleanup_task]:
                 assert(isinstance(cleanup_task, TaskSpec))
                 assert(bool(cleanup_task.actions))
                 assert(base_task.name in cleanup_task.depends_on[0])
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
+
 
     def test_instantiated_cleanup_gen(self):
-        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
-        match base_task.gen_cleanup_task():
+        base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]}).instantiate()
+        match base_task.generate_specs():
             case [cleanup_task]:
                 assert(isinstance(cleanup_task, TaskSpec))
                 assert(bool(cleanup_task.actions))
                 assert(base_task.name in cleanup_task.depends_on[0])
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
+
 
     def test_job_head_gen_empty_cleanup(self):
-        base_task     = TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": []})
-        match base_task.gen_job_head():
+        base_task     = TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": []}).instantiate()
+        match base_task.generate_specs():
             case [TaskSpec() as head]:
                assert(TaskName.bmark_e.head in head.name)
                assert(not bool(head.actions))
@@ -486,11 +529,11 @@ class TestSubTask_Generation:
                 assert(False), xs
 
     def test_job_head_gen(self):
-        base_task     = TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]})
-        match base_task.gen_job_head():
+        base_task     = TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]}).instantiate()
+        match base_task.generate_specs():
             case [TaskSpec() as head]:
                assert(TaskName.bmark_e.head in head.name)
                assert(bool(head.actions))
                assert(base_task.name in head.depends_on[0])
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
