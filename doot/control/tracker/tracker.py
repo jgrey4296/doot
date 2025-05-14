@@ -120,17 +120,7 @@ class Tracker_abs:
 
     def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, parent:Maybe[TaskName]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
         queued : TaskName = self._queue.queue_entry(name, from_user=from_user, status=status)
-        if not parent:
-            return queued
-        if '__on_queue' not in self._registry.specs[queued].extra:
-            return queued
-
-        parent_task = self._registry.tasks[parent]
-        task        = self._registry.tasks[queued]
-        for x,y in task.state['__on_queue'].items():
-            task.state[x] = y(parent_task.state)
-        else:
-            return queued
+        return queued
 
     def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
         return self._registry.get_status(task)
@@ -138,7 +128,7 @@ class Tracker_abs:
     def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
         self._registry.set_status(task, state)
 
-    def build_network(self, *, sources:Maybe[True|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
+    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
         self._network.build_network(sources=sources)
 
     def validate_network(self) -> None:
@@ -181,14 +171,18 @@ class Tracker(Tracker_abs):
         while (result is None) and bool(self._queue) and 0 < (count:=count-1):
             focus  = self._queue.deque_entry()
             status = self._registry.get_status(focus)
+            if focus not in self._queue.active_set:
+                continue
+
             logging.debug("[Next.For.Head]: %s : %s", status, focus)
 
             match status:
                 case TaskStatus_e.DEAD:
                     # Clear state
                     del self._registry.tasks[focus]
+                    self._queue.active_set.remove(focus)
                 case TaskStatus_e.DISABLED:
-                    pass
+                    self._queue.active_set.remove(focus)
                 case TaskStatus_e.TEARDOWN:
                     for succ in self._network.succ[focus]:
                         match self.queue_entry(succ):
@@ -199,22 +193,14 @@ class Tracker(Tracker_abs):
                                 pass
                     else:
                         # TODO for cleanup succ, move focus.state -> succ.state
-                        self._queue.active_set.remove(focus)
                         self._registry.set_status(focus, TaskStatus_e.DEAD)
                 case ArtifactStatus_e.EXISTS:
-                    # Task Exists, queue its dependents and *don't* add the artifact back in
+                    # TODO artifact Exists, queue its dependents and *don't* add the artifact back in
                     self._queue.execution_trace.append(focus)
-                    heads = [x for x in self._network.succ[focus] if self._network.edges[focus, x].get("job_head", False)]
-                    if bool(heads):
-                        self.queue_entry(heads[0])
                 case TaskStatus_e.SUCCESS:
                     self._queue.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
-                    heads = [x for x in self._network.succ[focus] if self._network.edges[focus, x].get("job_head", False)]
-                    if bool(heads):
-                        self.queue_entry(heads[0])
                 case TaskStatus_e.FAILED:  # propagate failure
-                    self._queue.active_set.remove(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.HALTED:  # remove and propagate halted status
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
@@ -233,7 +219,7 @@ class Tracker(Tracker_abs):
                             logging.debug("Task Blocked: %s on : %s", focus, xs)
                             self.queue_entry(focus)
                             for x in xs:
-                                self.queue_entry(x, parent=focus)
+                                self.queue_entry(x)
                 case TaskStatus_e.INIT:
                     task_name = self.queue_entry(focus, status=TaskStatus_e.WAIT)
                 case ArtifactStatus_e.STALE:

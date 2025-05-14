@@ -84,7 +84,7 @@ class DootTransformer(DootTask):
 
     def stub_instance(self, stub:TaskStub) -> TaskStub:
         stub                      = self.__class__.stub_class(stub)
-        stub['name'].default      = self.shortname
+        stub['name'].default      = self.name.de_uniq()
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         return stub

@@ -92,10 +92,6 @@ class _TaskProperties_m:
            ]
 
     @property
-    def shortname(self) -> str:
-        return str(self.spec.name.readable)
-
-    @property
     def name(self) -> TaskName:
         return self.spec.name
 
@@ -140,7 +136,7 @@ class _TaskStubbing_m:
 
     def stub_instance(self, stub:TaskStub) -> TaskStub:
         """ extend the class toml stub with details from this instance """
-        stub['name'].default      = self.shortname
+        stub['name'].default      = self.name.de_uniq()
         if bool(self.doc):
             stub['doc'].default   = self.doc[:]
         else:
@@ -204,7 +200,7 @@ class DootTask:
 
     def __repr__(self) -> str:
         cls = self.__class__.__qualname__
-        return f"<{cls}: {self.shortname}>"
+        return f"<{cls}: {self.name.de_uniq()}>"
 
     def __bool__(self) -> bool:
         return self.status in DootTask.COMPLETE_STATES
@@ -236,7 +232,7 @@ class DootTask:
 
         collects any action errors together, then raises them as a task error
         """
-        logging.debug("Preparing Actions: %s", self.shortname)
+        logging.debug("Preparing Actions: %s", self.name)
         failed : list[Exception] = []
         for action_spec in self.spec.action_group_elements():
             match action_spec:
@@ -252,7 +248,7 @@ class DootTask:
                 case ActionSpec():
                     action_spec.set_function(fun=self.action_ctor)
                 case _:
-                    failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.shortname))
+                    failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.name))
         else:
             match failed:
                 case []:

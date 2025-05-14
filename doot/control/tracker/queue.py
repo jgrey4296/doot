@@ -129,29 +129,6 @@ class TrackQueue:
     def __bool__(self) -> bool:
         return self._queue.peek(default=None) is not None
 
-    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]:
-        """ remove (or peek) the top task from the _queue .
-          decrements the priority when popped.
-        """
-        if peek:
-            return self._queue.peek()
-
-        match self._queue.pop():
-            case TaskName() as focus if focus not in self._registry.tasks:
-                pass
-            case TaskName() as focus if self._registry.get_priority(focus) < self._network._min_priority:
-                logging.warning("[Deque] Halting (Min Priority) : %s", focus.readable)
-                self._registry.set_status(focus, TaskStatus_e.HALTED)
-            case TaskName() as focus:
-                task  = self._registry.tasks[focus]
-                prior = task.priority
-                task.priority -= 1
-                logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus.readable)
-            case TaskArtifact() as focus:
-                focus.priority -= 1
-
-        return focus
-
     def queue_entry(self, target:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
         """
           Queue a task by name|spec|Task_p.
@@ -187,8 +164,8 @@ class TrackQueue:
         match abs_name:
             case None:
                 return None
-            case TaskName() as x if x not in self._registry.specs:
-                raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", name)
+            case TaskName() | str() as x if x not in self._registry.specs:
+                raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", x)
             case TaskName() as x if not x.is_uniq():
                 inst_name = self._registry._instantiate_spec(x)
             case TaskName() as x:
@@ -213,6 +190,37 @@ class TrackQueue:
         logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name.readable)
         return inst_name
 
+    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]:
+        """ remove (or peek) the top task from the _queue .
+          decrements the priority when popped.
+        """
+        if peek:
+            return self._queue.peek()
+
+        match self._queue.pop():
+            case TaskName() as focus if focus not in self._registry.tasks:
+                pass
+            case TaskName() as focus if self._registry.get_priority(focus) < self._network._min_priority:
+                logging.warning("[Deque] Halting (Min Priority) : %s", focus.readable)
+                self._registry.set_status(focus, TaskStatus_e.HALTED)
+            case TaskName() as focus:
+                task  = self._registry.tasks[focus]
+                prior = task.priority
+                task.priority -= 1
+                logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus.readable)
+            case TaskArtifact() as focus:
+                focus.priority -= 1
+
+        return focus
+
+    def clear_queue(self) -> None:
+        """ Remove everything from the task queue,
+
+        """
+        # TODO _queue the task's failure/cleanup tasks
+        self.active_set =  set()
+        self.task_queue = boltons.queueutils.HeapPriorityQueue()
+
     def _queue_prep_name(self, name:str|TaskName) -> Maybe[TaskName]:
         """ Heuristics for queueing task names
 
@@ -234,11 +242,3 @@ class TrackQueue:
                 return self._queue_prep_name(TaskName(name))
             case _:
                 return name
-
-    def clear_queue(self) -> None:
-        """ Remove everything from the task queue,
-
-        """
-        # TODO _queue the task's failure/cleanup tasks
-        self.active_set =  set()
-        self.task_queue = boltons.queueutils.HeapPriorityQueue()

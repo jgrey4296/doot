@@ -81,13 +81,17 @@ logging.setLevel(logmod.WARN)
 ##-- end logging
 
 # Vars:
-LINE_LEN   : Final[int] = 46
-LINE_CHAR  : Final[str] = "-"
-INIT_LEVEL : Final[int] = logmod.WARN
+LINE_LEN    : Final[int] = 46
+LINE_CHAR   : Final[str] = "-"
+INIT_LEVEL  : Final[int] = logmod.WARN
+START_COUNT : Final[int] = 0
 # Body:
 
 class _TreeReporter_m:
-    """ Methods to report a tree of data """
+    """ Methods to report a tree of data
+
+
+    """
 
     def tree(self:Reporter_p, data:dict|list) -> Reporter_p:
         queued : list[TreeElem] = [data]
@@ -97,15 +101,15 @@ class _TreeReporter_m:
             match curr:
                 case None:
                     self.finished()
-                    self.pop_state()
+                    # self.pop_state()
                 case str() as x, list() as y:
                     self.branch(x, info="Branch")
-                    self.push_state(x)
+                    # self.push_state(x)
                     queued.append(None)
                     queued +=  reversed(y)
                 case str() as x, dict() as y:
                     self.branch(x, info="Branch")
-                    self.push_state(x)
+                    # self.push_state(x)
                     queued.append(None)
                     queued +=  reversed(y.items())
                 case str() as x:
@@ -135,15 +139,15 @@ class _WorkflowReporter_m:
         self._out("act", info=info, msg=msg, level=level)
         return self
 
-    def fail(self:Reporter_p, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Reporter_p:
-        self.pop_state()
-        self._out("fail", info=info, msg=msg, level=40)
-        return self
-
     def branch(self:Reporter_p, name:str, info:Maybe[str]=None) -> Reporter_p:
         self._out("branch", level=5)
         self._out("begin", info=info or "Start", msg=name, level=5)
         self.push_state("branch")
+        return self
+
+    def resume(self:Reporter_p, name:str) -> Reporter_p:
+        self._out("resume", msg=name, level=5)
+        self.push_state("resume")
         return self
 
     def pause (self:Reporter_p, reason:str) -> Reporter_p:
@@ -157,9 +161,9 @@ class _WorkflowReporter_m:
         self._out("result" , msg=",".join(str(x) for x in state), info=info, level=5)
         return self
 
-    def resume(self:Reporter_p, name:str) -> Reporter_p:
-        self._out("resume", msg=name, level=5)
-        self.push_state("resume")
+    def fail(self:Reporter_p, *, info:Maybe[str]=None, msg:Maybe[str]=None) -> Reporter_p:
+        self.pop_state()
+        self._out("fail", info=info, msg=msg, level=40)
         return self
 
     def finished(self:Reporter_p) -> Reporter_p:
@@ -188,9 +192,9 @@ class _GenReporter_m:
                 val = x.strip()
                 val = val.center(len(val) + 4, " ")
                 val = val.center(LINE_LEN, char)
-                self.log.info(val, extra=self.state.log_extra)
+                self.log.info(val)
             case _:
-                self.log.info(char*LINE_LEN, extra=self.state.log_extra)
+                self.log.info(char*LINE_LEN)
 
         return self
 
@@ -267,7 +271,7 @@ class BasicReporter:
         self._logger            = logger or logging
         self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
         self._stack             = []
-        self._entry_count       = 0
+        self._entry_count       = START_COUNT
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
                                                          data={},
@@ -318,7 +322,12 @@ class BasicReporter:
         return self
 
     def pop_state(self) -> Self:
-        self._stack.pop()
+        match self._stack:
+            case [x]:
+                pass
+            case _:
+                self._stack.pop()
+
         return self
 
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:

@@ -44,7 +44,7 @@ import doot.errors
 
 # ##-- end 1st party imports
 
-from .._interface import RelationMeta_e
+from .._interface import RelationMeta_e, Task_p
 from .task_name import TaskName
 from .artifact import  TaskArtifact
 from .inject_spec import InjectSpec
@@ -167,9 +167,11 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
-    def __contains__(self, query:Location.gmark_e|TaskName) -> bool:
+    def __contains__(self, query:Location.gmark_e|TaskName|TaskArtifact) -> bool:
         match self.target, query:
             case TaskName(), TaskName():
+                return query <= self.target
+            case TaskArtifact(), TaskArtifact():
                 return query in self.target
             case TaskArtifact(), Location.gmark_e():
                 return query in self.target
@@ -221,25 +223,30 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         return self.relation is RelationMeta_e.blocks
 
 
-    def accepts(self, control:TaskSpec, target:TaskSpec) -> bool:
+    def accepts(self, control:Task_p|TaskSpec, target:Task_p|TaskSpec) -> bool:
         """ Test if this pair of Tasks satisfies the relation """
-        if not target.name.is_uniq():
+        if not (target.name.is_uniq() and control.name.is_uniq()):
             return False
         if not (self.target < target.name):
             return False
 
+        control_vals = control.state if isinstance(control, Task_p) else control.extra
+        target_vals  = target.state  if isinstance(target, Task_p) else target.extra
+
         # Check constraints match
         for targ_k,source_k in self.constraints.items():
-            if source_k not in control.extra:
+            if source_k not in control_vals:
                 continue
-            if targ_k not in target.extra:
+            if targ_k not in target_vals:
                 return False
 
-            if (targ_v:=target.extra.get(targ_k, None)) != (source_v:=control.extra[source_k]):
+            if (targ_v:=target_vals.get(targ_k, None)) != (source_v:=control_vals[source_k]):
                 logging.debug("[Relation] Constraint does not match: %s(%s) : %s(%s)", targ_k, targ_v, source_k, source_v)
                 return False
+        else:
+            pass
 
         if self.inject is None:
             return True
 
-        return self.inject.validate_against(control, target)
+        return self.inject.validate(control, target)

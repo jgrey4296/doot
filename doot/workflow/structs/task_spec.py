@@ -2,7 +2,7 @@
 """
 
 """
-# type: ignore
+# mypy: disable-error-code="attr-defined"
 # ruff: noqa: N812
 # Imports:
 from __future__ import annotations
@@ -88,8 +88,19 @@ DEFAULT_ALIAS     : Final[str]             = doot.constants.entrypoints.DEFAULT_
 DEFAULT_BLOCKING  : Final[tuple[str, ...]] = tuple(["required_for", "on_fail"])
 ##--| Utils
 
-def _dicts_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
-    """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
+def _action_group_sort_key(val:ActionSpec|RelationSpec) -> Any:
+    match val:
+        case ActionSpec(): # Don't change ActionSpec ordering
+            return (1,)
+        case RelationSpec(target=TaskArtifact() as target):
+            return (-1,)
+        case RelationSpec(target=TaskName() as target):
+            return (0, target)
+        case x:
+            raise TypeError(type(x))
+
+def _raw_data_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
+    """ Convert toml provided raw data (str's, dicts) of specs into ActionSpec and RelationSpec object"""
     results = []
     for x in deps:
         match x:
@@ -105,7 +116,7 @@ def _dicts_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=RelationMeta
 
 def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
-      Validates and Builds action/relation groups,
+      Builds, Expands, Sorts, and Validates action/relation groups,
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
 
       As a wrap handler, it has the context of what field is being processed,
@@ -113,31 +124,58 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
 
       # TODO handle callables?
     """
-    match group:
+    match group: # Build initial Relation/Action Specs
         case None | []:
             return []
         case [*xs] if info.field_name in TaskSpec._blocking_groups:
             relation_type = RelationMeta_e.blocks
-            results = _dicts_to_specs(cast("list[str|dict]", group), relation=relation_type)
+            results = _raw_data_to_specs(cast("list[str|dict]", group), relation=relation_type)
         case [*xs]:
             relation_type = RelationMeta_e.needs
-            results = _dicts_to_specs(cast("list[str|dict]", group), relation=relation_type)
+            results = _raw_data_to_specs(cast("list[str|dict]", group), relation=relation_type)
 
-    return handler(results)
+    for x in results[:]: # Build Implicit Relations.
+        match x:
+            case RelationSpec(target=TaskName() as target, relation=rel) if target.is_cleanup(): # type: ignore[misc]
+                results.append(RelationSpec.build(target.root(), relation=rel))
+            case RelationSpec(target=TaskName() as target, relation=rel) if target.is_head():
+                results.append(RelationSpec.build(target.root(), relation=rel))
+            case _:
+                pass
+
+    action_order        = [x for x in results if isinstance(x, ActionSpec)]
+    res                 = sorted(results, key=_action_group_sort_key)
+    sorted_action_order = [x for x in res if isinstance(x, ActionSpec)]
+    assert(x is y for x,y in zip(action_order, sorted_action_order, strict=True)), "Sorting Action Specs modifed the order"
+    return handler(res)
 
 ##--|
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 ##--|
 
-class _JobUtils_m:
+class _GenerateUtils_m:
     """Additional utilities mixin for job based task specs"""
 
-    def get_source_names(self:TaskSpec_i) -> list[TaskName]:
-        """ Get from the spec's sources just its source tasks """
-        val = [x for x in self.sources if isinstance(x, TaskName)]
-        return cast("list[TaskName]", val)
+    def generate_names(self:TaskSpec_i) -> list[TaskName]:
+        return list(self.generated_names)
 
-    def gen_job_head(self:TaskSpec_i) -> list[TaskSpec]:
+    def generate_specs(self:TaskSpec_i) -> list[TaskSpec]:
+        logging.debug("[Generate] : %s (%s)", self.name, len(self.generated_names))
+        result : list[TaskSpec] = []
+        if not self.name.is_uniq():
+            return result
+
+        needs_job_head = TaskMeta_e.JOB in self.meta and not self.name.is_head()
+        if needs_job_head:
+            result += self._gen_job_head()
+
+        if not (needs_job_head or self.name.is_cleanup()):
+            result += self._gen_cleanup_task()
+
+        self.generated_names.update([x.name  for x in result])
+        return result
+
+    def _gen_job_head(self:TaskSpec_i) -> list[TaskSpec]:
         """
           Generate a top spec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
@@ -152,16 +190,9 @@ class _JobUtils_m:
           job.head()
           await job.cleanup()
         """
-        if TaskMeta_e.JOB not in self.meta:
-            return []
-        if self.name.is_uniq() and TaskMeta_e.JOB_HEAD in self.meta:
-            return []
-        if self.name.is_head() or self.name.is_cleanup():
-            return []
-
-        job_head          = self.name.de_uniq().with_head()
+        job_head          = self.name.de_uniq().with_head().to_uniq()
         tasks             = []
-        head_section      = _dicts_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
+        head_section      = _raw_data_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
         head_dependencies = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]
         head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
 
@@ -181,31 +212,23 @@ class _JobUtils_m:
         tasks.append(head)
         return tasks
 
-    def gen_cleanup_task(self:TaskSpec_i) -> list[TaskSpec]:
+    def _gen_cleanup_task(self:TaskSpec_i) -> list[TaskSpec]:
         """ Generate a cleanup task, shifting the 'cleanup' actions and dependencies
           to 'depends_on' and 'actions'
         """
-        if self.name.is_cleanup():
-            return []
-
-        cleanup_name       = self.name.de_uniq().with_cleanup()
+        cleanup_name       = self.name.de_uniq().with_cleanup().to_uniq()
         base_deps          = [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec) and x.target != cleanup_name]
         actions            = [x for x in self.cleanup if isinstance(x, ActionSpec)]
-        sources            = self.sources[:]
-        match self.name.root().with_cleanup():
-            case x if x == cleanup_name:
-                sources += [self.name, None]
-            case x:
-                sources += [x]
+        sources            = [self.name]
 
-        cleanup : TaskSpec = TaskSpec.build({
+        cleanup = TaskSpec.build({
             "name"            : cleanup_name,
             "sources"         : sources,
-            "actions"         : actions,
             "queue_behaviour" : API.QueueMeta_e.reactive,
             "depends_on"      : base_deps,
+            "actions"         : actions,
+            "cleanup"         : [],
             "meta"            : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
-            **self.extra,
             })
         assert(not bool(cleanup.cleanup))
         return [cleanup]
@@ -247,7 +270,7 @@ class _TransformerUtils_m:
 
         return instance
 
-    def transformer_of(self:TaskSpec_i) -> Maybe[tuple[RelationSpec, RelationSpec]]:
+    def transformer_of(self:TaskSpec_i) -> Maybe[tuple[RelationSpec, RelationSpec]]:  # noqa: PLR0911, PLR0912
         """ If this spec can transform an artifact,
           return those relations.
 
@@ -261,7 +284,7 @@ class _TransformerUtils_m:
             case False:
                 return None
             case (x,y):
-                return self._transform
+                return cast("tuple[RelationSpec, RelationSpec]", self._transform)
             case None:
                 pass
 
@@ -308,7 +331,7 @@ class _SpecUtils_m:
     """General utilities mixin for task specs"""
 
     @classmethod
-    def build(cls, data:ChainGuard|dict|TaskName|str) -> Self:
+    def build(cls:type[TaskSpec_i], data:ChainGuard|dict|TaskName|str) -> TaskSpec_i:
         match data:
             case ChainGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
@@ -323,7 +346,8 @@ class _SpecUtils_m:
         """
         Return this spec, copied with a uniq name
         """
-        instance = self.model_copy()
+        instance      = self.model_copy()
+        instance.generated_names.clear()
         instance.name = self.name.to_uniq()
         return instance
 
@@ -335,7 +359,7 @@ class _SpecUtils_m:
         if last_source != actual.name:
             raise ValueError("Incorrect base spec for partial", self.name, last_source, actual.name)
 
-        adjusted = dict(self)
+        adjusted = dict(self) # type: ignore
         adjusted['name'] = self.name.pop()
         return actual.under(adjusted, suffix=False)
 
@@ -357,6 +381,7 @@ class _SpecUtils_m:
 
     def under(self:TaskSpec_i, data:dict|TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
         """ self + data -> TaskSpec """
+        result : TaskSpec
         match data:
             case TaskSpec() if data is self:
                 raise doot.errors.TrackingError("Tried to apply a spec under itself ", self.name, data.name)
@@ -368,6 +393,7 @@ class _SpecUtils_m:
                 data.setdefault('name', self.name.push("<data>"))
                 basic = TaskSpec.build(data)
                 result = self._specialize_merge(basic)
+
         match suffix:
             case None:
                 result.name = result.name.push(API.EXTENDED)
@@ -377,6 +403,59 @@ class _SpecUtils_m:
                 result.name = result.name.push(suffix)
 
         return result
+
+    def make(self:TaskSpec_i, *, ensure:type=Any, inject:Maybe[tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:
+        """ Create actual task instance
+
+        """
+        if self.name.is_cleanup() and parent is None:
+            raise ValueError("Parent was missing for cleanup task", self.name)
+
+        # doot.report.line(f"Making: {self.name}")
+        match self.ctor(check=ensure): # Make the task object
+            case ImportError() as err:
+                raise err
+            case task_ctor:
+                task = task_ctor(self)
+
+        match parent: # Apply parent state (eg: for cleanup tasks)
+            case None:
+                pass
+            case Task_p():
+                task.state.update(parent.state)
+
+        match inject: # Apply state injections
+            case None:
+                pass
+            case InjectSpec() as inj, Task_p() as control:
+                task.state |= inj.apply_from_state(control)
+                if not inj.validate(control, task):
+                    raise doot.errors.TrackingError("Late Injection Failed")
+
+        match self.param_specs(): # Apply CLI params
+            case []:
+                pass
+            case [*xs]:
+                source    = str(self.name.root())
+                task_args = doot.args.on_fail({}).sub[source]()
+                for cli in xs:
+                    task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
+
+                if API.CLI_K in task.state:
+                    del task.state[API.CLI_K]
+
+        match self.extra.on_fail([])[API.MUST_INJECT_K](): # Verify all required keys have values
+            case []:
+                pass
+            case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
+                raise doot.errors.TrackingError("Task did not receive required injections", self.name, xs, task.state.keys())
+
+        return task
+
+    def get_source_names(self:TaskSpec_i) -> list[TaskName]:
+        """ Get from the spec's sources just its source tasks """
+        val = [x for x in self.sources if isinstance(x, TaskName)]
+        return cast("list[TaskName]", val)
 
     def _specialize_merge(self:TaskSpec_i, data:TaskSpec) -> TaskSpec:
         """
@@ -405,54 +484,14 @@ class _SpecUtils_m:
         specialized[API.META_K].difference_update({TaskMeta_e.INTERNAL})
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
-        return TaskSpec.build(specialized)
-
-    def make(self:TaskSpec_i, *, ensure:type=Any, inject:Maybe[tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:
-        """ Create actual task instance
-
-        """
-        match self.ctor(check=ensure): # Make the task object
-            case ImportError() as err:
-                raise err
-            case task_ctor:
-                task = task_ctor(self)
-
-        match parent: # Apply parent state (eg: for cleanup tasks)
-            case None:
-                pass
-            case Task_p():
-                task.state.update(parent.state)
-
-        match inject: # Apply state injections
-            case None:
-                pass
-            case InjectSpec()  as inj, Task_p() as control:
-                task.state |= inj.apply_from_state(control)
-
-        match self.param_specs(): # Apply CLI params
-            case []:
-                pass
-            case [*xs]:
-                source    = str(self.name.root())
-                task_args = doot.args.on_fail({}).sub[source]()
-                for cli in xs:
-                    task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
-
-                if API.CLI_K in task.state:
-                    del task.state[API.CLI_K]
-
-        match self.extra.on_fail([])[API.MUST_INJECT_K](): # Verify all required keys have values
-            case []:
-                pass
-            case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
-                raise doot.errors.TrackingError("Task did not receive required injections", self.name, xs, task.state.keys())
-
-        return task
+        result = TaskSpec.build(specialized)
+        assert(not bool(result.generated_names))
+        return result
 
 ##--|
 
 @Proto(API.TaskSpec_i, check=True)
-@Mixin(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m)
+@Mixin(_GenerateUtils_m, _TransformerUtils_m, _SpecUtils_m)
 class _TaskSpecBase:
 
     def param_specs(self) -> list:
@@ -465,7 +504,6 @@ class _TaskSpecBase:
     @property
     def params(self) -> dict:
         return self.model_extra
-
 
 class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
@@ -499,6 +537,7 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     queue_behaviour                   : API.QueueMeta_e                                         = Field(default=API.QueueMeta_e.default)
     meta                              : set[TaskMeta_e]                                         = Field(default_factory=set)
     _transform                        : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]] = None
+    generated_names                   : set[TaskName]                                           = Field(init=False, default_factory=set)
 
     # task specific extras to use in state
     _default_ctor                     : ClassVar[str]                                           = DEFAULT_ALIAS
@@ -533,7 +572,7 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
                 self.ctor = CodeReference(doot.aliases.task[API.DEFAULT_JOB])
             case None:
                 pass
-            case x if issubclass(x, Task_p):
+            case x if isinstance(x, Task_p):
                 self.meta.add(x._default_flags)
 
         if TaskMeta_e.TRANSFORMER not in self.meta:
