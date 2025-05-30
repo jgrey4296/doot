@@ -79,7 +79,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Vars
-CLEANUP_MARKER  : Final[str]         = "$cleanup$"
 CLI_K           : Final[str]         = "cli"
 DASH_S          : Final[str]         = "-"
 DEFAULT_JOB     : Final[str]         = "job"
@@ -239,7 +238,7 @@ class InjectSpec_i(Buildable_p, Protocol):
 
     def apply_from_spec(self, parent:dict|TaskSpec_i) -> dict: ...
 
-    def apply_from_state(self, parent:dict|Task_i) -> dict: ...
+    def apply_from_state(self, parent:dict|Task_p) -> dict: ...
 
     def apply_literal(self, val:Any) -> dict: ...
 
@@ -306,6 +305,13 @@ class TaskName_p(Strang_p, Protocol):
 
 @runtime_checkable
 class Task_p(Protocol):
+    _version         : str
+    _help            : tuple[str, ...]
+    doc              : tuple[str, ...]
+    state            : dict
+    spec             : SpecStruct_p
+    status           : TaskStatus_e
+    priority         : int
 
     def __init__(self, spec:SpecStruct_p) -> None: ...
 
@@ -315,6 +321,12 @@ class Task_p(Protocol):
     """ Task A < Task B iff A ∈ B.run_after   """
 
     def __eq__(self, other:object) -> bool: ...
+
+    @property
+    def name(self) -> TaskName: ...
+
+    @property
+    def state(self) -> dict: ...
 
     def add_execution_record(self, arg:Any) -> None: ...
     """ Record some execution record information for display or debugging """
@@ -332,21 +344,3 @@ class Job_p(Task_p, Protocol):
 
     def expand_job(self) -> list:
         pass
-
-class Task_i(Task_p, Protocol):
-    """ Core Interface for Tasks """
-
-    _version         : str = "0.1"
-    _help            : tuple[str, ...]
-    doc              : tuple[str, ...]
-    state            : dict
-    spec             : SpecStruct_p
-    status           : TaskStatus_e
-    priority         : int
-
-
-    @property
-    def name(self) -> TaskName: ...
-
-    @property
-    def state(self) -> dict: ...
