@@ -27,76 +27,73 @@ class TestTaskName:
 
     def test_creation(self):
         simple = TaskName("basic::tail")
-        assert(simple.group == [ "basic"])
-        assert(simple.body() == ["tail"])
-
-
-    def test_build(self):
-        simple = TaskName("basic::tail")
-        assert(simple.group == [ "basic"])
-        assert(simple.body() == ["tail"])
+        assert(simple.group == "basic")
+        assert(simple.body  == "tail")
 
     def test_build_job(self):
         simple = TaskName("basic::+.tail")
-        assert(simple.group == [ "basic" ])
-        assert(simple.body() == ["+", "tail"])
-        assert(TaskName.bmark_e.extend in simple)
+        assert(simple.group == "basic")
+        assert(simple.body  == "+.tail")
+        assert(TaskName.Marks.extend in simple)
 
     def test_build_internal_job(self):
         simple = TaskName("basic::+._.tail")
-        assert(simple.group == [ "basic"] )
-        assert(simple.body() == ["+", "_", "tail"])
-        assert(TaskName.bmark_e.extend in simple)
-        assert(TaskName.bmark_e.hide in simple)
+        assert(simple.group == "basic" )
+        assert(simple.body == "+._.tail")
+        assert(TaskName.Marks.extend in simple)
+        assert(TaskName.Marks.hide in simple)
 
     def test_internal(self):
         simple = TaskName("agroup::_.internal.task")
-        assert(TaskName.bmark_e.hide in simple)
+        assert(TaskName.Marks.hide in simple)
 
     def test_no_internal(self):
         simple = TaskName("agroup::_internal.task")
-        assert(TaskName.bmark_e.hide != simple[1:0])
+        assert(TaskName.Marks.hide != simple[1:0])
 
     def test_name_strip_leading_tasks_from_group(self):
         simple = TaskName("tasks.basic::tail")
-        assert(simple.group == [ "basic"])
-        assert(simple.body() == ["tail"])
+        assert(simple.group == "basic")
+        assert(simple.body == "tail")
 
     def test_subgroups(self):
         simple = TaskName("basic.blah.bloo::tail")
-        assert(simple.group == [ "basic", "blah", "bloo"])
-        assert(simple.body() == ["tail"])
+        assert(simple.group == "basic.blah.bloo")
+        assert(simple.body == "tail")
 
-    def test_mixed_subgroups(self):
+    def test_subgroups_flattened(self):
         simple = TaskName('basic."blah.bloo"::tail')
-        assert(simple.group == [ "basic", "blah", "bloo"])
-        assert(simple.body() == ["tail"])
+        assert(simple.group == "basic.blah.bloo")
+        assert(simple.body == "tail")
 
     def test_subtasks_str(self):
         simple = TaskName("basic::tail.blah.bloo")
-        assert(simple.group == [ "basic"])
-        assert(simple.body() == ["tail", "blah", "bloo"])
+        assert(simple.group == "basic")
+        assert(simple.body == "tail.blah.bloo")
 
-    def test_mixed_subtasks(self):
-        simple = TaskName("basic::tail.blah.bloo")
-        assert(simple.group == [ "basic"])
-        assert(simple.body() == ["tail", "blah", "bloo"])
+    def test_subtasks_dont_flatten(self):
+        simple = TaskName("basic::tail.'blah.bloo'")
+        assert(simple.group == "basic")
+        assert(simple.body == "tail.'blah.bloo'")
 
     def test_with_dots(self):
         simple = TaskName("basic.blah::tail.bloo")
-        assert(simple.group == ["basic", "blah"])
-        assert(simple.body() == ["tail", "bloo"])
+        assert(simple.group == "basic.blah")
+        assert(simple.body == "tail.bloo")
 
     def test_name_to_str(self):
         simple = TaskName("basic::tail")
-        assert(simple._separator == "::")
+        assert(simple.section(0).end == "::")
         assert(str(simple) == "basic::tail")
+
+    def test_end(self):
+        assert(TaskName.section(0).end == "::")
 
     def test_subgroups_str(self):
         simple = TaskName("basic.sub.test::tail")
         assert(str(simple) == "basic.sub.test::tail")
 
-class TestTaskNameComparison:
+class TestTaskName_Comparison:
 
     def test_sanity(self):
         assert(True is not False)
@@ -106,19 +103,24 @@ class TestTaskNameComparison:
         instance  = name.to_uniq()
         with_head = instance.with_head()
         assert(isinstance(with_head, TaskName))
-        assert(with_head[1:-1] == TaskName.bmark_e.head)
-        assert(name < instance < with_head)
+        assert(instance.uuid())
+        assert(not with_head.uuid())
+        assert(with_head[1,-1] == TaskName.Marks.head)
+        assert(name < instance)
+        assert(name < with_head)
+        assert(not (instance < with_head))
 
     def test_job_head_to_instance(self):
         name      = TaskName("simple::task")
         with_head = name.with_head()
         instance  = with_head.to_uniq()
         assert(isinstance(instance, TaskName))
-        assert(isinstance(instance[-1], UUID))
-        assert(instance.root() == name)
+        assert(instance.uuid())
+        assert(instance.pop(top=True) == name)
         assert(name < with_head < instance)
+        assert(not (instance < with_head))
 
-class TestTaskNameStructInteraction:
+class TestTaskName_StructInteraction:
 
     def test_add_to_dict(self):
         simple               = TaskName("agroup::_.internal.task")
@@ -150,4 +152,4 @@ class TestTaskNameStructInteraction:
         second = TaskName("other.group::task.second")
         sub    = second.push("blah")
         the_set = {first, second}
-        assert(sub.root() in the_set)
+        assert(sub.pop(top=True) in the_set)

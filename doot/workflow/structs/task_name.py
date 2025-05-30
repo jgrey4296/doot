@@ -25,7 +25,8 @@ from uuid import UUID, uuid1
 from pydantic import field_validator, model_validator
 from jgdv import Maybe, Proto
 from jgdv.structs.strang import Strang
-from jgdv.structs.strang._interface import Strang_i
+from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
+from jgdv.structs.strang.processor import StrangBasicProcessor
 from jgdv.mixins.enum_builders import FlagsBuilder_m
 
 # ##-- end 3rd party imports
@@ -50,6 +51,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from jgdv._abstract.pre_processable import PreProcessResult, PostInstanceData, InstanceData
     from jgdv import Maybe, VerStr
     from jgdv.structs.strang import Strang_p
     from typing import Final
@@ -70,52 +72,105 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 DEFAULT_SEP : Final[str] = doot.constants.patterns.TASK_SEP # type: ignore
 
+class TaskNameHeadMarks_e(StrangAPI.StrangMarkAbstract_e):
+    """ Markers used in a Strang's head """
+    basic = "$basic$"
+
+class TaskNameBodyMarks_e(StrangAPI.StrangMarkAbstract_e):
+    """ Markers Used in a base Strang's body """
+
+    head    = "$head$"
+    cleanup = "$cleanup$"
+    empty   = ""
+    hide    = "_"
+    extend  = "+"
+
+    @classmethod
+    def default(cls) -> str:
+        """ The mark used if no mark is found"""
+        return None
+
+    @classmethod
+    def implicit(cls) -> set[str]:
+        """ Marks that arent in the form $mark$ """
+        return {cls.hide, cls.empty}
+
+    @classmethod
+    def skip(cls) -> Maybe[str]:
+        """ The mark placed in empty words """
+        return cls.empty
+
+    @classmethod
+    def idempotent(cls) -> set[str]:
+        """ marks you can't have more than one of """
+        return {cls.head, cls.hide}
+
 ##--|
-class _TaskNameOps_m:
-    """ Operations Mixin for manipulating TaskNames """
+TASKSECTIONS : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
+    StrangAPI.Sec_d("group", ".", "::", str, TaskNameHeadMarks_e, True),  # noqa: FBT003
+    StrangAPI.Sec_d("body",  ".", None, str, TaskNameBodyMarks_e, True),  # noqa: FBT003
+)
+##--|
 
-    @classmethod
-    def pre_process[T:type[Strang_p]](cls:T, data:str, *, strict:bool=False) -> T:
+class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
+
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult:  # noqa: A002, ARG002
         """ Remove 'tasks' as a prefix, and strip quotes  """
-        match data:
-            case str() if not strict and data.startswith("tasks."):
-                data = data.removeprefix("tasks.")
-            case _:
+        match input:
+            case str():
+                cleaned = input.removeprefix("tasks.").replace('"', "")
+            case x if not strict:
+                cleaned = str(x)
+            case x:
+                raise TypeError(type(x))
+
+        return super().pre_process(cls, cleaned, *args, strict=strict, **kwargs)
+
+
+
+    def _implicit_mark(self, val:str, *, sec:StrangAPI.Sec_d, data:dict, index:int, maxcount:int) -> Maybe[API.StrangMarkAbstract_e]:  # noqa: ARG002
+        """ Builds certain marks that are not in the form $mark$.
+
+        In particular, pass marks that are empty words between two case chars: group::a.b..c
+        And meta marks for tasks like job and hide: group::+._.a.b.c
+        """
+        match sec.marks:
+            case None:
+                return None
+            case x:
+                marks = x
+        match marks.skip():
+            case None:
                 pass
+            case x if val == x.value:
+                return x
 
-        return super().pre_process(data).replace('"', "") # type: ignore
+        if not val in marks:
+            return None
+        return marks(val)
 
-    def match_version(self, other:str|Strang|VerStr) -> bool:
-        """ match version constraints of two task names against each other """
-        raise NotImplementedError()
-
-    @classmethod
-    def from_parts[T:type[TaskName_p]](cls:T, group:str, body:str) -> T: # type: ignore
-        return cls(f"{group}{cls._separator}{body}") # type: ignore
-
-    def with_cleanup(self:TaskName_p) -> TaskName_p:
-        if self.is_cleanup():
-            return self
-        return self.push(API.CLEANUP_MARKER)
-
-    def is_cleanup(self:TaskName_p) -> bool:
-        return API.CLEANUP_MARKER in self
-
-
-
-@Proto(API.TaskName_p, Strang_i)
-class TaskName(_TaskNameOps_m, Strang):
+@Proto(API.TaskName_p, StrangAPI.Strang_p)
+class TaskName(Strang):
     """
       A Task Name.
     """
+    __slots__              = ()
+    Marks      : ClassVar  = TaskNameBodyMarks_e
+    _processor : ClassVar  = TaskNameProcessor()
+    _sections  : ClassVar  = TASKSECTIONS
 
-    _separator : ClassVar[str] = DEFAULT_SEP
+    def with_cleanup(self) -> Self:
+        if self.is_cleanup():
+            return self
+        return self.push(TaskNameBodyMarks_e.cleanup)
 
-    @ftz.cached_property
-    def readable(self) -> str:
-        """ format this name to a readable form
-        ie: elide uuids as just <UUID>
-        """
-        group = self[0:]
-        tail = self._subseparator.join([x if "<uuid" not in x else "<UUID>" for x in self.body()])
-        return f"{group}{self._separator}{tail}"
+    def with_head(self) -> Self:
+        if self.is_head():
+            return self
+        return self.push(TaskNameBodyMarks_e.head)
+
+    def is_cleanup(self) -> bool:
+        return TaskNameBodyMarks_e.cleanup in self
+
+    def is_head(self) -> bool:
+        return TaskNameBodyMarks_e.head in self
