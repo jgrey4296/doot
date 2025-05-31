@@ -40,6 +40,7 @@ from jgdv.logging import _interface as LogAPI  # noqa: N812
 import doot
 import doot.errors
 from doot.workflow._interface import TaskMeta_e
+from doot.workflow import TaskName
 from ._base import BaseCommand
 from ._interface import Command_i
 
@@ -138,11 +139,11 @@ class _TaskLister_m:
         for spec in tasks.values():
             data.append(
                 base_vars | {
-                    "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0:]) + 2),
-                    "internal" : Strang.bmark_e.hide in spec.name, # type: ignore
+                    "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0,:]) + 2),
+                    "internal" : TaskName.Marks.hide in spec.name, # type: ignore
                     "disabled" : TaskMeta_e.DISABLED in spec.meta,
-                    "group"  : spec.name[0:],
-                    "val"    : spec.name[1:],
+                    "group"  : spec.name[0,:],
+                    "val"    : spec.name[1,:],
                     "full"   : spec.name,
                     "docstr" : (spec.doc[0] if bool(spec.doc) else "")[:60],
                     "source" : (spec.sources[0] if bool(spec.sources) else "(No Source)"),

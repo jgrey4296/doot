@@ -166,7 +166,7 @@ class TrackQueue:
                 return None
             case TaskName() | str() as x if x not in self._registry.specs:
                 raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", x)
-            case TaskName() as x if not x.is_uniq():
+            case TaskName() as x if not x.uuid():
                 inst_name = self._registry._instantiate_spec(x)
             case TaskName() as x:
                 inst_name = x
@@ -187,7 +187,7 @@ class TrackQueue:
             case None:
                 status = self._registry.get_status(inst_name)
 
-        logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name.readable)
+        logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name[:])
         return inst_name
 
     def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]:
@@ -201,13 +201,13 @@ class TrackQueue:
             case TaskName() as focus if focus not in self._registry.tasks:
                 pass
             case TaskName() as focus if self._registry.get_priority(focus) < self._network._min_priority:
-                logging.warning("[Deque] Halting (Min Priority) : %s", focus.readable)
+                logging.warning("[Deque] Halting (Min Priority) : %s", focus[:])
                 self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 task  = self._registry.tasks[focus]
                 prior = task.priority
                 task.priority -= 1
-                logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus.readable)
+                logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus[:])
             case TaskArtifact() as focus:
                 focus.priority -= 1
 

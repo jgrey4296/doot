@@ -27,7 +27,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from ._interface import Job_p, Task_i, TaskMeta_e
+from ._interface import Job_p, Task_p, TaskMeta_e
 from .structs.task_name import TaskName
 from .structs.task_spec import TaskSpec
 from .task  import DootTask
@@ -62,7 +62,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD
+SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD # type: ignore[attr-defined]
 
 class _JobStubbing_m:
     @classmethod
@@ -79,9 +79,9 @@ class _JobStubbing_m:
 
     def stub_instance(self, stub:TaskStub) -> TaskStub:
         stub                      = self.__class__.stub_class(stub)
-        stub['name'].default      = self.name.de_uniq()
-        if bool(self.doc):
-            stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
+        stub['name'].default      = self.name.de_uniq() # type: ignore[attr-defined]
+        if bool(self.doc): # type: ignore[attr-defined]
+            stub['doc'].default   = [f"\"{x}\"" for x in self.doc] # type: ignore[attr-defined]
         return stub
 
 
@@ -95,8 +95,9 @@ class DootJob(DootTask):
       and holds state
 
     """
-    _help : ClassVar[tuple[str]] = tuple(["A Basic Task Constructor"])
-    _default_flags = TaskMeta_e.JOB
+    _help                       = tuple(["A Basic Task Constructor"])
+    _default_flags  : ClassVar  = {TaskMeta_e.JOB}
+    version         : str       = "0.1"
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"
@@ -117,7 +118,7 @@ class DootJob(DootTask):
         assert(task_name is not None)
         return TaskSpec(name=task_name, extra=ChainGuard(extra))
 
-    def is_stale(self, task:Task_p) -> bool:
+    def is_stale(self, task:Task_p) -> bool:  # noqa: ARG002
         return False
 
     def specialize_task(self, task:Task_p) -> Task_p:
@@ -137,9 +138,18 @@ class DootJob(DootTask):
         help_lines.append("")
         help_lines += cls._help
 
-        params = cls.param_specs()
-        if bool(params):
-            help_lines += ["", "Params:"]
-            help_lines += [y for x in cls.param_specs() if (y:=str(x))]
+        match getattr(cls, "param_specs", None):
+            case None:
+                params = []
+            case x if callable(x):
+                params = x.param_specs()
+
+        if not bool(params):
+            return help_lines
+
+        help_lines += ["", "Params:"]
+        for param in params:
+            if (param_help:=str(param)):
+                help_lines.append(param_help)
 
         return help_lines

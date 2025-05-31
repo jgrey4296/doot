@@ -286,7 +286,7 @@ class DootRunner:
         try:
             doot.report.branch(job.spec.name, info=f"Job {self.step}")
             if not self._test_conditions(job):
-                doot.report.trace(skip_msg, self.step, job.name.root())
+                doot.report.trace(skip_msg, self.step, job.name.pop(top=True))
                 return
 
             self._execute_action_group(job, group=SETUP_GROUP)
@@ -302,7 +302,7 @@ class DootRunner:
         try:
             doot.report.branch(task.spec.name, info=f"Task {self.step}")
             if not self._test_conditions(task):
-                doot.report.result([skip_msg, self.step, task.name.root()])
+                doot.report.result([skip_msg, self.step, task.name.pop(top=True)])
                 return
 
             self._execute_action_group(task, group=SETUP_GROUP)

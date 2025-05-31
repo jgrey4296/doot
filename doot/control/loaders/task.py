@@ -244,7 +244,7 @@ class TaskLoader:
         convert raw dicts into TaskSpec objects
 
         """
-        logging.info("---- Building Task Specs (%s Current)", len(self.tasks))
+        logging.info("---- Building Task Specs (%s Current, %s Potential) ", len(self.tasks), len(specs))
         source = source or "<Sourceless>"
 
         def _allow_registration(task_name:str) -> bool:

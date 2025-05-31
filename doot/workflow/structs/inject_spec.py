@@ -23,6 +23,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import StrangError
 from jgdv.cli import ParamSpec
 # ##-- end 3rd party imports
 
@@ -30,9 +31,10 @@ from jgdv.cli import ParamSpec
 import doot
 import doot.errors
 from doot.util.dkey import DKey
-from .._interface import Task_p, MUST_INJECT_K
 
 # ##-- end 1st party imports
+
+from .._interface import TaskSpec_i, Task_i, Task_p, MUST_INJECT_K
 
 # ##-- types
 # isort: off
@@ -56,7 +58,9 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-   from .. import TaskName, TaskSpec
+   from .. import TaskSpec
+   from jgdv._abstract.protocols import SpecStruct_p
+   from .. import TaskName
    type ConstraintData = TaskSpec | dict | ChainGuard
 
 # isort: on
@@ -108,6 +112,8 @@ class InjectSpec(BaseModel):
 
         try:
             return cls(**data)
+        except StrangError as err:
+            raise doot.errors.InjectionError(err.args) from None
         except ValidationError as err:
             logging.debug("Building Injection Failed: %s : %s", data, err)
             raise
@@ -173,7 +179,7 @@ class InjectSpec(BaseModel):
                 | bool(self.literal)
                 | (self.with_suffix is not None))
 
-    def validate(self, control:Task_p|TaskSpec, target:Task_p|TaskSpec, *, only_spec:bool=False) -> bool:
+    def validate(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec, *, only_spec:bool=False) -> bool:
         """ Ensures this injection is usable with given sources, and given required injections
 
         eg:
@@ -198,7 +204,7 @@ class InjectSpec(BaseModel):
         result = self.validate_details(control, target, only_spec=only_spec)
         return not any(bool(x) for x in result.values())
 
-    def validate_details(self, control:Task_p|TaskSpec, target:Task_p|TaskSpec, *, only_spec:bool=False) -> dict:
+    def validate_details(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec, *, only_spec:bool=False) -> dict:
         """
         validate specs or tasks
         checks from_spec,
@@ -210,14 +216,14 @@ class InjectSpec(BaseModel):
         if not only_spec:
             state_failure = bool(self.from_state) and not all(isinstance(x, Task_p) for x in (control, target))
         match control:
-            case Task_p():
+            case Task_i():
                 control_vals   = control.state
                 control_needs |= set(self.from_state.values())
             case _:
                 control_vals   = control.extra
 
         match target:
-            case Task_p():
+            case Task_i():
                 target_vals   = target.state
                 target_needs |= set(self.from_state.keys())
             case _:
@@ -241,21 +247,28 @@ class InjectSpec(BaseModel):
             "rhs_redirect"    : control_redirects,
             "lhs_redirect"    : target_redirects,
             "mismatches"      : mismatches,
-            "state"           : state_failure
+            "state"           : state_failure,
         }
 
-    def apply_from_spec(self, control:dict|TaskSpec) -> dict:
+    def apply_from_spec(self, control:dict|TaskSpec|Task_i) -> dict:
         """ Apply values from the control's spec values.
 
         Fully expands keys in 'from_spec',
         Only partially expands (L1) from 'from_target'
         """
+        control_data : dict|SpecStruct_p
         # logging.info("Applying from_spec injection: %s", control.name)
+        match control:
+            case Task_i():
+                control_data = control.spec
+            case _:
+                control_data = control
+
         data = {}
         for x,y in self.from_spec.items():
-            data[str(x)] = y(control)
+            data[str(x)] = y(control_data)
         for x,y in self.from_target.items():
-            data[str(x)] = y(control, insist=True, fallback=y, limit=1)
+            data[str(x)] = y(control_data, insist=True, fallback=y, limit=1)
         else:
             return data
 
@@ -263,10 +276,11 @@ class InjectSpec(BaseModel):
         """ Expand a key using the control state """
         # logging.info("Applying from_state injection: %s", control.name)
         match control:
-            case dict() | ChainGuard():
-                pdata = control
-            case Task_p():
+            case Task_i():
                 pdata = control.state
+            case _:
+                pdata = control
+
         data = {}
         for x,y in self.from_state.items():
             data[str(x)] = y(pdata)

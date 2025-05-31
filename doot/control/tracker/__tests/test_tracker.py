@@ -88,7 +88,7 @@ class TestSplitTracker:
         spec = TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
-        assert(t_name.is_uniq())
+        assert(t_name.uuid())
         assert(obj.get_status(t_name) is TaskStatus_e.DECLARED)
         obj.build_network()
         match obj.next_for():

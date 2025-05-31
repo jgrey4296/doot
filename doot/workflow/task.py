@@ -37,7 +37,7 @@ from doot.errors import StructLoadError, TaskError
 # ##-- end 1st party imports
 
 # ##-| Local
-from ._interface import (Action_p, Job_p, QueueMeta_e, Task_i, Task_p,
+from ._interface import (Action_p, Job_p, QueueMeta_e, Task_p,
                          TaskMeta_e, TaskStatus_e)
 from .structs import RelationSpec, TaskArtifact, ActionSpec, TaskName
 
@@ -160,7 +160,7 @@ class _TaskHelp_m:
 
 ##--|
 
-@Proto(Task_i)
+@Proto(Task_p, check=True)
 @Mixin(ParamSpecMaker_m, _TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
 class DootTask:
     """
@@ -170,31 +170,32 @@ class DootTask:
 
       Actions are imported upon task creation.
     """
-    flags            : TaskMeta_e
-    _records         : list[Any]
-
-    action_ctor      : Callable
-    _default_flags   : TaskMeta_e                 = TaskMeta_e.TASK
-
-    COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS}
-    INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
-    _help                                         = tuple(["The Simplest Task"])
+    Flags            : ClassVar[type[TaskMeta_e]]   = TaskMeta_e
+    INITIAL_STATE    : ClassVar[TaskStatus_e]       = TaskStatus_e.INIT
+    COMPLETE_STATES  : ClassVar[set[TaskStatus_e]]  = {TaskStatus_e.SUCCESS}
+    _default_flags   : ClassVar                     = {TaskMeta_e.TASK}
+    _help            : tuple[str, ...]              = tuple(["The Simplest Task"])
+    _version         : str                          = "0.1"
 
     def __init__(self, spec:TaskSpec, *, job:Any=None, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
-        self.spec        = spec
-        self.priority    = self.spec.priority
-        self.status      = DootTask.INITIAL_STATE
-        self.flags       = TaskMeta_e.TASK
-        self.state       = dict(spec.extra)
-        self.action_ctor = action_ctor
-        self._records    = []
+        self.spec                      = spec
+        self.priority                  = self.spec.priority
+        self.status                    = DootTask.INITIAL_STATE
+        self.flags                     = TaskMeta_e.TASK
+        self.state                     = dict(spec.extra)
+        self._records                  = []
 
-        self.state[STATE_TASK_NAME_K]          = self.spec.name
-        self.state['_action_step']             = 0
+        self.state[STATE_TASK_NAME_K]  = self.spec.name
+        self.state['_action_step']     = 0
 
-        if self.action_ctor is None:
-            from .actions import DootBaseAction
-            self.action_ctor = DootBaseAction
+        match action_ctor:
+            case None:
+                from .actions import DootBaseAction
+                self.action_ctor  = DootBaseAction
+            case type() as x:
+                self.action_ctor  = x
+            case x:
+                raise TypeError(type(x))
 
         self.prepare_actions()
 
@@ -226,6 +227,10 @@ class DootTask:
             case _:
                 return False
 
+    @property
+    def name(self) -> TaskName:
+        return self.spec.name
+
     def prepare_actions(self) -> None:
         """ if the task/action spec requires particular action ctors, load them.
           if the action spec doesn't have a ctor, use the task's action_ctor
@@ -254,7 +259,7 @@ class DootTask:
                 case []:
                     pass
                 case [*xs]:
-                    raise doot.errors.TaskError("Action Spec preparation failures", self.name.readable, xs)
+                    raise doot.errors.TaskError("Action Spec preparation failures", self.name[:], xs)
 
     def add_execution_record(self, arg:Any) -> None:
         """ Record some execution record information for display or debugging """

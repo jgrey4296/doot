@@ -25,6 +25,17 @@ basic_action = lambda x: ftz.partial(lambda val, state: doot.report.user("Got: %
 
 class TestBaseTask:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_ctor(self):
+        assert(isinstance(DootTask, API.Task_p))
+        match DootTask:
+            case API.Task_p():
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_initial(self):
         spec = TaskSpec(name="basic::example")
         match DootTask(spec, job=None):

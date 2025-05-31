@@ -79,11 +79,14 @@ class TaskNameHeadMarks_e(StrangAPI.StrangMarkAbstract_e):
 class TaskNameBodyMarks_e(StrangAPI.StrangMarkAbstract_e):
     """ Markers Used in a base Strang's body """
 
-    head    = "$head$"
-    cleanup = "$cleanup$"
-    empty   = ""
-    hide    = "_"
-    extend  = "+"
+    head        = "$head$"
+    cleanup     = "$cleanup$"
+    partial     = "$partial$"
+    data        = "$data$"
+    empty       = ""
+    hide        = "_"
+    extend      = "+"
+    customised  = "<+>"
 
     @classmethod
     def default(cls) -> str:

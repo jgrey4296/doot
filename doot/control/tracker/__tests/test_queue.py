@@ -100,7 +100,6 @@ class TestTrackerQueue:
         assert(instance in obj.active_set)
         assert(bool(obj._queue))
 
-    @pytest.mark.xfail
     def test_queue_task_idempotnent(self, queue):
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})

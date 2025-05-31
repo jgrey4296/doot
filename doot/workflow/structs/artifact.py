@@ -39,6 +39,7 @@ from jgdv.structs.locator import Location
 # ##-- 1st party imports
 import doot
 import doot.errors
+from .. import _interface as API  # noqa: N812
 from .._interface import ArtifactStatus_e
 
 if TYPE_CHECKING:
@@ -61,8 +62,12 @@ class TaskArtifact(Location):
       required_for=['file:>a/file.txt', 'file:>?.txt']
 
     """
+    __slots__ = ("priority",)
+    priority : int
 
-    priority : int = 10
+    def __init__(self, *args:Any, **kwargs:Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.priority = API.DEFAULT_PRIORITY
 
     def __bool__(self):
         return self.exists()
@@ -110,12 +115,12 @@ class TaskArtifact(Location):
                     result.append(y)
                 case _, _ if x == y:
                     result.append(x)
-                case self.bmark_e.rec_glob, _:
+                case str() as x, _ if x == self.Wild.rec_glob:
                     add_rest = True
                     result.append(y)
-                case self.bmark_e(), str():
+                case str() as x, str() if x in self.Wild:
                     result.append(y)
-                case str(), self.bmark_e():
+                case str(), str() as y if y in self.Wild:
                     result.append(x)
                 case str(), str():
                     return None
@@ -167,14 +172,14 @@ class TaskArtifact(Location):
 
     def exists(self) -> bool:
         as_path = self.path
-        expanded = doot.locs[as_path]
+        expanded = doot.locs[as_path] # type: ignore[attr-defined]
         return expanded.exists()
 
     def is_concrete(self) -> bool:
-        if super().is_concrete():
-            return True
+        if self.Marks.abstract in self:
+            return False
         try:
-            _ = doot.locs.expand(self)
+            _ = doot.locs.expand(self) # type: ignore[attr-defined]
         except KeyError:
             return False
         else:

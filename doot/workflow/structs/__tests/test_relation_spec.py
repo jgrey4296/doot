@@ -92,14 +92,14 @@ class TestRelationSpec:
         obj = RelationSpec.build("file::>a/file.txt")
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
-        assert(Location.gmark_e.file in obj.target)
+        assert(Location.Marks.file in obj.target)
 
     def test_abstract_file_dep(self):
         obj = RelationSpec.build("file::>a/?.txt")
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
-        assert(Location.gmark_e.file in obj.target)
-        assert(Location.gmark_e.abstract in obj.target)
+        assert(Location.Marks.file in obj.target)
+        assert(Location.Marks.abstract in obj.target)
 
     def test_dict_loc_dep(self):
         obj = RelationSpec.build({"path": "file::>a/file.txt"})
@@ -110,7 +110,7 @@ class TestRelationSpec:
         obj = RelationSpec.build({"path": "a/*.txt"})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
-        assert(Location.gmark_e.abstract in obj.target)
+        assert(Location.Marks.abstract in obj.target)
 
     def test_task_dep(self):
         obj = RelationSpec.build("agroup::atask")

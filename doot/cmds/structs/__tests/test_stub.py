@@ -61,12 +61,15 @@ class TestTaskStub:
 
     def test_toml_reparse_to_spec(self):
         """ check a stub has the default components of a TaskSpec  """
-        loader = TaskLoader()
-        obj    = stub.TaskStub.build()
-        as_str = obj.to_toml()
-        loaded = ChainGuard.read(as_str)
-        raw = loader._get_raw_specs_from_data(loaded.tasks, None)
+        loader  = TaskLoader()
+        obj     = stub.TaskStub.build()
+        as_str  = obj.to_toml()
+        loaded  = ChainGuard.read(as_str)
+        raw     = loader._get_raw_specs_from_data(loaded.tasks, None)
+        assert(bool(raw))
+        assert(not bool(loader.tasks))
         loader._build_task_specs(raw, [])
+        assert(loader.tasks)
         match loader.tasks:
             case {"basic::stub":stub.TaskSpec()}:
                 assert(True)

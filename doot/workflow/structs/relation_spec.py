@@ -33,6 +33,7 @@ from pydantic import (BaseModel, Field, field_validator,
 from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference, Strang
+from jgdv.structs.strang._interface import StrangMarkAbstract_e
 from jgdv.structs.locator import Location
 from jgdv._abstract.protocols import Buildable_p
 from jgdv._abstract.pydantic_proto import ProtocolModelMeta
@@ -104,13 +105,13 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 result = cls(target=TaskArtifact(data), relation=relation)
             case TaskName() | TaskArtifact():
                 result = cls(target=data, relation=relation)
-            case str() as x if TaskArtifact._separator in x:
+            case str() as x if TaskArtifact.section(0).end in x:
                 target = TaskArtifact(x)
                 result = cls(target=target, relation=relation)
-            case str() as x if Location._separator in x:
+            case str() as x if Location.section(0).end in x:
                 result = Location(x)
                 return cls(target=target, relation=relation)
-            case str() as x if TaskName._separator in x:
+            case str() as x if TaskName.section(0).end in x:
                 target = TaskName(x)
                 result = cls(target=target, relation=relation)
             case {"path":path} if "task" not in data:
@@ -134,7 +135,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return val
             case pl.Path():
                 return TaskArtifact(val)
-            case str() if TaskName._separator in val:
+            case str() if TaskName.section(0).end in val:
                 return TaskName(val)
             case _:
                 raise ValueError("Unparsable target str")
@@ -167,13 +168,13 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
-    def __contains__(self, query:Location.gmark_e|TaskName|TaskArtifact) -> bool:
+    def __contains__(self, query:StrangMarkAbstract_e|TaskName|TaskArtifact) -> bool:
         match self.target, query:
             case TaskName(), TaskName():
                 return query <= self.target
             case TaskArtifact(), TaskArtifact():
                 return query in self.target
-            case TaskArtifact(), Location.gmark_e():
+            case TaskArtifact(), StrangMarkAbstract_e():
                 return query in self.target
             case _, _:
                 raise NotImplementedError(self.target, query)
@@ -201,7 +202,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if not target.is_uniq():
+            case TaskName(), TaskName() if not target.uuid():
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
             case TaskArtifact(), TaskArtifact() if (match:=self.target.reify(target)) is not None:
                 target = match
@@ -225,7 +226,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
 
     def accepts(self, control:Task_p|TaskSpec, target:Task_p|TaskSpec) -> bool:
         """ Test if this pair of Tasks satisfies the relation """
-        if not (target.name.is_uniq() and control.name.is_uniq()):
+        if not (target.name.uuid() and control.name.uuid()):
             return False
         if not (self.target < target.name):
             return False

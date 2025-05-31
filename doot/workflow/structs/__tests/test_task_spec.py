@@ -19,6 +19,7 @@ import doot
 import doot.errors
 
 from ... import DootJob
+from ... import _interface as API
 from ..._interface import TaskMeta_e, Task_p
 from .. import TaskSpec, TaskName
 
@@ -30,6 +31,9 @@ class TestTaskSpec:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
+    def test_ctor(self):
+        assert(isinstance(TaskSpec, API.SpecStruct_p))
 
     def test_raw_ctor(self):
         obj = TaskSpec(name="simple::task")
@@ -54,24 +58,24 @@ class TestTaskSpec:
     def test_build(self):
         obj = TaskSpec.build({"name":"default::default"})
         assert(isinstance(obj, TaskSpec))
-        assert(obj.name[0: ]== "default")
-        assert(obj.name[1:] == "default")
+        assert(obj.name[0,:]== "default")
+        assert(obj.name[1,:] == "default")
         assert(DEFAULT_CTOR in str(obj.ctor))
         assert(obj.version == doot.__version__)
 
     def test_version(self):
         obj = TaskSpec.build({"version" : "0.5", "name":"default::default"})
         assert(isinstance(obj, TaskSpec))
-        assert(obj.name[0:] == "default")
-        assert(obj.name[1:] == "default")
+        assert(obj.name[0,:] == "default")
+        assert(obj.name[1,:] == "default")
         assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == "0.5")
 
     def test_basic_name(self):
         obj = TaskSpec.build({"name": "agroup::atask"})
         assert(isinstance(obj, TaskSpec))
-        assert(obj.name[0:] == "agroup")
-        assert(obj.name[1:] == "atask")
+        assert(obj.name[0,:] == "agroup")
+        assert(obj.name[1,:] == "atask")
 
     def test_groupless_name(self):
         with pytest.raises(ValueError):
@@ -87,8 +91,8 @@ class TestTaskSpec:
     def test_separate_group_and_task(self):
         obj = TaskSpec.build({"name": "atask", "group": "agroup"})
         assert(isinstance(obj, TaskSpec))
-        assert(obj.name[0:] == "agroup")
-        assert(obj.name[1:] == "atask")
+        assert(obj.name[0,:] == "agroup")
+        assert(obj.name[1,:] == "atask")
 
     def test_disabled_spec(self):
         obj = TaskSpec.build({"name": "agroup::atask", "disabled":True})
@@ -129,12 +133,12 @@ class TestTaskSpec_Validation:
 
     def test_meta_build(self):
         obj = TaskSpec.build({"name":"simple::test"})
-        assert(obj.meta == {TaskMeta_e.default})
+        assert(obj.meta == {TaskMeta_e.default()})
         assert(obj.meta  == {TaskMeta_e.TASK})
 
     def test_meta_build_multi(self):
-        obj = TaskSpec.build({"name":"simple::test", "meta": ["TASK", "JOB"]})
-        assert(obj.meta == {TaskMeta_e.default, TaskMeta_e.JOB})
+        obj = TaskSpec.build({"name":"simple::+.test"}) #, "meta": ["TASK", "JOB"]})
+        assert(obj.meta == {TaskMeta_e.JOB})
 
     def test_toml_key_modification(self):
         obj = TaskSpec.build({"name":"simple::test", "blah": {}})
@@ -142,8 +146,7 @@ class TestTaskSpec_Validation:
 
     def test_sources_fail_if_partial(self):
         with pytest.raises(ValueError):
-            TaskSpec.build({"name":"simple::test", "sources": ["basic::some.other..<partial>"]})
-
+            TaskSpec.build({"name":"simple::test", "sources": ["basic::some.other..$partial$"]})
 
     def test_action_group_sorting(self):
         spec = TaskSpec.build({"name":"simple::test",
@@ -152,9 +155,8 @@ class TestTaskSpec_Validation:
                                    {"do":"blah:bloo"},
                                    {"do":"aweg:aweg"},
                                ]})
-        for x,y in zip(spec.actions, ["fn::log:log", "fn::blah:bloo", "fn::aweg:aweg"]):
-            assert(x.do == y)
-
+        for x,y in zip(spec.actions, ["log:log", "blah:bloo", "aweg:aweg"]):
+            assert(x.do[:] == y)
 
     def test_implicit_job_relations(self):
         spec = TaskSpec.build({"name":"simple::test",
@@ -164,7 +166,6 @@ class TestTaskSpec_Validation:
         assert(spec.depends_on[0].target == "simple::+.job")
         assert(spec.depends_on[1].target == "simple::+.job..$head$")
 
-
     def test_implicit_cleanup_relations(self):
         spec = TaskSpec.build({"name":"simple::test",
                                "depends_on" : ["simple::task..$cleanup$"],
@@ -172,7 +173,6 @@ class TestTaskSpec_Validation:
         assert(len(spec.depends_on) == 2)
         assert(spec.depends_on[0].target == "simple::task")
         assert(spec.depends_on[1].target == "simple::task..$cleanup$")
-
 
 class TestTaskSpec_Joining:
     """ Tests combining a TaskSpec with other data
@@ -258,7 +258,7 @@ class TestTaskSpec_Joining:
                 assert("a" in new_spec.extra)
                 assert(bool(new_spec.actions))
                 assert("blah" in new_spec.extra)
-                assert(new_spec.sources == ["agroup::base", "agroup::base..<data>"])
+                assert(new_spec.sources == ["agroup::base", "agroup::base..$data$"])
             case x:
                  assert(False), x
 
@@ -268,13 +268,13 @@ class TestTaskSpec_Joining:
 
         match under_task.under(over_data, suffix="blah"):
             case TaskSpec() as new_spec:
-                assert(new_spec.name == "agroup::base..<data>..blah")
+                assert(new_spec.name == "agroup::base..$data$..blah")
             case x:
                  assert(False), x
 
     def test_reify_partial(self):
         base      = TaskSpec.build({"name": "agroup::base", "a": 0, "actions"    : [{"do":"log", "msg":"blah"}]})
-        partial   = TaskSpec.build({"name": "agroup::base.blah..<partial>", "a": 20, "b": "blah", "sources": ["agroup::base"]})
+        partial   = TaskSpec.build({"name": "agroup::base.blah..$partial$", "a": 20, "b": "blah", "sources": ["agroup::base"]})
 
         match partial.reify_partial(base):
             case TaskSpec() as new_spec:
@@ -284,7 +284,7 @@ class TestTaskSpec_Joining:
 
     def test_reify_incorrect(self):
         bad_base      = TaskSpec.build({"name": "agroup::base.bad", "a": 0, "actions"    : [{"do":"log", "msg":"blah"}]})
-        partial   = TaskSpec.build({"name": "agroup::base.blah..<partial>", "a": 20, "b": "blah", "sources": ["agroup::base"]})
+        partial   = TaskSpec.build({"name": "agroup::base.blah..$partial$", "a": 20, "b": "blah", "sources": ["agroup::base"]})
 
         with pytest.raises(ValueError):
             partial.reify_partial(bad_base)
@@ -382,7 +382,7 @@ class TestTaskSpec_Instantiation:
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         match base_task.instantiate():
             case TaskSpec() as inst:
-                assert(inst.name.is_uniq())
+                assert(inst.name.uuid())
                 assert(inst is not base_task)
                 assert(base_task.name < inst.name)
                 assert("a" in inst.extra)
@@ -392,7 +392,7 @@ class TestTaskSpec_Instantiation:
     def test_task_make(self):
         base = TaskSpec.build({"name": "basic::task", "a":0})
         concrete = base.instantiate()
-        assert(concrete.name.is_uniq())
+        assert(concrete.name.uuid())
         match concrete.make():
             case Task_p() as inst:
                 assert(inst.name == concrete.name)
@@ -475,7 +475,6 @@ class TestSubTask_Generation:
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         assert(isinstance(base_task, TaskSpec))
 
-
     def test_abstract_spec_dont_generate_extra(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0})
         assert(isinstance(base_task, TaskSpec))
@@ -484,7 +483,6 @@ class TestSubTask_Generation:
                 assert(True)
             case x:
                  assert(False), x
-
 
     def test_empty_cleanup_gen(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0}).instantiate()
@@ -506,7 +504,6 @@ class TestSubTask_Generation:
             case x:
                  assert(False), x
 
-
     def test_instantiated_cleanup_gen(self):
         base_task     = TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]}).instantiate()
         match base_task.generate_specs():
@@ -517,12 +514,11 @@ class TestSubTask_Generation:
             case x:
                  assert(False), x
 
-
     def test_job_head_gen_empty_cleanup(self):
         base_task     = TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": []}).instantiate()
         match base_task.generate_specs():
             case [TaskSpec() as head]:
-               assert(TaskName.bmark_e.head in head.name)
+               assert(TaskName.Marks.head in head.name)
                assert(not bool(head.actions))
                assert(base_task.name in head.depends_on[0])
             case xs:
@@ -532,7 +528,7 @@ class TestSubTask_Generation:
         base_task     = TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]}).instantiate()
         match base_task.generate_specs():
             case [TaskSpec() as head]:
-               assert(TaskName.bmark_e.head in head.name)
+               assert(TaskName.Marks.head in head.name)
                assert(bool(head.actions))
                assert(base_task.name in head.depends_on[0])
             case x:

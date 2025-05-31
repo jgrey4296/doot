@@ -75,7 +75,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
     parts      : dict[str, TaskStubPart]                        = {}
 
     # Don't copy these from TaskSpec blindly
-    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
+    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version", "queue_behaviour"])
 
     @classmethod
     def build(cls, data:Maybe[dict]=None):
@@ -177,7 +177,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         """
         # shortcut on being the name:
         if isinstance(self.default, TaskName) and self.key == "name":
-            return f"[[tasks.{self.default[0:]}]]\n{'name':<20} = \"{self.default[1:]}\""
+            return f"[[tasks.{self.default[0,:]}]]\n{'name':<20} = \"{self.default[1,:]}\""
 
         key_str     = self._key_str()
         type_str    = self._type_str()

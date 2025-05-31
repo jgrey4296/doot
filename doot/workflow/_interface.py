@@ -70,6 +70,7 @@ if TYPE_CHECKING:
 
     from doot.workflow import ActionSpec, TaskName
     type ActionReturn = Maybe[dict|bool|ActionResponse_e]
+    Artifact_i = NewType("Artifact_i", object)
 
 # isort: on
 # ##-- end types
@@ -79,19 +80,18 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Vars
-CLI_K           : Final[str]         = "cli"
-DASH_S          : Final[str]         = "-"
-DEFAULT_JOB     : Final[str]         = "job"
-EXTENDED        : Final[str]         = "<+>"
-GROUP_K         : Final[str]         = "group"
-META_K          : Final[str]         = "meta"
-MUST_INJECT_K   : Final[str]         = "must_inject"
-NAME_K          : Final[str]         = "name"
-NONE_S          : Final[str]         = "None"
-PARTIAL         : Final[str]         = "<partial>"
-SPECIAL_KEYS    : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
-SUFFIX_K        : Final[str]         = "_add_suffix"
-USCORE_S        : Final[str]         = "_"
+CLI_K             : Final[str]        = "cli"
+DASH_S            : Final[str]        = "-"
+DEFAULT_JOB       : Final[str]        = "job"
+GROUP_K           : Final[str]        = "group"
+META_K            : Final[str]        = "meta"
+MUST_INJECT_K     : Final[str]        = "must_inject"
+NAME_K            : Final[str]        = "name"
+NONE_S            : Final[str]        = "None"
+SPECIAL_KEYS      : Final[list[str]]  = [CLI_K, MUST_INJECT_K]
+SUFFIX_K          : Final[str]        = "_add_suffix"
+USCORE_S          : Final[str]        = "_"
+DEFAULT_PRIORITY  : Final[int]        = 10
 # Body:
 ##--| Enums
 
@@ -151,7 +151,9 @@ class TaskMeta_e(enum.StrEnum):
     STATELESS    = enum.auto()
     VERSIONED    = enum.auto()
 
-    default      = TASK
+    @classmethod
+    def default(cls) -> Maybe:
+        return cls.TASK
 
 class TaskStatus_e(enum.Enum):
     """
@@ -221,7 +223,6 @@ class ActionResponse_e(enum.Enum):
 
 ##--| Spec Interfaces
 
-Artifact_i = NewType("Artifact_i", object)
 
 class ActionSpec_i(Buildable_p, Protocol):
     do         : Maybe[CodeReference]
@@ -252,11 +253,22 @@ class RelationSpec_i(Protocol):
     inject        : Maybe[InjectSpec_i]
 
 class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
+    """
+    The data spec of a task. is created from TOML data
+    """
+
+    # task specific extras to use in state
+    _default_ctor                     : ClassVar[str]
+    # Action Groups that are depended on, rather than are dependencies of, this task:
+    _blocking_groups                  : ClassVar[tuple[str]]
+
+    ##--| Core Instance Data
+    mark_e                            : ClassVar[enum.Enum]
     name                              : TaskName_p
     doc                               : Maybe[list[str]]
     sources                           : list[Maybe[TaskName_p|pl.Path]]
 
-    # Action Groups:
+    ##--| Default Action Groups
     actions                           : list[ActionSpec_i]
     required_for                      : list[ActionSpec_i|RelationSpec_i]
     depends_on                        : list[ActionSpec_i|RelationSpec_i]
@@ -264,22 +276,15 @@ class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
     cleanup                           : list[ActionSpec_i|RelationSpec_i]
     on_fail                           : list[ActionSpec_i|RelationSpec_i]
 
-    # Any additional information:
+    ##--| Any additional information:
     version                           : str
     priority                          : int
     ctor                              : CodeReference
     queue_behaviour                   : QueueMeta_e
     meta                              : set[TaskMeta_e]
     _transform                        : Maybe[Literal[False]|tuple[RelationSpec_i, RelationSpec_i]]
-
-    # task specific extras to use in state
-    _default_ctor                     : ClassVar[str]
-    # Action Groups that are depended on, rather than are dependencies of, this task:
-    _blocking_groups                  : ClassVar[tuple[str]]
-
-    mark_e                            : ClassVar[enum.Enum]
-
     extra                             : ChainGuard
+
 ##--|
 
 @runtime_checkable
@@ -305,14 +310,6 @@ class TaskName_p(Strang_p, Protocol):
 
 @runtime_checkable
 class Task_p(Protocol):
-    _version         : str
-    _help            : tuple[str, ...]
-    doc              : tuple[str, ...]
-    state            : dict
-    spec             : SpecStruct_p
-    status           : TaskStatus_e
-    priority         : int
-
     def __init__(self, spec:SpecStruct_p) -> None: ...
 
     def __hash__(self): ...
@@ -324,9 +321,6 @@ class Task_p(Protocol):
 
     @property
     def name(self) -> TaskName: ...
-
-    @property
-    def state(self) -> dict: ...
 
     def add_execution_record(self, arg:Any) -> None: ...
     """ Record some execution record information for display or debugging """
@@ -344,3 +338,16 @@ class Job_p(Task_p, Protocol):
 
     def expand_job(self) -> list:
         pass
+
+
+@runtime_checkable
+class Task_i(Task_p, Protocol):
+    _default_flags : ClassVar[set[TaskMeta_e]]
+
+    _version         : str
+    _help            : tuple[str, ...]
+    doc              : tuple[str, ...]
+    state            : dict
+    spec             : SpecStruct_p
+    status           : TaskStatus_e
+    priority         : int

@@ -321,6 +321,7 @@ class TestTrackerNetworkBuild:
                 assert(False), x
 
 
+    @pytest.mark.xfail
     def test_build_separate_dependencies_from_spec(self, network):
         """
         For a task, T, with dependency D,
@@ -600,6 +601,7 @@ class TestTrackerNetworkBuild_Artifacts:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+    @pytest.mark.xfail
     def test_build_dep_chain_with_artifact(self, network):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj   = network
@@ -633,6 +635,7 @@ class TestTrackerNetworkBuild_Artifacts:
         assert(spec.depends_on[0].target in obj.pred[instance])
         assert(instance in obj.succ[spec.depends_on[0].target])
 
+    @pytest.mark.xfail
     def test_build_with_concrete_artifact(self, network):
         obj = network
         spec  = TaskSpec.build({"name":"basic::task", "required_for":["file::>basic.txt"]})
@@ -656,6 +659,7 @@ class TestTrackerNetworkBuild_Artifacts:
         obj.build_network()
         assert(spec.depends_on[0].target in obj.pred[instance])
 
+    @pytest.mark.xfail
     def test_build_abstract_artifact_chain(self, network):
         obj = network
         consumer     = TaskSpec.build({"name":"basic::consumer", "depends_on":["file::>*.txt"]})

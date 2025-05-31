@@ -178,10 +178,10 @@ class _Expansion_m:
                 logging.debug("[Connect] %s -> %s", left, right)
                 self._graph.add_edge(left, right, type=EdgeType_e.TASK, **kwargs)
             case TaskName(), TaskArtifact():
-                logging.debug("[Connect] %s -> %s", left.readable, right)
+                logging.debug("[Connect] %s -> %s", left[:], right)
                 self._graph.add_edge(left, right, type=EdgeType_e.TASK_CROSS, **kwargs)
             case TaskArtifact(), TaskName():
-                logging.debug("[Connect] %s -> %s", left, right.readable)
+                logging.debug("[Connect] %s -> %s", left, right[:])
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
             case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
                 raise doot.errors.TrackingError("Tried to connect two concrete _registry.artifacts", left, right)
@@ -199,7 +199,7 @@ class _Expansion_m:
                 self._graph.add_node(name)
                 self.nodes[name][API.EXPANDED]     = True
                 self.nodes[name][API.REACTIVE_ADD] = False
-            case TaskName() as x if not x.is_uniq():
+            case TaskName() as x if not x.uuid():
                 raise doot.errors.TrackingError("Nodes should only be instantiated spec names", x)
             case _ if name in self.nodes:
                 # node in graph, nothing to do
@@ -225,7 +225,7 @@ class _Expansion_m:
         returns a list of the new nodes tasknames
         """
         to_expand : set[TaskName|TaskArtifact]
-        assert(name.is_uniq())
+        assert(name.uuid())
         assert(not self.nodes[name].get(API.EXPANDED, False))
         spec                 = self._registry.specs[name]
         spec_pred, spec_succ = self.pred[name], self.succ[name]
@@ -342,14 +342,14 @@ class _Validation_m:
                 case TaskName():
                     if not data.get(API.EXPANDED, False): # every node is expanded
                         failures.append(f"{node} is not expanded")
-                    if not node.is_uniq(): # every node is uniq
+                    if not node.uuid(): # every node is uniq
                         failures.append(f"{node} is not unique")
                     if node not in self._registry.specs: # every node has a spec
                         failures.append(f"{node} has no backing spec")
                 case TaskArtifact():
                     if not data.get(API.EXPANDED, False): # Every node is expanded
                         failures.append(f"{node} is not expanded")
-                    if (TaskArtifact.bmark_e.glob in node
+                    if (TaskArtifact.Wild.glob in node
                         and not bool(self.network.pred[node])):
                         failures.append(f"{node} has no concrete predecessors")
         else:
@@ -415,7 +415,7 @@ class _Validation_m:
                 case TaskArtifact():
                     mapping[x] = str(x)
                 case TaskName():
-                    mapping[x] = f"{x.readable}.{count}"
+                    mapping[x] = f"{x[:]}.{count}"
                     count += 1
 
         mapping[self._root_node] = self._root_node

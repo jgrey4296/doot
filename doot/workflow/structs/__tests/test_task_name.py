@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, PLR0133
 from __future__ import annotations
 
 import logging as logmod
@@ -13,12 +14,13 @@ import warnings
 
 from uuid import UUID
 import pytest
-logging = logmod.root
 
 import doot
 
 from ..task_name import TaskName
 from ...task import DootTask
+
+logging = logmod.root
 
 class TestTaskName:
 
@@ -29,27 +31,6 @@ class TestTaskName:
         simple = TaskName("basic::tail")
         assert(simple.group == "basic")
         assert(simple.body  == "tail")
-
-    def test_build_job(self):
-        simple = TaskName("basic::+.tail")
-        assert(simple.group == "basic")
-        assert(simple.body  == "+.tail")
-        assert(TaskName.Marks.extend in simple)
-
-    def test_build_internal_job(self):
-        simple = TaskName("basic::+._.tail")
-        assert(simple.group == "basic" )
-        assert(simple.body == "+._.tail")
-        assert(TaskName.Marks.extend in simple)
-        assert(TaskName.Marks.hide in simple)
-
-    def test_internal(self):
-        simple = TaskName("agroup::_.internal.task")
-        assert(TaskName.Marks.hide in simple)
-
-    def test_no_internal(self):
-        simple = TaskName("agroup::_internal.task")
-        assert(TaskName.Marks.hide != simple[1:0])
 
     def test_name_strip_leading_tasks_from_group(self):
         simple = TaskName("tasks.basic::tail")
@@ -92,6 +73,62 @@ class TestTaskName:
     def test_subgroups_str(self):
         simple = TaskName("basic.sub.test::tail")
         assert(str(simple) == "basic.sub.test::tail")
+
+class TestTaskName_UUID:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_no_uuid(self):
+        obj = TaskName("basic::a.b.c")
+        assert(not obj.uuid())
+
+    def test_uuid(self):
+        obj = TaskName("basic::a.b.c").to_uniq()
+        assert(obj.uuid())
+
+    def test_different_uuids(self):
+        obj = TaskName("basic::a.b.c")
+        inst1 = obj.to_uniq()
+        inst2 = obj.to_uniq()
+        assert(inst1 is not inst2)
+        assert(inst1 != inst2)
+        assert(inst1.uuid() != inst2.uuid())
+
+class TestTaskName_Marks:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_extend(self):
+        simple = TaskName("basic::+.tail")
+        assert(simple.group == "basic")
+        assert(simple.body  == "+.tail")
+        assert(TaskName.Marks.extend in simple)
+
+    def test_internal(self):
+        simple = TaskName("agroup::_.internal.task")
+        assert(TaskName.Marks.hide in simple)
+
+    def test_no_internal(self):
+        simple = TaskName("agroup::_internal.task")
+        assert(TaskName.Marks.hide not in simple)
+
+    def test_extend_and_internal(self):
+        simple = TaskName("basic::+._.tail")
+        assert(simple.group == "basic" )
+        assert(simple.body == "+._.tail")
+        assert(TaskName.Marks.extend in simple)
+        assert(TaskName.Marks.hide in simple)
+
+    def test_partial(self):
+        simple = TaskName("basic::tail.$partial$")
+        assert(TaskName.Marks.partial in simple)
+
+    def test_customised(self):
+        simple = TaskName("basic::tail.<+>")
+        assert(TaskName.Marks.customised in simple)
+        assert(TaskName.Marks.extend not in simple)
 
 class TestTaskName_Comparison:
 

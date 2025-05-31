@@ -82,8 +82,6 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
     """
     do         : Maybe[CodeReference] = Field(default=None)
-    args       : list[Any]            = Field(default_factory=list)
-    kwargs     : ChainGuard           = Field(default_factory=ChainGuard)
     fun        : Maybe[Func]          = Field(default=None)
 
     @override

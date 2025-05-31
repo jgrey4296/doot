@@ -134,7 +134,7 @@ class _RunnerHandlers_m:
             case TaskArtifact() as art:
                 doot.report.result([art.path], info="Success")
             case Task_p():
-                doot.report.result([task.name.readable], info="Success")
+                doot.report.result([task.name[:]], info="Success")
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 

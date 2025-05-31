@@ -136,7 +136,7 @@ class _HelpTask_m:
             f"{count:4}: Task: {task_name}",
             LINE_SEP,
             f"ver     : {spec.version}",
-            f"Group   : {spec.name[0:]}",
+            f"Group   : {spec.name[0,:]}",
             ]
 
         sources = "; ".join([str(x) for x in spec.sources])

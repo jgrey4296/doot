@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 
 """
@@ -24,9 +24,10 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import BaseModel, Field, field_validator, model_validator
+from jgdv.decorators import DecoratorAccessor_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
+from jgdv.structs.dkey import DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed
 from jgdv.structs.dkey import ExpInst_d
 from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
@@ -58,7 +59,7 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-   from jgdv._abstract.protocols import Key_p
+   from jgdv.structs.dkey import Key_p
 
 # isort: on
 # ##-- end types
@@ -67,94 +68,101 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK_NAME_K
+##--| Vars
+STATE_TASK_NAME_K = doot.constants.patterns.STATE_TASK_NAME_K # type: ignore[attr-defined]
+##--|
 
-class TaskNameDKey(SingleDKey['taskname'],   conv="t"):
+class TaskNameDKey(DKey[TaskName],   conv="t"):
+    __slots__ = ()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
-        self._expansion_type  = TaskName
-        self._typecheck       = TaskName
+        self.data.expansion_type  = TaskName
+        self.data.typecheck       = TaskName
 
-class DootPathSingleDKey(DKey[DKeyMark_e.PATH]):
+class DootPathSingleDKey(DKey["doot.path.single"]):
     """ for paths that are just a single key of a larger string
     eg: `temp`
     """
+    __slots__ = ("_relative",)
     _extra_kwargs : ClassVar[set[str]] = {"relative"}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
-        self._relative        = kwargs.get('relative', False)
+        self.data.expansion_type  = pl.Path
+        self.data.typecheck       = pl.Path
+        self._relative            = kwargs.get('relative', False)
 
     def exp_extra_sources_h(self) -> list:
-        return [doot.locs.Current]
+        return [doot.locs.Current] # type: ignore[attr-defined]
 
-    def exp_final_h(self, val, opts) -> Maybe[ExpInst_d]:
+    def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
         match val:
-            case ExpInst_d(val=pl.Path() as x) if relative and x.is_absolute():
+            case ExpInst_d(value=pl.Path() as x) if relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case ExpInst_d(val=pl.Path()) as x if relative:
+            case ExpInst_d(value=pl.Path()) as x if relative:
                 x.literal = True
                 return x
-            case ExpInst_d(val=pl.Path() as x) as v:
+            case ExpInst_d(value=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
-                v.val = doot.locs.Current.normalize(x)
+                v.value = doot.locs.Current.normalize(x) # type: ignore[attr-defined]
                 v.literal = True
                 return v
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
-class DootPathMultiDKey(MultiDKey[DKeyMark_e.PATH], conv="p", multi=True):
+class DootPathMultiDKey(DKey["doot.path.multi"], conv="p", multi=True):
     """
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`
     """
+    __slots__ = ("_relative",)
     _extra_kwargs : ClassVar[set[str]] = {"relative"}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
-        self._relative        = kwargs.get('relative', False)
+        self.data.expansion_type  = pl.Path
+        self.data.typecheck       = pl.Path
+        self._relative            = kwargs.get('relative', False)
 
-    def exp_pre_lookup_h(self, sources, opts) -> list:
+    def exp_pre_lookup_h(self, sources:list, opts:dict) -> list:
         match self.keys():
             case []:
                 return [[
-                    ExpInst_d(val=str(self), literal=True)
+                    ExpInst_d(value=str(self), literal=True),
                 ]]
             case [*xs]:
                 return super().exp_pre_lookup_h(sources, opts)
-
-
+            case x:
+                raise TypeError(type(x))
 
     def exp_extra_sources_h(self) -> list:
-        return [doot.locs.Current]
+        return [doot.locs.Current] # type: ignore[attr-defined]
 
-    def exp_final_h(self, val, opts) -> Maybe[ExpInst_d]:
+    def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
         match val:
-            case ExpInst_d(val=pl.Path() as x) if relative and x.is_absolute():
+            case ExpInst_d(value=pl.Path() as x) if relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case ExpInst_d(val=pl.Path()) as x if relative:
+            case ExpInst_d(value=pl.Path()) as x if relative:
                 return x
-            case ExpInst_d(val=pl.Path() as x) as v:
+            case ExpInst_d(value=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
-                v.val = doot.locs.Current.normalize(x)
+                v.value = doot.locs.Current.normalize(x) # type: ignore[attr-defined]
                 return v
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
-class DootKeyed(DKeyed):
+class DootKeyed(DecoratorAccessor_m, DKeyed):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
     specific for doot
     """
     _decoration_builder : ClassVar[type] = DKeyExpansionDecorator
 
     @classmethod
-    def taskname(cls, fn) -> Decorator:
-        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark="taskname")]
-        return cls._build_decorator(keys)(fn)
+    def taskname(cls, fn:Callable) -> Decorator:
+        keys    = [DKey(STATE_TASK_NAME_K, implicit=True, mark="taskname")]
+        dec     = cls._build_decorator(keys)
+        result  = dec(fn)
+        return result

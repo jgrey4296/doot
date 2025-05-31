@@ -21,6 +21,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 # ##-- 3rd party imports
 import pytest
 from jgdv.structs.dkey import DKey
+from jgdv.structs.strang import StrangError
 
 # ##-- end 3rd party imports
 
@@ -94,7 +95,7 @@ class TestInjectSpec:
             InjectSpec.build({"from_spec":{"a":"b"}})
 
     def test_build_with_bad_lhs_keys(self):
-        with pytest.raises(doot.errors.InjectionError):
+        with pytest.raises(doot.errors.InjectionError) as ctx:
             InjectSpec.build({"from_spec":{"{a}":"{b}"}})
 
 class TestInjectSpec_Validation:

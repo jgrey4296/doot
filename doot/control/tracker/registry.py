@@ -129,7 +129,7 @@ class _Registration_m(_Registry_d):
         while bool(queue):
             spec = queue.pop(0)
             if TaskMeta_e.DISABLED in spec.meta:
-                logging.info("[Disabled] task: %s", spec.name.readable)
+                logging.info("[Disabled] task: %s", spec.name[:])
                 continue
 
             match spec.name:
@@ -138,16 +138,16 @@ class _Registration_m(_Registry_d):
                         raise ValueError("Tried to overwrite a spec", spec.name)
                     continue
                 case TaskName() as x if x[-1] == "<partial>":
-                    logging.info("[+.Partial] : %s", spec.name.readable)
+                    logging.info("[+.Partial] : %s", spec.name[:])
                     spec = self._reify_partial_spec(spec)
-                case TaskName() if x.is_uniq(): # type: ignore
+                case TaskName() if x.uuid(): # type: ignore
                     logging.info("[+.Concrete] : %s", spec.name)
                 case TaskName():
                     logging.info("[+.Abstract] : %s", spec.name)
 
             self.specs[spec.name] = spec
             self._register_spec_artifacts(spec)
-            if spec.name.is_uniq():
+            if spec.name.uuid():
                 self.concrete[spec.name.de_uniq()].append(spec.name)
                 # Only concrete specs generate extra
                 queue += spec.generate_specs()
@@ -180,8 +180,8 @@ class _Registration_m(_Registry_d):
         """ Register the artifacts a spec produces """
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=TaskArtifact() as art, relation=rel):
-                    self._register_artifact(art, spec.name, relation=rel)
+                case RelationSpec(target=TaskArtifact() as art, relation=reltype):
+                    self._register_artifact(art, spec.name, relation=reltype)
                 case _:
                     pass
 
@@ -207,14 +207,14 @@ class _Registration_m(_Registry_d):
         This is the reverse mapping to allow for that
 
         """
-        assert(not spec.name.is_uniq())
+        assert(not spec.name.uuid())
 
         # Register Indirect dependencies:
         # So if spec blocks target,
         # record that target needs spec
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.is_uniq():
+                case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.uuid():
                     logging.info("[Requirement]: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self.blockers[target].append(rel)
@@ -263,11 +263,11 @@ class _Instantiation_m(_Registry_d):
         match name:
             case _ if extra is True:
                 name = name.de_uniq()
-            case x if extra is False and x.is_uniq() and x in self.specs:
+            case x if extra is False and x.uuid() and x in self.specs:
                 return name
             case x if extra is False:
                 return None
-            case TaskName() as x if not x.is_uniq():
+            case TaskName() as x if not x.uuid():
                 pass
             case TaskName() as x if x in self.specs:
                 logging.info("[Instance.Uniq] %s", x)
@@ -294,7 +294,7 @@ class _Instantiation_m(_Registry_d):
                 # apply additional settings onto the instance
                 instance_spec = instance_spec.under(extra)
 
-        assert(instance_spec.name.is_uniq())
+        assert(instance_spec.name.uuid())
         logging.debug("[Instance.new] %s into %s", name, instance_spec.name)
         # register the actual concrete spec
         self.register_spec(instance_spec)
@@ -309,7 +309,6 @@ class _Instantiation_m(_Registry_d):
         returns the concrete TaskName of the instanced target of the relation
         """
         control_obj : Task_p|TaskSpec
-        target_obj  : Task_p|TaskSpec
         instance    : TaskName
         existing    : TaskName
         ##--|
@@ -320,11 +319,11 @@ class _Instantiation_m(_Registry_d):
             raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
 
         assert(isinstance(rel.target, TaskName))
-        if rel.target.is_uniq() and rel.target in self.specs:
+        if rel.target.uuid() and rel.target in self.specs:
             logging.debug("[Instance.Relation.Exists] : %s", rel.target)
             return rel.target
 
-        control_obj = self.tasks.get(control, None) or self.specs[control]
+        control_obj = self.tasks.get(control, None) or self.specs[control] # type: ignore[arg-type]
         potentials  = self.concrete.get(rel.target, [])
         for existing in potentials:
             if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]):
@@ -364,7 +363,7 @@ class _Instantiation_m(_Registry_d):
         task : Task_p
 
         match name, task_obj:
-            case TaskName() as x, _ if not x.is_uniq():
+            case TaskName() as x, _ if not x.uuid():
                 raise doot.errors.TrackingError("Tried to build a task using a non-concrete spec", name)
             case TaskName() as x, Task_p() as obj if x not in self.tasks:
                 self.tasks[x] = obj
@@ -452,10 +451,10 @@ class TrackRegistry(_Registry_d):
         """
         match target, status:
             case Task_p() as task, TaskStatus_e() if task.name in self.tasks:
-                logging.info("[%s] %s -> %s", task.name.readable, self.get_status(task.name), status) # type: ignore
+                logging.info("[%s] %s -> %s", task.name[:], self.get_status(task.name), status) # type: ignore
                 self.tasks[task.name].status = status # type: ignore
             case TaskName() as task, TaskStatus_e() if task in self.tasks:
-                logging.info("[%s] %s -> %s", task.readable, self.get_status(task), status)
+                logging.info("[%s] %s -> %s", task[:], self.get_status(task), status)
                 self.tasks[task].status = status
             case TaskName() as task, TaskStatus_e():
                 logging.debug("[%s] Not Started Yet", task)

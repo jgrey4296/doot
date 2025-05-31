@@ -71,10 +71,12 @@ if TYPE_CHECKING:
     import enum
     from typing import Final
     from typing import ClassVar, LiteralString
-    from typing import Never, Self, Literal
+    from typing import Never, Self, Literal, _SpecialType
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    type SpecialType = _SpecialType
 
 # isort: on
 # ##-- end types
@@ -124,6 +126,7 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
 
       # TODO handle callables?
     """
+    rel_root : TaskName
     match group: # Build initial Relation/Action Specs
         case None | []:
             return []
@@ -137,9 +140,11 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
     for x in results[:]: # Build Implicit Relations.
         match x:
             case RelationSpec(target=TaskName() as target, relation=rel) if target.is_cleanup(): # type: ignore[misc]
-                results.append(RelationSpec.build(target.root(), relation=rel))
+                rel_root = target.pop(top=True)
+                results.append(RelationSpec.build(rel_root, relation=rel))
             case RelationSpec(target=TaskName() as target, relation=rel) if target.is_head():
-                results.append(RelationSpec.build(target.root(), relation=rel))
+                rel_root = target.pop(top=True)
+                results.append(RelationSpec.build(rel_root, relation=rel))
             case _:
                 pass
 
@@ -162,7 +167,7 @@ class _GenerateUtils_m:
     def generate_specs(self:TaskSpec_i) -> list[TaskSpec]:
         logging.debug("[Generate] : %s (%s)", self.name, len(self.generated_names))
         result : list[TaskSpec] = []
-        if not self.name.is_uniq():
+        if not self.name.uuid():
             return result
 
         needs_job_head = TaskMeta_e.JOB in self.meta and not self.name.is_head()
@@ -280,6 +285,8 @@ class _TransformerUtils_m:
           be only 1 in, 1 out solo file relation
 
           """
+        x : Any
+        y : Any
         match self._transform:
             case False:
                 return None
@@ -304,7 +311,7 @@ class _TransformerUtils_m:
 
         for y in self.required_for:
             match y:
-                case RelationSpec(target=TaskArtifact() as target) if Location.bmark_e.glob in target:
+                case RelationSpec(target=TaskArtifact() as target) if Location.Marks.glob in target:
                     pass
                 case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if post is not None:
@@ -331,16 +338,16 @@ class _SpecUtils_m:
     """General utilities mixin for task specs"""
 
     @classmethod
-    def build(cls:type[TaskSpec_i], data:ChainGuard|dict|TaskName|str) -> TaskSpec_i:
+    def build[T:TaskSpec_i](cls:type[T], data:ChainGuard|dict|TaskName|str) -> T:
         match data:
             case ChainGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
             case ChainGuard() | dict():
                 return cls(**data)
             case TaskName():
-                return cls(name=data)
+                return cls(name=data) # type: ignore[call-arg]
             case str():
-                return cls(name=TaskName(data))
+                return cls(name=TaskName(data)) # type: ignore[call-arg]
 
     def instantiate(self:TaskSpec_i) -> TaskSpec:
         """
@@ -352,7 +359,7 @@ class _SpecUtils_m:
         return instance
 
     def reify_partial(self:TaskSpec_i, actual:TaskSpec) -> TaskSpec:
-        if self.name[-1] != API.PARTIAL:
+        if TaskName.Marks.partial not in self.name:
             raise ValueError("Tried to reify a non-partial spec", self.name)
 
         last_source = self.sources[-1]
@@ -372,11 +379,17 @@ class _SpecUtils_m:
         result = data._specialize_merge(self)
         match suffix:
             case None:
-                result.name = self.name.push(API.EXTENDED)
+                result.name = self.name.push(TaskName.Marks.customised)
             case False:
                 pass
             case str():
                 result.name = self.name.push(suffix)
+
+        if not self.name.uuid():
+            return result
+        if not result.name.uuid():
+            return result.instantiate()
+
         return result
 
     def under(self:TaskSpec_i, data:dict|TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:
@@ -390,28 +403,33 @@ class _SpecUtils_m:
             case TaskSpec():
                 result = self._specialize_merge(data)
             case dict():
-                data.setdefault('name', self.name.push("<data>"))
+                data.setdefault('name', self.name.push(TaskName.Marks.data))
                 basic = TaskSpec.build(data)
                 result = self._specialize_merge(basic)
 
         match suffix:
             case None:
-                result.name = result.name.push(API.EXTENDED)
+                result.name = result.name.push(TaskName.Marks.customised)
             case False:
                 pass
             case str():
                 result.name = result.name.push(suffix)
 
+        if not self.name.uuid():
+            return result
+
+        if not result.name.uuid():
+            return result.instantiate()
+
         return result
 
-    def make(self:TaskSpec_i, *, ensure:type=Any, inject:Maybe[tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:
+    def make(self:TaskSpec_i, *, ensure:type|SpecialType=None, inject:Maybe[tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:  # noqa: PLR0912
         """ Create actual task instance
 
         """
         if self.name.is_cleanup() and parent is None:
             raise ValueError("Parent was missing for cleanup task", self.name)
 
-        # doot.report.line(f"Making: {self.name}")
         match self.ctor(check=ensure): # Make the task object
             case ImportError() as err:
                 raise err
@@ -436,7 +454,7 @@ class _SpecUtils_m:
             case []:
                 pass
             case [*xs]:
-                source    = str(self.name.root())
+                source    = str(self.name.pop(top=True))
                 task_args = doot.args.on_fail({}).sub[source]()
                 for cli in xs:
                     task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
@@ -464,7 +482,7 @@ class _SpecUtils_m:
         Combines, rather than overrides, particular values.
 
         """
-        specialized = dict(self)
+        specialized = dict(self) # type: ignore[call-overload]
         specialized |= dict(data)
 
         # Then special updates
@@ -483,7 +501,7 @@ class _SpecUtils_m:
         specialized[API.META_K].update(data.meta)
         specialized[API.META_K].difference_update({TaskMeta_e.INTERNAL})
 
-        logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
+        logging.debug("Specialized Task: %s on top of: %s", data.name[:], self.name)
         result = TaskSpec.build(specialized)
         assert(not bool(result.generated_names))
         return result
@@ -505,7 +523,15 @@ class _TaskSpecBase:
     def params(self) -> dict:
         return self.model_extra
 
-class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="allow"):
+    @property
+    def args(self) -> list:
+        return []
+
+    @property
+    def kwargs(self) -> dict:
+        return self.model_extra
+
+class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="allow"): # type: ignore[call-arg]
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the chainguard
 
@@ -518,73 +544,52 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     """
 
     ##--|
-    name                              : TaskName                                                = Field()
-    doc                               : Maybe[list[str]]                                        = Field(default_factory=list)
-    sources                           : list[Maybe[TaskName|pl.Path]]                           = Field(default_factory=list)
+
+    name              : TaskName                                                 = Field()
+    doc               : Maybe[list[str]]                                         = Field(default_factory=list)
+    sources           : list[Maybe[TaskName|pl.Path]]                            = Field(default_factory=list)
 
     # Action Groups:
-    actions                           : ActionGroup                                             = Field(default_factory=list)
-    required_for                      : ActionGroup                                             = Field(default_factory=list)
-    depends_on                        : ActionGroup                                             = Field(default_factory=list)
-    setup                             : ActionGroup                                             = Field(default_factory=list)
-    cleanup                           : ActionGroup                                             = Field(default_factory=list)
-    on_fail                           : ActionGroup                                             = Field(default_factory=list)
+    actions           : ActionGroup                                              = Field(default_factory=list)
+    required_for      : ActionGroup                                              = Field(default_factory=list)
+    depends_on        : ActionGroup                                              = Field(default_factory=list)
+    setup             : ActionGroup                                              = Field(default_factory=list)
+    cleanup           : ActionGroup                                              = Field(default_factory=list)
+    on_fail           : ActionGroup                                              = Field(default_factory=list)
 
-    # Any additional information:
-    version                           : str                                                     = Field(default=doot.__version__) # TODO: make dict?
-    priority                          : int                                                     = Field(default=10)
-    ctor                              : CodeReference                                           = Field(default=None, validate_default=True)
-    queue_behaviour                   : API.QueueMeta_e                                         = Field(default=API.QueueMeta_e.default)
-    meta                              : set[TaskMeta_e]                                         = Field(default_factory=set)
-    _transform                        : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]] = None
-    generated_names                   : set[TaskName]                                           = Field(init=False, default_factory=set)
+    # Any additional
+    version           : str                                                      = Field(default=doot.__version__) # TODO: make dict?
+    priority          : int                                                      = Field(default=10)
+    ctor              : CodeReference                                            = Field(default=None, validate_default=True)
+    queue_behaviour   : API.QueueMeta_e                                          = Field(default=API.QueueMeta_e.default)
+    meta              : set[TaskMeta_e]                                          = Field(default_factory=set)
+    _transform        : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]]  = None
+    generated_names   : set[TaskName]                                            = Field(init=False, default_factory=set)
 
-    # task specific extras to use in state
-    _default_ctor                     : ClassVar[str]                                           = DEFAULT_ALIAS
-    # Action Groups that are depended on, rather than are dependencies of, this task:
-    _blocking_groups                  : ClassVar[tuple[str]]                                    = DEFAULT_BLOCKING
+    # task specific estate
+    _default_ctor     : ClassVar[str]                                            = DEFAULT_ALIAS
+    # Action Groups t on, rather than are dependencies of, this task:
+    _blocking_groups  : ClassVar[tuple[str, ...]]                                = DEFAULT_BLOCKING
 
-    mark_e                            : ClassVar[enum.Enum]                                     = TaskMeta_e
+    mark_e            : ClassVar[type[enum.Enum]]                                = TaskMeta_e
+
+    ##--|
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
         """ converts a-key into a_key, and joins group+name """
-        cleaned = {k.replace(API.DASH_S, API.USCORE_S) : v  for k,v in data.items()}
-        if API.GROUP_K in cleaned and TaskName._separator not in cleaned[API.GROUP_K]:
-            cleaned[API.NAME_K] = TaskName._separator.join([cleaned[API.GROUP_K], cleaned[API.NAME_K]])
+        cleaned  : dict
+        sep      : Maybe[str]                                                    = TaskName.section(0).end
+        assert(sep is not None)
+
+        cleaned                                                                  = {k.replace(API.DASH_S, API.USCORE_S) : v  for k,v in data.items()}
+        if API.GROUP_K in cleaned and sep not in cleaned[API.GROUP_K]:
+            cleaned[API.NAME_K]                                                  = sep.join([cleaned[API.GROUP_K], cleaned[API.NAME_K]])
             del cleaned[API.GROUP_K]
         return cleaned
 
-    @model_validator(mode="after")
-    def _validate_metadata(self) -> Self:
-        if self.extra.on_fail(False).disabled(): # noqa: FBT003
-            self.meta.add(TaskMeta_e.DISABLED)
-
-        if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
-            self.meta.add(TaskMeta_e.JOB)
-
-        match self.ctor():
-            case ImportError() as err:
-                logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
-                self.meta.add(TaskMeta_e.DISABLED)
-                self.ctor = None
-            case x if TaskMeta_e.JOB in self.meta and not isinstance(x, Job_p):
-                self.ctor = CodeReference(doot.aliases.task[API.DEFAULT_JOB])
-            case None:
-                pass
-            case x if isinstance(x, Task_p):
-                self.meta.add(x._default_flags)
-
-        if TaskMeta_e.TRANSFORMER not in self.meta:
-            self._transform = False
-
-        if self.name[-1] == API.PARTIAL and not bool(self.sources):
-            raise ValueError("Tried to create a partial spec with no base source", self.name)
-
-        return self
-
     @field_validator("name", mode="before")
-    def _validate_name(cls, val) -> TaskName:
+    def _validate_name(cls, val:str|TaskName) -> TaskName:
         match val:
             case TaskName():
                 return val
@@ -599,7 +604,8 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
                 raise TypeError("A TaskSpec Name should be a str or TaskName", val)
 
     @field_validator("meta", mode="before")
-    def _validate_meta(cls, val) -> set:
+    def _validate_meta(cls, val:str|list|set|TaskMeta_e) -> set[str]:
+        vals : Iterable[str]
         match val:
             case TaskMeta_e():
                 return {val}
@@ -607,14 +613,16 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
                 vals = [val]
             case set() | list():
                 vals = val
+            case x:
+                raise TypeError(type(x))
 
         return {x if isinstance(x, TaskMeta_e) else TaskMeta_e[x] for x in vals}
 
     @field_validator("ctor", mode="before")
-    def _validate_ctor(cls, val) -> CodeReference:
+    def _validate_ctor(cls, val:Maybe[str|CodeReference]) -> CodeReference:
         match val:
             case None:
-                default_alias = TaskSpec._default_ctor
+                default_alias = cls._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return CodeReference(coderef_str)
             case EntryPoint():
@@ -627,33 +635,33 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
                 return CodeReference(val)
 
     @field_validator("queue_behaviour", mode="before")
-    def _validate_queue_behaviour(cls, val) -> API.QueueMeta_e:
+    def _validate_queue_behaviour(cls, val:str|API.QueueMeta_e) -> API.QueueMeta_e:
         match val:
             case API.QueueMeta_e():
                 return val
             case str():
-                return API.QueueMeta_e.build(val)
+                return API.QueueMeta_e(val)
             case _:
                 raise ValueError("Queue Behaviour needs to be a str or a QueueMeta_e enum", val)
 
     @field_validator("sources", mode="before")
-    def _validate_sources(cls, val) -> list:
+    def _validate_sources(cls, val:list[Maybe[str|TaskName]]) -> list[Maybe[str|TaskName|pl.Path]]:
         """ builds the soures list, converting strings to task names,
 
           """
-        result = []
+        result : list[Maybe[str|TaskName|pl.Path]] = []
         for x in val:
             match x:
                 case API.NONE_S | None:
                     result.append(None)
-                case TaskName() if x[-1] == API.PARTIAL:
+                case TaskName() as x if TaskName.Marks.partial in x:
                     raise ValueError("A TaskSpec can not rely on a partial spec", x)
                 case TaskName() | pl.Path():
                     result.append(x)
                 case str():
                     try:
                         name = TaskName(x)
-                        if name[-1] == API.PARTIAL:
+                        if TaskName.Marks.partial in name:
                             raise ValueError("A TaskSpec can not rely on a partial spec", x)
                         result.append(name)
                     except (StrangErrs.StrangError, ValidationError):
@@ -662,6 +670,49 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
                     raise TypeError("Bad Typed Source", x)
 
         return result
+
+    @model_validator(mode="after")
+    def _validate_metadata(self) -> Self:
+        """ General object validator, mainly for metadata processing
+
+        """
+        base_meta : set[TaskMeta_e] = self.meta.copy()
+        # Basic metadata from the spec:
+        if self.extra.on_fail(False).disabled(): # noqa: FBT003
+            base_meta.add(TaskMeta_e.DISABLED)
+
+        if TaskName.Marks.extend in self.name and not self.name.is_head():
+            base_meta.add(TaskMeta_e.JOB)
+
+        # Get metadata from the task ctor:
+        if TaskMeta_e.JOB in base_meta and self.ctor[:] == doot.aliases.task[self._default_ctor]:
+            self.ctor = CodeReference(doot.aliases.task[API.DEFAULT_JOB])
+
+        match self.ctor():
+            case ImportError() as err:
+                logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
+                base_meta.add(TaskMeta_e.DISABLED)
+            case type() as x if TaskMeta_e.JOB in base_meta and not isinstance(x, Job_p):
+                logging.warning("Ctor Not a Job for: %s : %s", self.name, self.ctor)
+                base_meta.add(TaskMeta_e.DISABLED)
+            case type() as x if hasattr(x, "_default_flags"):
+                base_meta.update(x._default_flags)
+            case x:
+                raise TypeError(type(x))
+
+        # Validate
+        if TaskName.Marks.partial in self.name and not bool(self.sources):
+            raise ValueError("Tried to create a partial spec with no base source", self.name)
+
+        if TaskMeta_e.TRANSFORMER not in base_meta:
+            self._transform = False
+
+        # Update the spec
+        if not bool(base_meta) and (default:=TaskMeta_e.default()):
+            base_meta.add(default)
+        self.meta.update(base_meta)
+
+        return self
 
     def __hash__(self):
         return hash(str(self.name))
