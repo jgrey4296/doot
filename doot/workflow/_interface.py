@@ -33,7 +33,6 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.strang._interface import Strang_p
-from jgdv.mixins.enum_builders import EnumBuilder_m
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -95,7 +94,7 @@ DEFAULT_PRIORITY  : Final[int]        = 10
 # Body:
 ##--| Enums
 
-class QueueMeta_e(EnumBuilder_m, enum.Enum):
+class QueueMeta_e(enum.Enum):
     """ available ways a task can be activated for running
       onRegister/auto     : activates automatically when added to the task network
       reactive            : activates if an adjacent node completes

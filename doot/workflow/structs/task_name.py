@@ -27,7 +27,6 @@ from jgdv import Maybe, Proto
 from jgdv.structs.strang import Strang
 from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
 from jgdv.structs.strang.processor import StrangBasicProcessor
-from jgdv.mixins.enum_builders import FlagsBuilder_m
 
 # ##-- end 3rd party imports
 

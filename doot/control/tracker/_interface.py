@@ -28,7 +28,6 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv.mixins.enum_builders import EnumBuilder_m
 from doot.workflow._interface import TaskStatus_e, ArtifactStatus_e
 
 # ##-- types
@@ -61,7 +60,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class EdgeType_e(EnumBuilder_m, enum.Enum):
+class EdgeType_e(enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
 
     TASK              = enum.auto() # task to task

@@ -27,7 +27,6 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv.mixins.enum_builders import EnumBuilder_m
 
 # ##-- types
 # isort: off
@@ -63,7 +62,7 @@ logging = logmod.getLogger(__name__)
 # Body:
 
 
-class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
+class ExecutionPolicy_e(enum.Enum):
     """ How the task execution will be ordered
       PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
       DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
