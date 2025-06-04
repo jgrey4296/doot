@@ -80,39 +80,7 @@ class TaskNameDKey(DKey[TaskName],   conv="t"):
         self.data.expansion_type  = TaskName
         self.data.typecheck       = TaskName
 
-class DootPathSingleDKey(DKey["doot.path.single"]):
-    """ for paths that are just a single key of a larger string
-    eg: `temp`
-    """
-    __slots__ = ("_relative",)
-    _extra_kwargs : ClassVar[set[str]] = {"relative"}
-
-    def __init__(self, *args:Any, **kwargs:Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.data.expansion_type  = pl.Path
-        self.data.typecheck       = pl.Path
-        self._relative            = kwargs.get('relative', False)
-
-    def exp_extra_sources_h(self) -> list:
-        return [doot.locs.Current] # type: ignore[attr-defined]
-
-    def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]:
-        relative = opts.get("relative", False)
-        match val:
-            case ExpInst_d(value=pl.Path() as x) if relative and x.is_absolute():
-                raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case ExpInst_d(value=pl.Path()) as x if relative:
-                x.literal = True
-                return x
-            case ExpInst_d(value=pl.Path() as x) as v:
-                logging.debug("Normalizing Single Path Key: %s", x)
-                v.value = doot.locs.Current.normalize(x) # type: ignore[attr-defined]
-                v.literal = True
-                return v
-            case x:
-                raise TypeError("Path Expansion did not produce a path", x)
-
-class DootPathMultiDKey(DKey["doot.path.multi"], conv="p", multi=True):
+class DootPathMultiDKey(DKey[DKey.Marks.MULTI], mark=pl.Path, ctor=pl.Path, conv="p"):
     """
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`
@@ -126,19 +94,20 @@ class DootPathMultiDKey(DKey["doot.path.multi"], conv="p", multi=True):
         self.data.typecheck       = pl.Path
         self._relative            = kwargs.get('relative', False)
 
-    def exp_pre_lookup_h(self, sources:list, opts:dict) -> list:
-        match self.keys():
-            case []:
-                return [[
-                    ExpInst_d(value=str(self), literal=True),
-                ]]
-            case [*xs]:
-                return super().exp_pre_lookup_h(sources, opts)
-            case x:
-                raise TypeError(type(x))
+    def _multi(self) -> Literal[True]:
+        return True
 
     def exp_extra_sources_h(self) -> list:
         return [doot.locs.Current] # type: ignore[attr-defined]
+
+    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:
+        result = super().exp_pre_lookup_h(sources, opts)
+        if not bool(result):
+            result.append([
+                ExpInst_d(value=self[:], literal=True),
+            ])
+        return result
+
 
     def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)

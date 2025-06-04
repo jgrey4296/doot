@@ -19,7 +19,7 @@ from typing import (Any, Callable, ClassVar, Final, Generic, Iterable,
 # ##-- 3rd party imports
 import pytest
 from jgdv.structs.dkey import DKey, DKeyed, ImportDKey
-from jgdv.structs.dkey._interface import Key_p
+from jgdv.structs.dkey._interface import Key_p, MultiKey_p
 from jgdv.structs.locator import JGDVLocator as DootLocator
 from jgdv.structs.strang import CodeReference, StrangError
 
@@ -34,6 +34,7 @@ from doot.workflow.structs.task_name import TaskName
 
 # ##-- end 1st party imports
 
+from .. import dkey as dootkeys
 # Vars:
 logging                                = logmod.root
 
@@ -56,94 +57,40 @@ class TestTaskNameDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-
     def test_retrieval(self):
         tn_key = DKey[TaskName]
+        assert(tn_key is dootkeys.TaskNameDKey)
 
     def test_basic(self):
-        match DKey("test", force=DKey[TaskName]):
+        val = DKey[TaskName]
+        match DKey[TaskName]("{test}"):
             case dkey.TaskNameDKey() as x:
                 assert(DKey.MarkOf(x) == DKey.MarkOf(DKey[TaskName]))
             case x:
-                assert(False), x
+                assert(False), type(x)
 
     @pytest.mark.skip
     def test_todo(self):
         pass
 
-class TestPathSingleKey:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_basic(self):
-        match DKey("test", force=dkey.DootPathSingleDKey):
-            case dkey.DootPathSingleDKey() as x:
-                assert(DKey.MarkOf(x) == "doot.path.single")
-                assert(True)
-            case x:
-                 assert(False), x
-
-    def test_expansion_miss(self):
-        assert(doot.locs is not None)
-        assert("test" not in doot.locs)
-        key = DKey("{test}", force=dkey.DootPathSingleDKey)
-        match key.expand(None, {}):
-            case None:
-                assert(True)
-            case x:
-                 assert(False), x
-
-    def test_expansion_hit(self):
-        assert(doot.locs is not None)
-        assert("test" not in doot.locs)
-        key = DKey("{test}", force=dkey.DootPathSingleDKey)
-        match key.expand(None, {"test":"blah"}):
-            case pl.Path() as x:
-                assert(x == pl.Path.cwd() / "blah")
-                assert(True)
-            case x:
-                 assert(False), x
-
-    def test_expansion_hit_loc(self):
-        locs = DootLocator(pl.Path.cwd())
-        locs.update({"test": "blah"})
-        key = DKey("{test}", force=dkey.DootPathSingleDKey)
-        match key.expand(None, locs):
-            case pl.Path() as x:
-                assert(x == pl.Path.cwd() / "blah")
-                assert(True)
-            case x:
-                 assert(False), x
-
-    def test_expansion_implicit_hit_loc(self):
-        locs = DootLocator(pl.Path.cwd())
-        locs.update({"test": "blah"})
-        key = DKey("test", force=dkey.DootPathSingleDKey, implicit=True)
-        match key.expand(None, locs):
-            case pl.Path() as x:
-                assert(x == pl.Path.cwd() / "blah")
-                assert(True)
-            case x:
-                 assert(False), x
-
-    @pytest.mark.skip
-    def test_todo(self):
-        pass
-
-@pytest.mark.xfail
 class TestPathMultiKey:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+    def test_retrieval(self):
+        pathkey = DKey[pl.Path]
+        assert(pathkey is dootkeys.DootPathMultiDKey)
+        assert(isinstance(pathkey, MultiKey_p))
+        assert(isinstance(pathkey, Key_p))
+
     def test_basic(self):
-        match DKey("test", force=dkey.DootPathMultiDKey):
+        match DKey[pl.Path]("{test}"):
             case dkey.DootPathMultiDKey() as x:
-                assert(DKey.MarkOf(x) == "doot.path.multi")
+                assert(DKey.MarkOf(x) == pl.Path)
                 assert(True)
             case x:
-                 assert(False), x
+                 assert(False), type(x)
 
     def test_expansion_implicit_hit_loc(self):
         """
@@ -155,7 +102,7 @@ class TestPathMultiKey:
         assert("test" in locs)
         assert(locs['{test}'] == target)
         assert(locs.normalize(locs.test) == target)
-        key = DKey["doot.path.multi"]("{test}")
+        key = DKey[pl.Path]("{test}")
         match key.expand(locs):
             case pl.Path() as x:
                 assert(x == target)
@@ -164,16 +111,17 @@ class TestPathMultiKey:
 
     def test_expansion_explicit_loc(self):
         target = pl.Path.cwd() / "test"
-        key = DKey("test", force=dkey.DootPathMultiDKey, implicit=False)
+        key = DKey[pl.Path]("test")
+        assert(isinstance(key, dootkeys.DootPathMultiDKey))
         match key.expand():
             case pl.Path() as x:
                 assert(x == target)
             case x:
-                assert(False), x
+                assert(False), (type(x), x)
 
     def test_expansion_loc_miss(self):
         assert(doot.locs is not None)
-        key = DKey("{test}", mark=DKey.Marks.PATH)
+        key = DKey[pl.Path]("{test}")
         match key.expand(None, {}):
             case None:
                 assert(True)
