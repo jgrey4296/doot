@@ -72,7 +72,7 @@ logging = logmod.getLogger(__name__)
 STATE_TASK_NAME_K = doot.constants.patterns.STATE_TASK_NAME_K # type: ignore[attr-defined]
 ##--|
 
-class TaskNameDKey(DKey[TaskName],   conv="t"):
+class TaskNameDKey(DKey, mark=TaskName,  convert="t"):
     __slots__ = ()
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:
@@ -80,7 +80,7 @@ class TaskNameDKey(DKey[TaskName],   conv="t"):
         self.data.expansion_type  = TaskName
         self.data.typecheck       = TaskName
 
-class DootPathMultiDKey(DKey[DKey.Marks.MULTI], mark=pl.Path, ctor=pl.Path, conv="p"):
+class DootPathDKey(DKey[DKey.Marks.MULTI], mark=pl.Path, ctor=pl.Path, convert="p"):
     """
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`
@@ -131,7 +131,7 @@ class DootKeyed(DecoratorAccessor_m, DKeyed):
 
     @classmethod
     def taskname(cls, fn:Callable) -> Decorator:
-        keys    = [DKey(STATE_TASK_NAME_K, implicit=True, mark="taskname")]
+        keys    = [DKey[TaskName](STATE_TASK_NAME_K, implicit=True, mark="taskname")]
         dec     = cls._build_decorator(keys)
         result  = dec(fn)
         return result
