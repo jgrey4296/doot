@@ -60,6 +60,7 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
    from jgdv.structs.dkey import Key_p
+   from jgdv.structs.dkey._util._interface import SourceChain_d
 
 # isort: on
 # ##-- end types
@@ -97,11 +98,11 @@ class DootPathDKey(DKey[DKey.Marks.MULTI], mark=pl.Path, ctor=pl.Path, convert="
     def _multi(self) -> Literal[True]:
         return True
 
-    def exp_extra_sources_h(self) -> list:
-        return [doot.locs.Current] # type: ignore[attr-defined]
+    def exp_extra_sources_h(self, current:SourceChain_d) -> SourceChain_d:
+        return current.extend(doot.locs.Current)
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:
-        result = super().exp_pre_lookup_h(sources, opts)
+    def exp_generate_alternatives_h(self, sources:SourceChaind_d, opts:dict) -> list[list[ExpInst_d]]:
+        result = super().exp_generate_alternatives_h(sources, opts)
         if not bool(result):
             result.append([
                 ExpInst_d(value=self[:], literal=True),

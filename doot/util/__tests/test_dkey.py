@@ -434,11 +434,11 @@ class TestDKeyPathKeys:
         """
           name -> missing -> fallback
         """
-        target = "blah"
-        key    = dkey.DKey(name, mark=dkey.DKey.Marks.PATH, fallback="blah", implicit=True)
+        target = pl.Path("blah").resolve()
+        key    = dkey.DKey[pl.Path](name, fallback=pl.Path("blah"), implicit=True)
         state  = {}
         match key.expand(state):
-            case str() as result:
+            case pl.Path() as result:
                 assert(result == target)
             case x:
                 assert(False), x
