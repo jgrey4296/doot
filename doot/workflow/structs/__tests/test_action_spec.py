@@ -15,6 +15,7 @@ import pytest
 logging = logmod.root
 
 from jgdv.structs.strang import CodeReference
+from jgdv._abstract.protocols import SpecStruct_p
 import doot
 from ..action_spec import ActionSpec
 
@@ -38,6 +39,11 @@ class TestActionSpec:
         obj = ActionSpec.build([])
         obj2 = ActionSpec.build(obj)
         assert(obj is obj2)
+
+    def test_build_with_args(self):
+        obj = ActionSpec(do="log", args=[1,2,3])
+        assert(obj.args == [1,2,3])
+        assert(isinstance(obj, SpecStruct_p))
 
     def test_call(self, mocker):
         fun_mock = mocker.Mock()

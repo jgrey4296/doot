@@ -601,7 +601,6 @@ class TestTrackerNetworkBuild_Artifacts:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
     def test_build_dep_chain_with_artifact(self, network):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj   = network
@@ -635,7 +634,6 @@ class TestTrackerNetworkBuild_Artifacts:
         assert(spec.depends_on[0].target in obj.pred[instance])
         assert(instance in obj.succ[spec.depends_on[0].target])
 
-    @pytest.mark.xfail
     def test_build_with_concrete_artifact(self, network):
         obj = network
         spec  = TaskSpec.build({"name":"basic::task", "required_for":["file::>basic.txt"]})

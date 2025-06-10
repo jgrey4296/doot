@@ -24,7 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import BaseModel, Field, field_validator, model_validator
-from jgdv import Maybe
+from jgdv import Maybe, Proto
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
@@ -71,7 +71,7 @@ logging = logmod.getLogger(__name__)
 ALIASES = doot.aliases.on_fail([]).action # type: ignore
 
 ##--| body
-class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+class ActionSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.
@@ -82,6 +82,8 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
     """
     do         : Maybe[CodeReference] = Field(default=None)
+    args       : list[Any]            = Field(default_factory=list)
+    kwargs     : ChainGuard           = Field(default_factory=ChainGuard)
     fun        : Maybe[Func]          = Field(default=None)
 
     @override

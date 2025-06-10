@@ -204,9 +204,9 @@ class CopyAction(IOBase):
 
         match _from:
             case str() | pl.Path():
-                expanded = [DKey(_from, fallback=pl.Path(_from), mark=DKey.Mark.PATH).expand(spec, state)]
+                expanded = [DKey[pl.Path](_from, fallback=pl.Path(_from)).expand(spec, state)]
             case list():
-                expanded = [DKey(x, fallback=pl.Path(x), mark=DKey.Mark.PATH).expand(spec, state) for x in  _from]
+                expanded = [DKey[pl.Path](x, fallback=pl.Path(x)).expand(spec, state) for x in  _from]
             case _:
                 raise doot.errors.ActionError("Unrecognized type for copy sources", _from)
 
@@ -271,7 +271,11 @@ class DeleteAction(IOBase):
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
         for arg in spec.args:
-            loc = DKey(arg, mark=DKey.Mark.PATH).expand(spec, state)
+            match DKey[pl.Path](arg).expand(spec, state):
+                case pl.Path() as loc:
+                    pass
+                case x:
+                    raise TypeError(type(x))
             if self._is_write_protected(loc):
                 raise LocationError("Tried to write a protected location", loc)
 
@@ -330,7 +334,7 @@ class EnsureDirectory(IOBase):
     @DKeyed.args
     def __call__(self, spec, state, args):
         for arg in args:
-            loc = DKey(arg, mark=DKey.Mark.PATH).expand(spec, state)
+            loc = DKey[pl.Path](arg).expand(spec, state)
             if not loc.exists():
                 doot.report.act("MkDir", str(loc))
             loc.mkdir(parents=True, exist_ok=True)
@@ -365,7 +369,7 @@ class TouchFileAction(IOBase):
     @DKeyed.args
     @DKeyed.types("soft", fallback=False)
     def __call__(self, spec, state, args, soft):
-        for target in [DKey(x, fallback=None, mark=DKey.Mark.PATH) for x in args]:
+        for target in [DKey[pl.Path](x, fallback=None) for x in args]:
             if (target_path:=target.expand(spec, state)) is None:
                 continue
             if soft and not target_path.exists():
@@ -401,8 +405,8 @@ class LinkAction(IOBase):
                     raise TypeError("unrecognized link targets")
 
     def _do_link(self, spec, state, x, y, force, *, hard:bool=False) -> None:
-        x_key  = DKey(x, mark=DKey.Mark.PATH)
-        y_key  = DKey(y, mark=DKey.Mark.PATH)
+        x_key  = DKey[pl.Path](x)
+        y_key  = DKey[pl.Path](y)
         x_path = x_key.expand(spec, state, symlinks=True)
         y_path = y_key.expand(spec, state)
         # TODO when py3.12: use follow_symlinks=False

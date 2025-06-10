@@ -227,8 +227,10 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     def accepts(self, control:Task_p|TaskSpec, target:Task_p|TaskSpec) -> bool:
         """ Test if this pair of Tasks satisfies the relation """
         if not (target.name.uuid() and control.name.uuid()):
+            # abstract specs can't satisfy a relation
             return False
         if not (self.target < target.name):
+            # targets that are not extensions of the target don't satisfy
             return False
 
         control_vals = control.state if isinstance(control, Task_p) else control.extra

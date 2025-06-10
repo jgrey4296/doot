@@ -132,7 +132,7 @@ class DootKeyed(DecoratorAccessor_m, DKeyed):
 
     @classmethod
     def taskname(cls, fn:Callable) -> Decorator:
-        keys    = [DKey[TaskName](STATE_TASK_NAME_K, implicit=True, mark="taskname")]
+        keys    = [DKey[TaskName](STATE_TASK_NAME_K, implicit=True)]
         dec     = cls._build_decorator(keys)
         result  = dec(fn)
         return result

@@ -93,7 +93,7 @@ class FileExistsCheck(DootBaseAction):
         fail    = self.ActRE.FAIL if _fail else self.ActRE.SKIP
 
         for arg in args:
-            path = DKey(arg, mark=DKey.Mark.PATH).expand(spec, state, on_fail=None)
+            path = DKey[pl.Path](arg).expand(spec, state, on_fail=None)
             exists = bool(path and path.exists())
             if _invert:
                 exists = not exists
@@ -120,7 +120,7 @@ class SuffixCheck(DootBaseAction):
             result = self.ActRE.FAIL
 
         for arg in args:
-            path = DKey(arg, mark=DKey.Mark.PATH).expand(spec, state, on_fail=None)
+            path = DKey[pl.Path](arg).expand(spec, state, on_fail=None)
             match path.suffix in exts, _invert:
                 case False, True:
                     continue
@@ -149,7 +149,7 @@ class RelativeCheck(DootBaseAction):
         roots = self._build_roots(spec, state, _bases)
         try:
             for arg in args:
-                path = DKey(arg, mark=DKey.Mark.PATH).expand(spec, state, on_fail=None)
+                path = DKey[pl.Path](arg).expand(spec, state, on_fail=None)
                 match self._get_relative(path, roots), _invert:
                     case None, True:
                         return
