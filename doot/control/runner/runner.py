@@ -115,7 +115,7 @@ class _ActionExecution_m:
                     group_result = ActRE.FAIL
                     break
                 case ActRE.SKIP:
-                    doot.report.line("Remaining Task Actions skipped by Action Result", char=".")
+                    doot.report.act("skip", skip_msg)
                     group_result = ActRE.SKIP
                     break
 
@@ -192,7 +192,6 @@ class _ActionExecution_m:
                 raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.name, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
-                doot.report.result(["Skip"])
                 pass
             case dict(): # update the task's state
                 task.state.update({str(k):v for k,v in result.items()})
@@ -286,7 +285,6 @@ class DootRunner:
         try:
             doot.report.branch(job.spec.name, info=f"Job {self.step}")
             if not self._test_conditions(job):
-                doot.report.trace(skip_msg, self.step, job.name.pop(top=True))
                 return
 
             self._execute_action_group(job, group=SETUP_GROUP)
@@ -302,7 +300,6 @@ class DootRunner:
         try:
             doot.report.branch(task.spec.name, info=f"Task {self.step}")
             if not self._test_conditions(task):
-                doot.report.result([skip_msg, self.step, task.name.pop(top=True)])
                 return
 
             self._execute_action_group(task, group=SETUP_GROUP)

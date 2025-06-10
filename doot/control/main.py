@@ -171,15 +171,15 @@ class CLIArgParsing_m:
                                    subcmds=cast("list[tuple[str, ParamSource_p]]", subcmds),
                                    )
         except jgdv.cli.errors.HeadParseError as err:
-            raise doot.errors.FrontendError("Doot Head Failed to Parse", err) from err
+            raise doot.errors.FrontendError("Doot Head Failed to Parse", err) from None
         except jgdv.cli.errors.CmdParseError as err:
-            raise doot.errors.FrontendError("Unrecognised Command Called", err) from err
+            raise doot.errors.FrontendError("Unrecognised Command Called", err) from None
         except jgdv.cli.errors.SubCmdParseError as err:
-            raise doot.errors.FrontendError("Unrecognised Task Called", err.args[1]) from err
+            raise doot.errors.FrontendError("Unrecognised Task Called", err.args[1]) from None
         except jgdv.cli.errors.ArgParseError as err:
-            raise doot.errors.FrontendError("Parsing arguments for command/task failed", err) from err
+            raise doot.errors.FrontendError("Parsing arguments for command/task failed", err) from None
         except jgdv.cli.ParseError as err:
-            raise doot.errors.ParseError("Failed to Parse provided cli args", err) from err
+            raise doot.errors.ParseError("Failed to Parse provided cli args", err) from None
 
         match cli_args:
             case dict() as parsed_args:
@@ -373,29 +373,31 @@ class ExitHandlers_m:
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
         if base_target.exists():
-            doot.report.error("Base Config Target exists but it contains no valid config: %s", base_target)
+            doot.report.error("[%s] : Base Config Target exists but it contains no valid config: %s",
+                              type(err).__name__, base_target)
         else:
-            doot.report.warn("No toml config data found, create a doot.toml by calling `doot stub --config`")
+            doot.report.warn("[%s] : No toml config data found, create a doot.toml by calling `doot stub --config`",
+                             type(err).__name__)
 
         return API.ExitCodes.MISSING_CONFIG
 
     def _config_error_exit(self, err:Exception) -> int:
-        doot.report.warn("Config Error: %s", err)
+        doot.report.warn("[%s] : Config Error: %s", type(err).__name__, err)
         return API.ExitCodes.BAD_CONFIG
 
     def _task_failed_exit(self, err:Exception) -> int:
-        logging.exception("Task Error : %s", err, exc_info=err)
-        doot.report.error("Task Source: %s", err.task_source)
+        doot.report.error("[%s] : Task Error : %s", type(err).__name__, err, exc_info=err)
+        doot.report.error("[%s] : Task Source: %s", type(err).__name__, err.task_source)
         return API.ExitCodes.TASK_FAIL
 
     def _bad_state_exit(self, err:Exception) -> int:
-        doot.report.error("State Error: %s", err.args)
+        doot.report.error("[%s] : State Error: %s", type(err).__name__, err.args)
         return API.ExitCodes.BAD_STATE
 
     def _bad_struct_exit(self, err:Exception) -> int:
         match err.args:
             case [str() as msg, dict() as errs]:
-                doot.report.error("Struct Load Errors : %s", msg)
+                doot.report.error("[%s] : Struct Load Errors : %s", type(err).__name__, msg)
                 doot.report.error("")
                 for x,y in errs.items():
                     doot.report.error("---- File: %s", x)
@@ -404,34 +406,34 @@ class ExitHandlers_m:
                     else:
                         doot.report.error("")
             case _:
-                logging.exception("Struct Load Error: %s", err, exc_info=err)
+                doot.report.error("[%s] : Struct Load Error: %s", type(err).__name__, err, exc_info=err)
 
         return API.ExitCodes.BAD_STRUCT
 
     def _tracking_exit(self, err:Exception) -> int:
-        logging.exception("Tracking Failure: %s", err.args)
+        doot.report.error("[%s] : Tracking Failure: %s", type(err).__name__, err.args)
         return API.ExitCodes.TRACKING_FAIL
 
     def _backend_exit(self, err:Exception) -> int:
-        logging.exception("Backend Error: %s", err.args, exc_info=err)
+        doot.report.error("[%s] : Backend Error: %s", type(err).__name__, err.args, exc_info=err)
         return API.ExitCodes.BACKEND_FAIL
 
     def _frontend_exit(self, err:Exception) -> int:
-        logging.exception("%s", err.args)
+        doot.report.error("[%s] : %s", type(err).__name__, " : ".join(err.args))
         return API.ExitCodes.FRONTEND_FAIL
 
     def _misc_doot_exit(self, err:Exception) -> int:
-        logging.exception("%s", err.args, exc_info=err)
+        doot.report.error("[%s] : %s", type(err).__name__, err.args, exc_info=err)
         return API.ExitCodes.DOOT_FAIL
 
     def _not_implemented_exit(self, err:Exception) -> int:
-        logging.exception("Not Implemented: %s", err.args, exc_info=err)
+        doot.report.error("[%s] : Not Implemented: %s", type(err).__name__, err.args, exc_info=err)
         return API.ExitCodes.NOT_IMPLEMENTED
 
     def _python_exit(self, err:Exception) -> int:
-        logging.exception("Python Error:", exc_info=err)
+        doot.report.error("[%s] : Python Error:", type(err).__name__, exc_info=err)
         pl.Path(API.LASTERR).write_text(stackprinter.format())
-        doot.report.error(f"Python Error, full stacktrace written to {API.LASTERR}", exc_info=None)
+        doot.report.error(f"[{type(err).__name__}] : Python Error, full stacktrace written to {API.LASTERR}", exc_info=None)
         return API.ExitCodes.PYTHON_FAIL
 
 ##--|

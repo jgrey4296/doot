@@ -221,15 +221,15 @@ class _GenReporter_m:
         return self
 
     def user(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
-        self.log.warning(msg, *rest)
+        self.log.warning(msg, *rest, **kwargs)
         return self
 
     def trace(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
-        self.log.info(msg, *rest)
+        self.log.info(msg, *rest, **kwargs)
         return self
 
     def detail(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
-        self.log.debug(msg, *rest)
+        self.log.debug(msg, *rest, **kwargs)
         return self
 
     def failure(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
@@ -237,7 +237,7 @@ class _GenReporter_m:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
-                self.log.exception(msg, *rest)
+                self.log.exception(msg, *rest, **kwargs)
 
         return self
 
