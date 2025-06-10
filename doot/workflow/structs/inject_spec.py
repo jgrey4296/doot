@@ -123,6 +123,7 @@ class InjectSpec(BaseModel):
         """ prepare keys for the expansions
         literal = True : means rhs is not a key
         """
+        k : DKey
         try:
             match keys:
                 case None:
@@ -166,7 +167,7 @@ class InjectSpec(BaseModel):
     @field_validator("from_target", mode="before")
     def _validate_from_target(cls, val:Any) -> dict:
         result = cls._prep_keys(val)
-        return {f"{x}_":y for x,y in result.items()}
+        return {f"{x:d}":y for x,y in result.items()}
 
     @field_validator("literal", mode="before")
     def _validate_literal(cls, val:Any) -> dict:
@@ -232,14 +233,22 @@ class InjectSpec(BaseModel):
 
         must_inject       = target_vals.get(MUST_INJECT_K, [])
 
+        # Get keys not found in the control spec
         missing           = control_needs - control_vals.keys()
+        # Get keys not found in the target spec
         surplus           = target_needs  - target_vals.keys()
+        # Get keys expected for redirection, that are missing
         control_redirects = set(self.from_target.values()) - control_vals.keys()
-        target_redirects  = {y for x in self.from_target.values() if (y:=x(control)) not in target_vals}
+        # Get target key redirections that are missing from target
+        target_redirects  = {y for x in self.from_target.values() if (y:=x(control, limit=1)) not in target_vals}
         mismatches        = set()
         if not (bool(missing) or bool(surplus)):
             # if nothing is missing, test equality
             mismatches |= {(x,y) for x,y in self.from_spec.items() if x(target_vals) != y(control_vals)}
+
+        literals = set()
+        if self.literal:
+            literals.update([x for x,y in self.literal.items() if target_vals.get(x, None) != y])
 
         return {
             "rhs_missing"     : missing,
@@ -248,6 +257,7 @@ class InjectSpec(BaseModel):
             "lhs_redirect"    : target_redirects,
             "mismatches"      : mismatches,
             "state"           : state_failure,
+            "literal"         : literals,
         }
 
     def apply_from_spec(self, control:dict|TaskSpec|Task_i) -> dict:
@@ -270,16 +280,20 @@ class InjectSpec(BaseModel):
         for x,y in self.from_target.items():
             data[str(x)] = y(control_data, insist=True, fallback=y, limit=1)
         else:
+            data.update(self.apply_literal(None))
             return data
 
     def apply_from_state(self, control:dict|Task_p) -> dict:
         """ Expand a key using the control state """
         # logging.info("Applying from_state injection: %s", control.name)
+        pdata : dict
         match control:
             case Task_i():
                 pdata = control.state
-            case _:
+            case dict():
                 pdata = control
+            case x:
+                raise TypeError(type(x))
 
         data = {}
         for x,y in self.from_state.items():
@@ -296,6 +310,6 @@ class InjectSpec(BaseModel):
         logging.info("Applying literal injection: %s", val)
         data = {}
         for x,_y in self.literal.items(): # type: ignore
-            data[str(x)] = val
+            data[str(x)] = val or _y
         else:
             return data

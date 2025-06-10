@@ -341,6 +341,69 @@ class TestInjectSpec_Validation:
             case x:
                 assert(False), x
 
+
+    def test_fail_from_missing_literal(self):
+        """
+        if the specs have the correct structure,
+        but not the correct values, fail
+        """
+        inj     = InjectSpec.build({
+            "from_spec"    : [],
+            "from_state"   : [],
+            "from_target"  : [],
+            "literal"      : {"x": "blah"}
+        })
+        control = TaskSpec.build({"name":"basic::control",})
+        target  = TaskSpec.build({"name":"basic::target",})
+
+        match inj.validate_details(control, target):
+            case {"literal": set() as x } if bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_fail_from_not_eq_literal(self):
+        """
+        if the specs have the correct structure,
+        but not the correct values, fail
+        """
+        inj     = InjectSpec.build({
+            "from_spec"    : [],
+            "from_state"   : [],
+            "from_target"  : [],
+            "literal"      : {"x": "blah"}
+        })
+        control = TaskSpec.build({"name":"basic::control",})
+        target  = TaskSpec.build({"name":"basic::target", "x":"not blah"})
+
+        match inj.validate_details(control, target):
+            case {"literal": set() as x } if bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_succeed_with_literal(self):
+        """
+        if the specs have the correct structure,
+        but not the correct values, fail
+        """
+        inj     = InjectSpec.build({
+            "from_spec"    : [],
+            "from_state"   : [],
+            "from_target"  : [],
+            "literal"      : {"x": "aweg"}
+        })
+        control = TaskSpec.build({"name":"basic::control",})
+        target  = TaskSpec.build({"name":"basic::target", "x": "aweg"})
+
+        match inj.validate_details(control, target):
+            case {"literal": set() as x } if not bool(x):
+                assert(True)
+            case x:
+                assert(False), x
+
 class TestInjection_Application:
 
     def test_sanity(self):
@@ -393,7 +456,7 @@ class TestInjection_Application:
         control = TaskSpec.build({"name": "simple::control",
                                   "blah": "bloo"})
         match injection.apply_from_spec(control):
-            case {"blah_": "bloo"}:
-                assert(True)
+            case {"blah": DKey() as x}:
+                assert(x == "bloo")
             case x:
                 assert(False), x
