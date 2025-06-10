@@ -48,7 +48,7 @@ from typing import no_type_check, final, override, overload
 from doot.workflow._interface import Task_p
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, Traceback
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -65,12 +65,12 @@ logging    = logmod.getLogger(__name__)
 ##-- end logging
 
 dry_run              : Final[bool]            = doot.args.on_fail(False).cmd.args.dry_run()  # noqa: FBT003
-max_steps            : Final[int]             = doot.config.on_fail(100_000).startup.max_steps()
+max_steps            : Final[int]             = doot.config.on_fail(100_000).commands.run.max_steps()
 fail_prefix          : Final[str]             = doot.constants.printer.fail_prefix
 loop_entry_msg       : Final[str]             = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]             = doot.constants.printer.loop_exit
 
-DEFAULT_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
+DEFAULT_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|float).commands.run.sleep.task()
 ##--|
 
 class _RunnerCtx_m:
@@ -101,7 +101,7 @@ class _RunnerCtx_m:
         doot.report.root()
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> Literal[False]:  # noqa: ANN001
+    def __exit__(self, exc_type:type[Exception], exc_value:Exception, exc_traceback:Traceback) -> Literal[False]:
         logging.info("Exiting Runner Control")
         # TODO handle exc_types?
         self._finish()

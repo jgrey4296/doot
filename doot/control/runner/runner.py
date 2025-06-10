@@ -77,7 +77,7 @@ logging           = logmod.getLogger(__name__)
 
 ##--| Vars
 skip_msg                   : Final[str] = doot.constants.printer.skip_by_condition_msg
-max_steps                  : Final[int] = doot.config.on_fail(100_000).settings.tasks.max_steps()
+max_steps                  : Final[int] = doot.config.on_fail(100_000).commands.run.max_steps()
 
 SETUP_GROUP                : Final[str] = "setup"
 ACTION_GROUP               : Final[str] = "actions"

@@ -66,7 +66,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 dry_run        : final[bool] = doot.args.on_fail(False).cmd.args.dry_run()
-SLEEP_LENGTH   : Final[int]  = doot.config.on_fail(0.2, int|float).startup.sleep.task()
+SLEEP_LENGTH   : Final[int]  = doot.config.on_fail(0.2, int|float).commands.run.sleep.task()
 MAX_LOG_ACTIVE : Final[int]  = 100
 CMDS           : Final[dict] = {
   ""           : "continue",
