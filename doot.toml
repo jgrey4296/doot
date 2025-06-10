@@ -1,21 +1,17 @@
 # -*- mode:toml; -*-
+
 [startup]
 doot_version         = "1.1.0"
 loaders              = { commands="default", task="default", parser="default" }
 sources              = { tasks=[".tasks"], code=[] }
-sleep                = { task=0.2, subtask=1, batch=1 }
-max_steps            = 100_000
-skip_default_plugins = false
-skip_plugin_search   = false
-empty_cmd            = "list"
-implicit_task_cmd    = "run"
 
 [shutdown]
-notify           = { speak=false } # success_msg="", fail_msg=""
-defaulted_values = { write=false, path=".defaulted_values.toml" }
-exit_on_load_failures = false
+notify                 = { speak=false } # success_msg="", fail_msg=""
+defaulted_values       = { write=false, path=".defaulted_values.toml" }
+exit_on_load_failures  = false
 
 [settings.commands]
+
 [settings.commands.run]
 tracker        = "default"
 runner         = "default"
@@ -28,11 +24,12 @@ hide = []
 aliases = { tasks=[], plugins=["--plugins"] }
 
 [logging]
+
 [logging.stream]
-level = "user"
-filter = []
-target = "stdout"
-format="{levelname:<8} : {message}"
+level   = "user"
+filter  = []
+target  = "stdout"
+format  = "{levelname:<8}  : {message}"
 
 [logging.file]
 level        = "NOTSET"
@@ -47,13 +44,6 @@ colour       = true
 target       = ["stdout", "rotate"]
 format       = "{message}"
 filename_fmt = "doot_printed.log"
-
-[logging.subprinters]
-default       = {level="user"}
-cmd           = {level="user",  colour="cyan"}
-task_header   = {level="user",  colour="magenta"}
-task          = {level="user",  colour="white"}
-action_exec   = {level="user",  colour="cyan"}
 
 [logging.extra]
 

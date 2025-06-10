@@ -41,7 +41,7 @@ from doot.workflow.job import DootJob
 from doot.workflow.structs.task_name import TaskName
 from doot.workflow.task import DootTask
 
-# ##-- end 0st party imports
+# ##-- end 1st party imports
 
 # ##-| Local
 from ._base import BaseCommand
@@ -314,16 +314,13 @@ class StubCmd(BaseCommand):
         match dict(doot.args.cmd.args):
             case {"config": True}:
                 result = self._stub_doot_toml()
-                self._print_text(result)
             case {"action": True}:
                 result = self._stub_action(plugins)
-                self._print_text(result)
             case {"param": True}:
                 result = self._stub_cli_param()
-                self._print_text(result)
             case {"doot.report": True}:
                 result = self._stub_printer()
-                self._print_text(result)
             case _:
                 result = self._stub_task_toml(tasks, plugins)
-                self._print_text(result)
+
+        self._print_text(result)

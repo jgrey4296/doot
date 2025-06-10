@@ -1,11 +1,11 @@
 # -*- mode:toml; -*-
+# Config File for doot (http://github.com/jgrey4296/doot)
+
 [startup]
 # The version this config file works with:
 doot_version         = "1.1"
 loaders              = { commands="default", task="default", parser="default" }
 sources              = { tasks=[".tasks"], code=[] }
-sleep                = { task=0.2, subtask=1, batch=1 }
-max_steps            = 100_000
 skip_default_plugins = false
 skip_plugin_search   = false
 empty_cmd            = "list"
@@ -15,7 +15,7 @@ implicit_task_cmd    = "run"
 
 [startup.plugins]
 # Allows for defining aliases
-command        = { tasks="doot.cmds.list_cmd:ListCmd" }
+# command        = { tasks="doot.cmds.list_cmd:ListCmd" }
 
 [shutdown]
 notify           = { speak=false } # success_msg="", fail_msg=""
@@ -28,48 +28,49 @@ defaulted_values = { write=false, path=".defaulted_values.toml" }
 tracker         = "default"
 runner          = "default"
 reporter        = "default"
-location_check  = { active=true, make_missing=false, strict=true}
-report-line     = []
-stepper = {break_on="job"}
+location_check  = { active=true, make_missing=false, strict=true }
+sleep           = { task=0.2, subtask=1, batch=1 }
+max_steps       = 100_000
+# stepper         = { break_on="job" }
 
 [settings.commands.list]
-hide = []
-aliases = { tasks=[], plugins=["--plugins"] }
+hide            = []
+aliases         = { tasks=[], plugins=["--plugins"] }
 
 [logging]
 # Setup output stream, file logging, and printing
-# See jgdv.logging for details
+# See jgdv.logging for details.
+# Or call 'doot list --loggers'
 [logging.stream]
-level  = "user"
-filter = []
-target = "stdout"
-format="{levelname:<8} : {message}"
+disabled  = false
+level     = "user"
+filter    = []
+# allow     = []
+target    = ["stdout"]
+format    = "{levelname:<8} : {message}"
 
 [logging.file]
-level        = "trace"
-filter       = ["jgdv"]
-target       = "rotate"
-format       = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
-filename_fmt = "doot.log"
+disabled      = true
+level         = "trace"
+filter        = ["jgdv"]
+# allow       = []
+target        = ["rotate"]
+format        = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
+filename_fmt  = "doot.log"
 
 [logging.printer]
-level        = "NOTSET"
-colour       = true
-target       = ["stdout", "rotate"]
-format       = "{message}"
-filename_fmt = "doot_printed.log"
-
-[logging.subprinters]
-default       = {level="user"}
-cmd           = {level="user",  colour="cyan"}
-task_header   = {level="user",  colour="magenta"}
-task          = {level="user",  colour="white"}
-action_exec   = {level="user",  colour="cyan"}
+disabled      = false
+level         = "NOTSET"
+colour        = true
+target        = ["stdout"]
+format        = "{message}"
+filename_fmt  = "doot_printed.log"
 
 [logging.extra]
+# Control specific loggers by their path.
 
 [[locations]]
-# Locations as structured strings. See jgdv.structs.strang
+# Locations as structured strings. See jgdv.structs.locator
 src     = "src"
 codegen = "clean::{src}/_codegen"
 temp    = "clean::.temp"
