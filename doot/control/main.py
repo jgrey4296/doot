@@ -509,7 +509,13 @@ class DootMain:
         except (doot.errors.EarlyExit, doot.errors.Interrupt, BdbQuit) as err:
             self.result_code = self._early_exit(err)
         except doot.errors.MissingConfigError as err:
-            self.result_code = self._missing_config_exit(err)
+            match self.raw_args:
+                case [*_, "stub", "--config"]:
+                    from doot.cmds.stub_cmd import StubCmd
+                    stubber = StubCmd()
+                    stubber._stub_doot_toml()
+                case _:
+                    self.result_code = self._missing_config_exit(err)
         except doot.errors.ConfigError as err:
             self.result_code = self._config_error_exit(err)
         except (doot.errors.TaskFailed, doot.errors.TaskError) as err:
