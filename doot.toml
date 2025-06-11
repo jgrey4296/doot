@@ -26,7 +26,7 @@ aliases = { tasks=[], plugins=["--plugins"] }
 [logging]
 
 [logging.stream]
-level   = "user"
+level   = "NOTSET"
 filter  = []
 target  = "stdout"
 format  = "{levelname:<8}  : {message}"

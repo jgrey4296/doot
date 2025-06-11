@@ -269,7 +269,6 @@ class _LoggerLister_m:
 
     def _list_loggers(self) -> list[ListVal]:
         logging.info("---- Listing Logging/Printing info")
-        acceptable_names    = doot.log_config._printer_children
 
         result : list[ListVal] = []
 
@@ -277,11 +276,6 @@ class _LoggerLister_m:
         result.append("- doot.report  ( target= ) : For user-facing output")
         result.append("- stream   ( target= )")
         result.append("- file     ( target= filename_fmt=%str ) ")
-
-        result.append(None)
-        result.append("--- Sub-Printer Loggers: ")
-        result.append("(Additional control over user-facing output )")
-        result += [f"- {x}" for x in sorted(acceptable_names)]
 
         result.append(None)
         result.append("--- Logging Targets: (Where a logger outputs to)")

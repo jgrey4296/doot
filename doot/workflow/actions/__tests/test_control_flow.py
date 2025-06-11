@@ -35,8 +35,10 @@ class TestBaseAction:
         assert(isinstance(action, DootBaseAction))
 
     def test_logging(self, caplog):
-        logging.warning("blah")
-        assert("blah" in caplog.messages)
+        with caplog.at_level(logmod.NOTSET, logger="testing"):
+            logging = logmod.getLogger("testing")
+            logging.warning("blah")
+            assert("blah" in caplog.messages)
 
     def test_call_action(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
