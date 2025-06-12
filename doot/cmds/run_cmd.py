@@ -92,7 +92,7 @@ class RunCmd(BaseCommand):
             self.build_param(name="--step",      default=False, type=bool, desc="Interrupt between workflow step"),
             self.build_param(name="--dry-run",   default=False, type=bool, desc="Don't perform actions"),
             self.build_param(name="--confirm",   default=False, type=bool, desc="Confirm the expected workflow plan"),
-            self.build_param(name="<1>target", type=list[str], default=[]),
+            self.build_param(name="<1>target",   type=list[str], default=[], count=-1),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):

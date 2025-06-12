@@ -164,7 +164,6 @@ class CLIArgParsing_m:
         subcmds         : list       = [("run",x) for x in doot.loaded_tasks.values()]
         to_parse        : list[str]  = override or self.raw_args[1:]
         unaliased_args  : list[str]  = self._unalias_raw_args(to_parse)  # type: ignore
-
         try:
             cli_args = self.parser(unaliased_args,
                                    head_specs=self.param_specs(), # type: ignore
