@@ -77,6 +77,7 @@ interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", b
 check_locs               = doot.config.on_fail(False).settings.commands.run.location_check.active()
 
 ##--|
+
 @Proto(Command_i)
 class RunCmd(BaseCommand):
     _name                        = "run"
@@ -92,7 +93,6 @@ class RunCmd(BaseCommand):
             self.build_param(name="--step",      default=False, type=bool, desc="Interrupt between workflow step"),
             self.build_param(name="--dry-run",   default=False, type=bool, desc="Don't perform actions"),
             self.build_param(name="--confirm",   default=False, type=bool, desc="Confirm the expected workflow plan"),
-            self.build_param(name="<1>target",   type=list[str], default=[], count=-1),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
@@ -116,7 +116,6 @@ class RunCmd(BaseCommand):
             if not self._confirm_plan(runner):
                 return
             runner(handler=interrupt)
-
 
     def _create_tracker_and_runner(self, plugins) -> tuple[TaskTracker_p, TaskRunner_p]:
         # Note the final parens to construct:
@@ -160,14 +159,14 @@ class RunCmd(BaseCommand):
     def _queue_tasks(self, tracker) -> None:
         doot.report.trace("Queuing Initial Tasks...")
         doot.report.gap()
-        for target in doot.args.on_fail([], list).cmd.args.target():
+
+        for target in doot.args.on_fail([]).sub().keys():
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.TrackingError as err:
                 doot.report.warn("%s specified as run target, but it doesn't exist", target)
         else:
             doot.report.trace("%s Tasks Queued", len(tracker.active_set))
-
 
     def _choose_interrupt_handler(self) -> Maybe[bool|Callable]:
         match interrupt_handler:
@@ -201,3 +200,6 @@ class RunCmd(BaseCommand):
                 case _:
                     doot.report.trace.user("Cancelling")
                     return False
+
+    def _accept_subcmds(self) -> Literal[True]:
+        return True

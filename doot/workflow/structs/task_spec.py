@@ -454,8 +454,10 @@ class _SpecUtils_m:
             case []:
                 pass
             case [*xs]:
-                source    = str(self.name.pop(top=True))
-                task_args = doot.args.on_fail({}).sub[source]()
+                # Apply CLI passed params, but only as the default
+                # So if override values have been injected, they are preferred
+                target = self.name.pop(top=True)[:,:]
+                task_args = doot.args.on_fail({}).sub[target]()
                 for cli in xs:
                     task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
 

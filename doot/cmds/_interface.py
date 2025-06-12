@@ -43,6 +43,11 @@ from jgdv.cli._interface import CLIParamProvider_p
 # isort: on
 # ##-- end types
 
+@runtime_checkable
+class AcceptsSubcmds_p(Protocol):
+    """ Protocol for marking cmds as able to allow subcmds in cli parsing """
+
+    def _accept_subcmds(self) -> Literal[True]: ...
 
 @runtime_checkable
 class Command_p(CLIParamProvider_p, Protocol):

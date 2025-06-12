@@ -45,6 +45,7 @@ from jgdv.util.plugins.selector import plugin_selector
 # ##-- 1st party imports
 import doot
 import doot._interface as API  # noqa: N812
+from doot.cmds._interface import AcceptsSubcmds_p
 import doot.errors
 
 # ##-- end 1st party imports
@@ -160,10 +161,11 @@ class CLIArgParsing_m:
 
     def parse_args(self, *, override:Maybe[list]=None) -> None:
         """ use loaded cmd and tasks to parse sys.argv """
-        cmd_vals        : list       = list(doot.loaded_cmds.values())
-        subcmds         : list       = [("run",x) for x in doot.loaded_tasks.values()]
-        to_parse        : list[str]  = override or self.raw_args[1:]
-        unaliased_args  : list[str]  = self._unalias_raw_args(to_parse)  # type: ignore
+        cmd_vals         : list             = list(doot.loaded_cmds.values())
+        subcmd_handlers  : tuple[str, ...]  = tuple(x for x,y in doot.loaded_cmds.items() if isinstance(y, AcceptsSubcmds_p))
+        subcmds          : list             = [(subcmd_handlers, x) for x in doot.loaded_tasks.values()]
+        to_parse         : list[str]        = override or self.raw_args[1:]
+        unaliased_args   : list[str]        = self._unalias_raw_args(to_parse)  # type: ignore
         try:
             cli_args = self.parser(unaliased_args,
                                    head_specs=self.param_specs(), # type: ignore
