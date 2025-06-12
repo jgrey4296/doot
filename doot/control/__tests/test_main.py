@@ -44,16 +44,18 @@ class TestDootMain:
     def test_main_method(self, mocker):
         dmain       = DootMain()
         mocker.patch.object(dmain, "_load")
+        mocker.patch.object(dmain, "parse_args")
+        mocker.patch.object(dmain, "handle_implicit_cmds")
         mocker.patch.object(dmain, "handle_cli_args", return_value=None)
         mocker.patch.object(dmain, "set_cmd_instance")
-        mocker.patch.object(dmain, "parse_args")
+        mocker.patch.object(dmain, "_install_at_exit")
         mocker.patch.object(dmain, "run_cmd")
         mocker.patch.object(dmain, "shutdown")
 
         with pytest.raises(SystemExit) as ctx:
             dmain()
 
-        assert(ctx.value.code is API.ExitCodes.FRONTEND_FAIL)
+        assert(ctx.value.code is API.ExitCodes.INITIAL)
 
 class TestMainLoading:
 

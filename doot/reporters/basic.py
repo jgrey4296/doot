@@ -268,10 +268,10 @@ class BasicReporter:
 
     def __init__(self, *args:Any, logger:Maybe[Logger]=None, segments:Maybe[dict]=None, **kwargs:Any) -> None:
         super().__init__(*args, **kwargs)
-        self._logger            = logger or logging
-        self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
-        self._stack             = []
         self._entry_count       = START_COUNT
+        self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
+        self._logger            = logger or logging
+        self._stack             = []
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
                                                          data={},

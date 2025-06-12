@@ -58,7 +58,7 @@ from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
-from typing import no_type_check, final, override, overload
+from typing import no_type_check, final, overload
 
 if TYPE_CHECKING:
     from .loaders._interface  import Loader_p
@@ -88,14 +88,16 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-env = os.environ
+env                                     = os.environ
+DEFAULT_EMPTY_CMD : Final[list[str]]    = ["--help"]
+DEFAULT_IMPLICIT_CMD: Final[list[str]]  = ["run"]
 
 # Body:
 
 class Loading_m:
     """ mixin for triggering full loading  """
 
-    _implicit_task_cmd : Maybe[str]
+    _version_template   : str
 
     def _load(self:Main_i) -> None:
         # Load and initialise the config:
@@ -112,8 +114,6 @@ class Loading_m:
     def get_constants(self) -> None:
         # Constants are always loaded, so need no on_fail
         self._version_template       = doot.constants.printer.version_template # type: ignore
-        self._empty_call_cmd         = doot.config.on_fail("list").startup.empty_cmd() # type: ignore
-        self._implicit_task_cmd      = doot.config.on_fail("run").startup.implicit_task_cmd() # type: ignore
 
     def load_cli_parser(self, *, target:str="default") -> None:
         match plugin_selector(doot.loaded_plugins.on_fail([], list).parser(), # type: ignore
@@ -158,11 +158,12 @@ class Loading_m:
 class CLIArgParsing_m:
     """ mixin for cli arg processing """
 
-    def parse_args(self:Main_i) -> None:
-        """ use the found task and command arguments to make sense of sys.argv """
-        cmd_vals       = list(doot.loaded_cmds.values())
-        subcmds        = [("run",x) for x in doot.loaded_tasks.values()]
-        unaliased_args = self._unalias_raw_args(self.raw_args[1:]) # type: ignore
+    def parse_args(self, *, override:Maybe[list]=None) -> None:
+        """ use loaded cmd and tasks to parse sys.argv """
+        cmd_vals        : list       = list(doot.loaded_cmds.values())
+        subcmds         : list       = [("run",x) for x in doot.loaded_tasks.values()]
+        to_parse        : list[str]  = override or self.raw_args[1:]
+        unaliased_args  : list[str]  = self._unalias_raw_args(to_parse)  # type: ignore
 
         try:
             cli_args = self.parser(unaliased_args,
@@ -181,37 +182,62 @@ class CLIArgParsing_m:
             raise doot.errors.FrontendError("Parsing arguments for command/task failed", err) from None
         except jgdv.cli.ParseError as err:
             raise doot.errors.ParseError("Failed to Parse provided cli args", err) from None
+        else:
+            match cli_args:
+                case dict() as parsed_args:
+                    doot.set_parsed_cli_args(ChainGuard(parsed_args), override=bool(override)) # type: ignore[attr-defined]
+                case x:
+                    raise TypeError(type(x))
 
-        match cli_args:
-            case dict() as parsed_args:
-                doot.set_parsed_cli_args(ChainGuard(parsed_args)) # type: ignore[attr-defined]
+    def handle_implicit_cmds(self) -> None:
+        """ Post arg parsing, if explicit commands aren't given, use implicit ones.
+
+
+        """
+        empty_call_cmd     : list  = doot.config.on_fail(DEFAULT_EMPTY_CMD, list).startup.empty_cmd()            # type: ignore
+        implicit_task_cmd  : str   = doot.config.on_fail(DEFAULT_IMPLICIT_CMD, list).startup.implicit_task_cmd()  # type: ignore
+        match doot.args.on_fail(None).cmd.name(), bool(doot.args.on_fail(None).sub()):
+            case None, False: # No subtasks, no cmd
+                self.parse_args(override=[*empty_call_cmd, *self.raw_args[1:]])
+            case str() as target , False if target == EMPTY_CMD: # empty cmd
+                self.parse_args(override=[*empty_call_cmd, *self.raw_args[1:]])
+            case str() as target, True if target == EMPTY_CMD: # Subtasks, so use implicit task cmd
+                self.parse_args(override=[*implicit_task_cmd, *self.raw_args[2:]])
+            case str() as target, _:
+                pass
             case x:
                 raise TypeError(type(x))
 
     def handle_cli_args(self) -> Maybe[int]:
-        """ Overlord specific cli arg responses. modify verbosity,
-          print version, and _help.
+        """ Overlord specific cli arg responses.
+        Modifies:
+        - verbosity,
+        - print version
+        - header suppression
+        - help printing
+        - debugger entry
 
-          return True to end doot early
+          return an int to give an override result code
         """
-        if doot.args.on_fail(False).head.args.verbose():  # type: ignore[attr-defined] # noqa: FBT003
-            doot.report.user("Switching to Verbose Output") # type: ignore[attr-defined]
-            doot.log_config.set_level("NOTSET") # type: ignore[attr-defined]
+        # type: ignore[attr-defined]
+        if doot.args.on_fail(False).head.args.verbose():  # noqa: FBT003
+            doot.report.user("Switching to Verbose Output")
+            doot.log_config.set_level("DEBUG")
 
-        if doot.args.on_fail(False).head.args.version(): # type: ignore[attr-defined] # noqa: FBT003
-            doot.report.user(self._version_template, API.__version__) # type: ignore[attr-defined]
+        if doot.args.on_fail(False).head.args.version(): # noqa: FBT003
+            doot.report.user(self._version_template, API.__version__)
             return API.ExitCodes.SUCCESS
 
-        if not doot.args.on_fail(False).cmd.args.suppress_header(): # type: ignore[attr-defined] # noqa: FBT003
-             doot.report.header() # type: ignore[attr-defined]
+        if not doot.args.on_fail(False).cmd.args.suppress_header(): # noqa: FBT003
+             doot.report.header()
 
-        if doot.args.on_fail(False).head.args.help(): # type: ignore[attr-defined] # noqa: FBT003
+        if doot.args.on_fail(False).head.args.help(): # noqa: FBT003
             helptxt = self.help()
-            doot.report.user(helptxt) # type: ignore[attr-defined]
+            doot.report.user(helptxt)
             return API.ExitCodes.SUCCESS
 
-        if doot.args.on_fail(False).head.args.debug(): # type: ignore[attr-defined] # noqa: FBT003
-            doot.report.user("Pausing for debugging") # type: ignore[attr-defined]
+        if doot.args.on_fail(False).head.args.debug(): # noqa: FBT003
+            doot.report.user("Pausing for debugging")
             breakpoint()
             pass
 
@@ -233,7 +259,10 @@ class CLIArgParsing_m:
         return "\n".join(help_lines)
 
     def _unalias_raw_args(self, raw:list[str]) -> list[str]:
-        """ replaces aliases with their full command args """
+        """ replaces aliases with their full command args.
+
+        Just a simple, literal, find and replace
+        """
         result        = []
         sep           = doot.constants.patterns.TASK_PARSE_SEP
         for i, x in enumerate(raw):
@@ -252,15 +281,20 @@ class CLIArgParsing_m:
         else:
             return result
 
+
+
 class CmdRun_m:
     """ mixin for actually running a command  """
 
     def set_cmd_instance(self, cmd:Maybe[str]=None) -> None:
         """ Uses the full command name to get the instance of the command """
+        cmd = cmd or doot.args.on_fail(None).cmd.name()
         match self.current_cmd, cmd:  # type: ignore[has-type]
             case None, str() as x:
                 cmd = x
             case None, None:
+                breakpoint()
+                pass
                 raise ValueError("Cmd needs to exist")
             case x, _:
                 raise ValueError("Cmd shouldn't be already set")
@@ -329,9 +363,19 @@ class Shutdown_m:
         doot.report.summary()
 
     def _install_at_exit(self) -> None:
+        """ Install an exit handler """
+        report_val : str
+        match doot.config.on_fail(None).shutdown.notify.exit():
+            case None: # No config value, use default
+                report_val = "Dooted"
+            case False:
+                return
+            case str() as x:
+                report_val = x
 
         def goodbye(*args, **kwargs) -> None: # noqa: ARG001, ANN002, ANN003
-            doot.report.line("Dooted")
+            doot.report.line(report_val)
+
 
         atexit.register(goodbye)
 
@@ -370,7 +414,7 @@ class ExitHandlers_m:
         doot.report.warn("Early Exit Triggered")
         return API.ExitCodes.EARLY
 
-    def _missing_config_exit(self, err:Exception) -> int:  # noqa: ARG002
+    def _missing_config_exit(self, err:Exception) -> int:
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
         if base_target.exists():
@@ -433,8 +477,9 @@ class ExitHandlers_m:
 
     def _python_exit(self, err:Exception) -> int:
         doot.report.error("[%s] : Python Error:", type(err).__name__, exc_info=err)
-        pl.Path(API.LASTERR).write_text(stackprinter.format())
-        doot.report.error(f"[{type(err).__name__}] : Python Error, full stacktrace written to {API.LASTERR}", exc_info=None)
+        lasterr : pl.Path = pl.Path(API.LASTERR).resolve()
+        lasterr.write_text(stackprinter.format())
+        doot.report.error(f"[{type(err).__name__}] : Python Error, full stacktrace written to {lasterr}", exc_info=None)
         return API.ExitCodes.PYTHON_FAIL
 
 ##--|
@@ -491,10 +536,11 @@ class DootMain:
 
         has a 'finally' block to call sys.exit
         """
+        x : Any
         try:
             self._load()
             self.parse_args()
-            self._install_at_exit()
+            self.handle_implicit_cmds()
             match self.handle_cli_args():
                 case None:
                     pass
@@ -502,12 +548,9 @@ class DootMain:
                     self.result_code = x
                     return
 
-            match doot.args.on_fail(self._implicit_task_cmd).cmd.name():
-                case None:
-                    raise doot.errors.CommandError("No available cmd")  # noqa: TRY301
-                case str() as target:
-                    self.set_cmd_instance(target)
-                    self.run_cmd()
+            self.set_cmd_instance()
+            self._install_at_exit()
+            self.run_cmd()
         except (doot.errors.EarlyExit, doot.errors.Interrupt, BdbQuit) as err:
             self.result_code = self._early_exit(err)
         except doot.errors.MissingConfigError as err:

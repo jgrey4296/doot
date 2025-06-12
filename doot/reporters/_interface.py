@@ -91,21 +91,27 @@ MSG_SPACING              : Final[int] = 6
 # Body:
 
 class ReportStackEntry_d:
-    log_extra : dict
-    log_level : int
-    depth     : int
-    state     : str
-    data      : dict
-    prefix    : list[str]
+    __slots__ = ("data", "depth", "extra", "log_extra", "log_level", "prefix", "state")
+    log_extra  : dict
+    log_level  : int
+    depth      : int
+    state      : str
+    data       : dict
+    prefix     : list[str]
+    extra      : dict
 
     def __init__(self, **kwargs:Any) -> None:
+        # Required args:
         self.log_extra = kwargs.pop("log_extra")
         self.log_level = kwargs.pop("log_level")
         self.state     = kwargs.pop("state")
         self.data      = kwargs.pop("data")
+        # Optional Args:
         self.prefix    = kwargs.pop("prefix", [])
         self.depth     = kwargs.pop("depth", 1)
         self.extra     = dict(kwargs)
+
+# Sub Protocols
 
 class _WorkflowReporter_p(Protocol):
     """
@@ -154,8 +160,14 @@ class _GeneralReporter_p(Protocol):
 
     def warn(self, msg:str, *rest:str) -> Self: ...
 
+# Main Protocols
+
 @runtime_checkable
 class Reporter_p(_WorkflowReporter_p, _GeneralReporter_p, Protocol):
+    _entry_count    : int
+    _fmt            : TraceFormatter_p
+    _logger         : Logger
+    _stack          : list[ReportStackEntry_d]
 
     @property
     def state(self) -> ReportStackEntry_d: ...
@@ -167,12 +179,7 @@ class Reporter_p(_WorkflowReporter_p, _GeneralReporter_p, Protocol):
     def pop_state(self) -> Self: ...
 
 class Reporter_i(Reporter_p, Protocol):
-    _fmt            : TraceFormatter_p
-    _stack          : list[ReportStackEntry_d]
-    _entry_count    : int
-    _logger         : Logger
-    _log_level      : int
-
+    pass
 
 @runtime_checkable
 class TraceFormatter_p(Protocol):

@@ -76,13 +76,14 @@ logging           = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Vars
-skip_msg                   : Final[str] = doot.constants.printer.skip_by_condition_msg
-max_steps                  : Final[int] = doot.config.on_fail(100_000).commands.run.max_steps()
+skip_msg            : Final[str]   = doot.constants.printer.skip_by_condition_msg
+max_steps           : Final[int]   = doot.config.on_fail(100_000).commands.run.max_steps()
+hide_empty_cleanup  : Final[bool]  = doot.config.on_fail(False).commands.run.hide_empty_cleanup()
 
-SETUP_GROUP                : Final[str] = "setup"
-ACTION_GROUP               : Final[str] = "actions"
-FAIL_GROUP                 : Final[str] = "on_fail"
-DEPENDS_GROUP              : Final[str] = "depends_on"
+SETUP_GROUP         : Final[str]   = "setup"
+ACTION_GROUP        : Final[str]   = "actions"
+FAIL_GROUP          : Final[str]   = "on_fail"
+DEPENDS_GROUP       : Final[str]   = "depends_on"
 
 ##--|
 
