@@ -24,7 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Mixin, Proto
-from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
+from jgdv.cli import ParamSpecMaker_m
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

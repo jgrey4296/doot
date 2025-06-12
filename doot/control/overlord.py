@@ -330,9 +330,9 @@ class WorkflowUtil_m:
     """ util methods on the overlord used when running a workflow """
     args : ChainGuard
 
-    def set_parsed_cli_args(self, data:ChainGuard) -> None:
+    def set_parsed_cli_args(self, data:ChainGuard, *, override:bool=False) -> None:
         match data:
-            case _ if bool(self.args):
+            case _ if bool(self.args) and not override:
                 raise ValueError("Setting Parsed args but its already set")
             case ChainGuard() as x if bool(x):
                 self.args = data

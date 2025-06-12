@@ -35,8 +35,9 @@ import jgdv.cli
 import sh
 import stackprinter
 from jgdv import JGDVError, Mixin, Proto
-from jgdv.cli.param_spec import LiteralParam, ParamSpec
-from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
+from jgdv.cli._interface import EMPTY_CMD
+from jgdv.cli.param_spec import ParamSpec, LiteralParam
+from jgdv.cli import ParamSpecMaker_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.util.plugins.selector import plugin_selector
 # ##-- end 3rd party imports
@@ -473,6 +474,7 @@ class DootMain:
     def param_specs(self) -> list[ParamSpec]:
         """ The cli parameters of the main doot program. """
         return [
+            # TODO may need to control the sort of this literal
             LiteralParam(name=self.prog_name, desc="The Program Name"),
             self.build_param(name="--version" , type=bool, desc="Print the version number"),
             self.build_param(name="--help"    , type=bool, desc="Print this help"),

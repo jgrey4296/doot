@@ -26,14 +26,14 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Proto, Mixin
-import jgdv.structs.strang.errors as StrangErrs
-from jgdv.cli import ParamSpec
-from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.dkey import DKey
-from jgdv.structs.strang import CodeReference
-from jgdv.structs.locator import Location
 from jgdv._abstract.protocols import (Buildable_p, SpecStruct_p)
 from jgdv._abstract.pydantic_proto import ProtocolModelMeta
+from jgdv.cli import ParamSpec, ParamSpecMaker_m
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.dkey import DKey
+from jgdv.structs.locator import Location
+from jgdv.structs.strang import CodeReference
+import jgdv.structs.strang.errors as StrangErrs
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -515,7 +515,7 @@ class _TaskSpecBase:
     def param_specs(self) -> list:
         result = []
         for x in self.extra.on_fail([]).cli():
-            result.append(ParamSpec.build(x))
+            result.append(ParamSpecMaker_m.build_param(**x))
         else:
             return result
 

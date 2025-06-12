@@ -24,7 +24,7 @@ from weakref import ref
 
 # ##-- 3rd party imports
 from jgdv import Mixin, Proto
-from jgdv.cli.param_spec.builder_mixin import ParamSpecMaker_m
+from jgdv.cli import ParamSpecMaker_m
 from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
@@ -174,8 +174,10 @@ class DootTask:
     INITIAL_STATE    : ClassVar[TaskStatus_e]       = TaskStatus_e.INIT
     COMPLETE_STATES  : ClassVar[set[TaskStatus_e]]  = {TaskStatus_e.SUCCESS}
     _default_flags   : ClassVar                     = {TaskMeta_e.TASK}
-    _help            : tuple[str, ...]              = tuple(["The Simplest Task"])
-    _version         : str                          = "0.1"
+    action_ctor      : type
+    _records         : list
+    _help            : tuple[str, ...]  = tuple(["The Simplest Task"])
+    _version         : str              = "0.1"
 
     def __init__(self, spec:TaskSpec, *, job:Any=None, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
         self.spec                      = spec
