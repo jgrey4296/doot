@@ -3,10 +3,9 @@ doot_version = "1.1.1"
 
 # reminders:
 # action = [{do= "basic", args=[]}]
-# cli    = [{}]
+# cli    = [{name="-atoggle"}, {name="-akey", type="str"}, {name="--assign=", type="int"}]
 
 [[global]] # global state updates
-
 
 [[locations]] # Location keys
 src     = "src"

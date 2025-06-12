@@ -8,8 +8,9 @@ loaders              = { commands="default", task="default", parser="default" }
 sources              = { tasks=[".tasks"], code=[] }
 skip_default_plugins = false
 skip_plugin_search   = false
-empty_cmd            = "list"
-implicit_task_cmd    = "run"
+# Implicit Cmds. prepended to the raw cli args if no cmd is parsed
+empty_cmd            = ["list"]
+implicit_task_cmd    = ["run"]
 # constants_file     = ""
 # aliases_file       = ""
 
@@ -18,7 +19,7 @@ implicit_task_cmd    = "run"
 # command        = { tasks="doot.cmds.list_cmd:ListCmd" }
 
 [shutdown]
-notify           = { speak=false } # success_msg="", fail_msg=""
+notify           = { exit="Dooted" } # success_msg="", fail_msg=""
 defaulted_values = { write=false, path=".defaulted_values.toml" }
 # exit_on_load_failures = true
 
@@ -38,9 +39,14 @@ hide            = []
 aliases         = { tasks=[], plugins=["--plugins"] }
 
 [logging]
-# Setup output stream, file logging, and printing
+# Setup output 'stream', 'file' and 'printer' logging.
 # See jgdv.logging for details.
 # Or call 'doot list --loggers'
+# Loggers can be in line format:
+# stream  = { level="WARN", filter=[],  target="stdout",   format="{levelname:<8} : {message}"  }
+# And disabled quickly using:
+# stream = false
+# Or as sections:
 [logging.stream]
 disabled  = false
 level     = "user"
@@ -53,7 +59,6 @@ format    = "{levelname:<8} : {message}"
 disabled      = true
 level         = "trace"
 filter        = ["jgdv"]
-# allow       = []
 target        = ["rotate"]
 format        = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
 filename_fmt  = "doot.log"
