@@ -191,9 +191,8 @@ class CLIArgParsing_m:
                     raise TypeError(type(x))
 
     def handle_implicit_cmds(self) -> None:
-        """ Post arg parsing, if explicit commands aren't given, use implicit ones.
-
-
+        """
+        Post arg parsing, if explicit commands aren't given, use implicit ones.
         """
         empty_call_cmd     : list  = doot.config.on_fail(DEFAULT_EMPTY_CMD, list).startup.empty_cmd()            # type: ignore
         implicit_task_cmd  : str   = doot.config.on_fail(DEFAULT_IMPLICIT_CMD, list).startup.implicit_task_cmd()  # type: ignore
@@ -203,7 +202,7 @@ class CLIArgParsing_m:
             case str() as target , False if target == EMPTY_CMD: # empty cmd
                 self.parse_args(override=[*empty_call_cmd, *self.raw_args[1:]])
             case str() as target, True if target == EMPTY_CMD: # Subtasks, so use implicit task cmd
-                self.parse_args(override=[*implicit_task_cmd, *self.raw_args[2:]])
+                self.parse_args(override=[*implicit_task_cmd, *self.raw_args[1:]])
             case str() as target, _:
                 pass
             case x:
