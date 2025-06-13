@@ -289,8 +289,8 @@ class TestDKeyExpansion:
 class TestDKeyMultikeyExpansion:
 
     def test_expansion_with_key_conflict(self):
-        mk          = dkey.DKey("--blah={test!p}/{test}", mark=dkey.DKey.Marks.MULTI)
-        transformed = dkey.DKey("--blah={test!p}/{test2}", mark=dkey.DKey.Marks.MULTI)
+        mk          = dkey.DKey[list]("--blah={test!p}/{test}")
+        transformed = dkey.DKey[list]("--blah={test!p}/{test2}")
         assert(isinstance(mk, dkey.MultiDKey))
         assert(not isinstance(mk, dkey.DootPathDKey))
         target      = "--blah=%s" % doot.locs["aweg/aweg"]
@@ -303,7 +303,7 @@ class TestDKeyMultikeyExpansion:
         """ this is a {name!p} blah. -> this is a ../test blah."""
         target   = "this is a %s blah." % doot.locs["test"]
         full_str = "this is a {%s!p} blah." % name
-        key      = dkey.DKey(full_str, implicit=False, mark=dkey.DKey.Marks.MULTI)
+        key      = dkey.DKey[list](full_str, implicit=False)
         state    = {name : "test"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
@@ -315,7 +315,7 @@ class TestDKeyMultikeyExpansion:
         """ this is a {name!p} blah {name}. -> this is a ../test blah test."""
         target   = "this is a %s blah test." % doot.locs["test"]
         full_str = "this is a {%s!p} blah {%s}." % (name, name)
-        key      = dkey.DKey(full_str, implicit=False, mark=dkey.DKey.Marks.MULTI)
+        key      = dkey.DKey[list](full_str, implicit=False)
         state    = {name : "test"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
@@ -327,7 +327,7 @@ class TestDKeyMultikeyExpansion:
         """ this is a {name!p} blah {other}. -> this is a ../test blah something."""
         target   = "this is a %s blah something." % doot.locs["test"]
         full_str = "this is a {%s!p} blah {other}." % name
-        key      = dkey.DKey(full_str, implicit=False, mark=dkey.DKey.Marks.MULTI)
+        key      = dkey.DKey[list](full_str, implicit=False)
         state    = {name : "test", "other": "something"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
@@ -464,7 +464,7 @@ class TestDKeyPathKeys:
           name -> missing -> fallback
         """
         target = doot.locs["blah"]
-        key    = dkey.DKey(name, mark=dkey.DKey.Marks.PATH, fallback=None, implicit=True)
+        key    = dkey.DKey[pl.Path](name, fallback=None, implicit=True)
         state  = {}
         match key.expand(state):
             case None:
@@ -488,7 +488,7 @@ class TestDKeyPathKeys:
     def test_retrieve_relative_path(self, wrap_locs):
         wrap_locs.update({"data_drive": "/media/john/data", "pdf_source": "{data_drive}/library/pdfs"})
         state  = {"relpath": pl.Path("a/b/c"), "head_": "relpath"}
-        obj    = dkey.DKey("relpath", implicit=True, mark=dkey.DKey.Marks.FREE)
+        obj    = dkey.DKey("relpath", implicit=True)
         redir  = dkey.DKey("head", implicit=True)
         target = "a/b/c"
         assert(isinstance(obj, dkey.DKey))

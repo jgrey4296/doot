@@ -81,7 +81,7 @@ class TaskNameDKey(DKey, mark=TaskName,  convert="t"):
         self.data.expansion_type  = TaskName
         self.data.typecheck       = TaskName
 
-class DootPathDKey(DKey[DKey.Marks.MULTI], mark=pl.Path, ctor=pl.Path, convert="p"):
+class DootPathDKey(DKey[pl.Path], mark=pl.Path, ctor=pl.Path, convert="p", overwrite=True):
     """
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`

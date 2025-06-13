@@ -303,7 +303,7 @@ class _Expansion_m:
         match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
-                art_path = DKey(artifact[1,:], mark=DKey.Marks.PATH)(relative=True) # type: ignore[operator]
+                art_path = DKey[pl.Path](artifact[1,:])(relative=True) # type: ignore[operator]
                 for abstract in self._registry.abstract_artifacts:
                     if art_path not in abstract and artifact not in abstract:
                         continue
@@ -313,7 +313,7 @@ class _Expansion_m:
                 logging.debug("-- Connecting abstract task to child concrete _registry.artifacts")
                 for conc in self._registry.concrete_artifacts:
                     assert(conc.is_concrete())
-                    conc_path = DKey(conc[1,:], mark=DKey.Marks.PATH)(relative=True) # type: ignore[operator]
+                    conc_path = DKey[pl.Path](conc[1,:])(relative=True) # type: ignore[operator]
                     if conc_path not in artifact:
                         continue
                     self.connect(conc, artifact)
