@@ -263,7 +263,7 @@ class TaskLoader:
                     case {"name": task_name, "ctor": CodeReference() as ctor}:
                         task_spec = TaskSpec.build(spec)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders:
-                        spec['ctor'] = CodeReference.from_value(self.task_builders[task_alias])
+                        spec['ctor'] = CodeReference(self.task_builders[task_alias])
                         task_spec = TaskSpec.build(spec)
                     case {"name": task_name}:
                         task_spec = TaskSpec.build(spec)
