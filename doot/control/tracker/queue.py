@@ -139,10 +139,10 @@ class TrackQueue:
 
           kwarg 'from_user' signifies the enty is a starting target, adding cli args if necessary and linking to the root.
         """
-        abs_name  : Maybe[TaskName]
-        inst_name : Concrete[TaskName]
-        task_name : Concrete[TaskName]
-        target_priority : int = self._network._declare_priority
+        abs_name         : Maybe[TaskName]
+        inst_name        : Concrete[TaskName]
+        task_name        : Concrete[TaskName]
+        target_priority  : int  = self._network._declare_priority
 
         match target:
             case TaskArtifact() as art:
@@ -157,7 +157,10 @@ class TrackQueue:
                 return art
             case TaskSpec() as spec:
                 self._registry.register_spec(spec)
-                abs_name = spec.name
+                if TaskName.Marks.partial in spec.name:
+                    abs_name = spec.name.pop(top=False)
+                else:
+                    abs_name = spec.name
             case TaskName() | str():
                 abs_name = self._queue_prep_name(target)
 

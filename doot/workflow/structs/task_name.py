@@ -69,8 +69,10 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-DEFAULT_SEP : Final[str] = doot.constants.patterns.TASK_SEP # type: ignore
+DEFAULT_SEP   : Final[str] = doot.constants.patterns.TASK_SEP # type: ignore
+TASKS_PREFIX  : Final[str] = "tasks."
 
+##--|
 class TaskNameHeadMarks_e(StrangAPI.StrangMarkAbstract_e):
     """ Markers used in a Strang's head """
     basic = "$basic$"
@@ -120,7 +122,7 @@ class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
         """ Remove 'tasks' as a prefix, and strip quotes  """
         match input:
             case str():
-                cleaned = input.removeprefix("tasks.").replace('"', "")
+                cleaned = input.removeprefix(TASKS_PREFIX).replace('"', "")
             case x if not strict:
                 cleaned = str(x)
             case x:

@@ -367,7 +367,7 @@ class _SpecUtils_m:
             raise ValueError("Incorrect base spec for partial", self.name, last_source, actual.name)
 
         adjusted = dict(self) # type: ignore
-        adjusted['name'] = self.name.pop()
+        adjusted['name'] = self.name.pop(top=False)
         return actual.under(adjusted, suffix=False)
 
     def over(self:TaskSpec_i, data:TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec:

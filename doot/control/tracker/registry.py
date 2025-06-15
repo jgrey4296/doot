@@ -117,7 +117,7 @@ class _Registration_m(_Registry_d):
 
         An initial concrete instance will be created for any abstract spec.
 
-        Specs with names ending in <partial> will apply their direct .sources predecessor
+        Specs with names ending in $partial$ will apply their direct .sources predecessor
         under themselves, and pop off the 'partial' name
         That predecessor can not be partial itself
         """
@@ -137,7 +137,7 @@ class _Registration_m(_Registry_d):
                     if self.specs[x] is not spec:
                         raise ValueError("Tried to overwrite a spec", spec.name)
                     continue
-                case TaskName() as x if x[-1] == "<partial>":
+                case TaskName() as x if TaskName.Marks.partial in x:
                     logging.info("[+.Partial] : %s", spec.name[:])
                     spec = self._reify_partial_spec(spec)
                 case TaskName() if x.uuid(): # type: ignore
@@ -161,12 +161,12 @@ class _Registration_m(_Registry_d):
             pass
 
     def _reify_partial_spec(self, spec:TaskSpec) -> TaskSpec:
-        """ Take a partial spec a.b.c..<partial>,
-        Apply it over
+        """ Take a partial spec a.b.c..$partial$,
+        Apply it over it the spec a.b.c
         """
-        adjusted_name = spec.name.pop() # type: ignore
+        adjusted_name = spec.name.pop(top=False)
         if adjusted_name in self.specs:
-            raise ValueError("Tried to reify a partial spec into one that already is registered")
+            raise doot.errors.TrackingError("Tried to reify a partial spec into one that already is registered", spec.name, adjusted_name)
 
         base_name = spec.sources[-1]
         assert(isinstance(base_name, TaskName))

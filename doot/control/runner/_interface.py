@@ -27,7 +27,6 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-
 # ##-- types
 # isort: off
 import abc
@@ -61,7 +60,6 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-
 class ExecutionPolicy_e(enum.Enum):
     """ How the task execution will be ordered
       PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
@@ -74,6 +72,7 @@ class ExecutionPolicy_e(enum.Enum):
     BREADTH  = enum.auto() # Breadth First Search
 
     default = PRIORITY
+
 @runtime_checkable
 class TaskRunner_p(Protocol):
     """
