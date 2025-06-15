@@ -546,34 +546,33 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     """
 
     ##--|
-
-    name              : TaskName                                                 = Field()
-    doc               : Maybe[list[str]]                                         = Field(default_factory=list)
-    sources           : list[Maybe[TaskName|pl.Path]]                            = Field(default_factory=list)
+    _default_ctor     : ClassVar[str]              = DEFAULT_ALIAS
+    _blocking_groups  : ClassVar[tuple[str, ...]]  = DEFAULT_BLOCKING
+    Marks             : ClassVar[type[enum.Enum]]  = TaskMeta_e
+    ##--|
+    name             : TaskName                                                 = Field()
+    doc              : Maybe[list[str]]                                         = Field(default_factory=list)
+    sources          : list[Maybe[TaskName|pl.Path]]                            = Field(default_factory=list)
 
     # Action Groups:
-    actions           : ActionGroup                                              = Field(default_factory=list)
-    required_for      : ActionGroup                                              = Field(default_factory=list)
-    depends_on        : ActionGroup                                              = Field(default_factory=list)
-    setup             : ActionGroup                                              = Field(default_factory=list)
-    cleanup           : ActionGroup                                              = Field(default_factory=list)
-    on_fail           : ActionGroup                                              = Field(default_factory=list)
+    actions          : ActionGroup                                              = Field(default_factory=list)
+    required_for     : ActionGroup                                              = Field(default_factory=list)
+    depends_on       : ActionGroup                                              = Field(default_factory=list)
+    setup            : ActionGroup                                              = Field(default_factory=list)
+    cleanup          : ActionGroup                                              = Field(default_factory=list)
+    on_fail          : ActionGroup                                              = Field(default_factory=list)
 
     # Any additional
-    version           : str                                                      = Field(default=doot.__version__) # TODO: make dict?
-    priority          : int                                                      = Field(default=10)
-    ctor              : CodeReference                                            = Field(default=None, validate_default=True)
-    queue_behaviour   : API.QueueMeta_e                                          = Field(default=API.QueueMeta_e.default)
-    meta              : set[TaskMeta_e]                                          = Field(default_factory=set)
-    _transform        : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]]  = None
-    generated_names   : set[TaskName]                                            = Field(init=False, default_factory=set)
+    version          : str                                                      = Field(default=doot.__version__) # TODO: make dict?
+    priority         : int                                                      = Field(default=10)
+    ctor             : CodeReference                                            = Field(default=None, validate_default=True)
+    queue_behaviour  : API.QueueMeta_e                                          = Field(default=API.QueueMeta_e.default)
+    meta             : set[TaskMeta_e]                                          = Field(default_factory=set)
+    generated_names  : set[TaskName]                                            = Field(init=False, default_factory=set)
 
     # task specific estate
-    _default_ctor     : ClassVar[str]                                            = DEFAULT_ALIAS
-    # Action Groups t on, rather than are dependencies of, this task:
-    _blocking_groups  : ClassVar[tuple[str, ...]]                                = DEFAULT_BLOCKING
-
-    mark_e            : ClassVar[type[enum.Enum]]                                = TaskMeta_e
+    ##--|
+    _transform       : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]]  = None
 
     ##--|
 
@@ -581,12 +580,12 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     def _convert_toml_keys(cls, data:dict) -> dict:
         """ converts a-key into a_key, and joins group+name """
         cleaned  : dict
-        sep      : Maybe[str]                                                    = TaskName.section(0).end
+        sep      : Maybe[str]                                                   = TaskName.section(0).end
         assert(sep is not None)
 
-        cleaned                                                                  = {k.replace(API.DASH_S, API.USCORE_S) : v  for k,v in data.items()}
+        cleaned                                                                 = {k.replace(API.DASH_S, API.USCORE_S) : v  for k,v in data.items()}
         if API.GROUP_K in cleaned and sep not in cleaned[API.GROUP_K]:
-            cleaned[API.NAME_K]                                                  = sep.join([cleaned[API.GROUP_K], cleaned[API.NAME_K]])
+            cleaned[API.NAME_K]                                                 = sep.join([cleaned[API.GROUP_K], cleaned[API.NAME_K]])
             del cleaned[API.GROUP_K]
         return cleaned
 

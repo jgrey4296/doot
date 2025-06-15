@@ -81,22 +81,21 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     """
 
     # What the Relation end point is:
-    mark_e        : ClassVar[enum] = RelationMeta_e
-
-    target        : TaskName|TaskArtifact
-    relation      : RelationMeta_e                 = RelationMeta_e.needs
-    # constraints on spec field equality
-    object        : Maybe[TaskName|TaskArtifact]   = None
-    constraints   : dict[str, str]                 = {}
-    inject        : Maybe[InjectSpec]              = None
-    _meta         : dict()                         = {} # Misc metadata
+    Marks        : ClassVar[enum]  = RelationMeta_e
+    ##--|
+    target       : TaskName|TaskArtifact
+    relation     : RelationMeta_e                = RelationMeta_e.needs
+    object       : Maybe[TaskName|TaskArtifact]  = None
+    constraints  : dict[str, str]                = {}
+    inject       : Maybe[InjectSpec]             = None
+    _meta        : dict()                        = {} # Misc metadata
 
     @classmethod
-    def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
+    def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.Marks]=None) -> RelationSpec:
         """ Create a new relation, defaulting to a requirement.
 
         """
-        relation = relation or cls.mark_e.needs
+        relation = relation or cls.Marks.needs
         result = None
         match data:
             case RelationSpec(): # Do Nothing

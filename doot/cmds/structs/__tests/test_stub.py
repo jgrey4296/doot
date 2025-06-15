@@ -99,9 +99,9 @@ class TestTaskStubPart:
         assert(result_chainguard.amount == 10)
 
     def test_str_reduce_with_comment(self):
-        obj = stub.TaskStubPart(key="blah", default="a test", comment="a simple comment")
-        as_toml = str(obj)
-        assert(as_toml == f"{'blah':<20} = \"a test\"             # <str>                # a simple comment")
+        obj             = stub.TaskStubPart(key="blah", default="a test", comment="a simple comment")
+        as_toml         = str(obj)
+        assert(as_toml  == f"{'blah':<20} = \"a test\"")
 
     def test_stub_part_list_reduce(self):
         obj = stub.TaskStubPart(key="test", type="list", default=[1,2,3], comment="a simple stub part")

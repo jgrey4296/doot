@@ -91,6 +91,7 @@ NL = None
 ##--|
 
 class _StubDoot_m:
+    """ Mixin for stubbing the doot.toml file """
 
     def param_specs(self:Command_i) -> list:
         return [
@@ -115,6 +116,7 @@ class _StubDoot_m:
         return []
 
 class _StubParam_m:
+    """ Mixin for stubbing a cli parameter """
 
     def param_specs(self) -> list:
         return [
@@ -137,6 +139,7 @@ class _StubParam_m:
         return result
 
 class _StubAction_m:
+    """ Mixin for stubbing an action """
 
     def param_specs(self) -> list:
         return [
@@ -185,6 +188,7 @@ class _StubAction_m:
         return result
 
 class _StubTask_m:
+    """ Mixin for stubbing a task """
 
     def param_specs(self) -> list:
         return [
@@ -202,60 +206,11 @@ class _StubTask_m:
         """
         logging.info("---- Stubbing Task Toml")
         result = []
-        match  doot.aliases.task.get((ctor:=doot.args.on_fail("task").cmd.args.ctor()), None):
-            case None:
-                raise doot.errors.CommandError("Task Ctor was not appliable", ctor)
-            case x:
-                task_ctor : CodeReference = CodeReference(x)
-
-        match doot.args.on_fail(None).cmd.args.name():
-            case None:
-                raise doot.errors.CommandError("No Name Provided for Stub")
-            case x:
-                name = TaskName(x)
 
         # Create stub toml, with some basic information
-        stub = TaskStub(ctor=task_ctor)
-        stub['name'].default          = name
-
-        # add ctor specific fields,
-        # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
-        # works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
-        try:
-            match task_ctor():
-                case type() as ctor:
-                    task_mro = ctor.mro()
-                case Exception() as err:
-                    raise err
-        except TypeError as err:
-            logging.exception(err.args[0].replace("\n", ""))
-            task_mro = []
-            return []
-
-        for cls in reversed(task_mro):
-            try:
-                cls.stub_class(stub)
-                if issubclass(cls, Task_p):
-                    stub['doot_version'].default         = doot.__version__
-                    stub['doc'].default             = []
-            except NotImplementedError:
-                pass
-            except AttributeError:
-                pass
-
-        # Convert to alises
-        stub['ctor'].default   = task_ctor
-
-        # extend the name if there are already tasks with that name
-        original_name = stub['name'].default[1:]
-        while str(stub['name'].default) in tasks:
-            stub['name'].default.tail.append("$conflicted$")
-
-        if original_name != stub['name'].default[1:]:
-            logging.warning("Group %s: Name %s already defined, trying to modify name to: %s",
-                            stub['name'].default[0:],
-                            original_name,
-                            stub['name'].default[1:])
+        stub                  = TaskStub()
+        stub['name'].default  = self._stub_task_name(tasks)
+        self._add_ctor_specific_stub_fields(stub)
 
         # Output to doot.report/stdout, or file
         if doot.args.cmd.args.out == "":
@@ -272,8 +227,62 @@ class _StubTask_m:
 
         return []
 
+    def _stub_task_name(self, tasks):
+        match doot.args.on_fail(None).cmd.args.name():
+            case None:
+                raise doot.errors.CommandError("No Name Provided for Stub")
+            case x:
+                name = TaskName(x)
+
+        # extend the name if there are already tasks with that name
+        original_name = name
+        count = 0
+        while str(name) in tasks:
+            count += 1
+            name = original_name.push("$conflicted$", count)
+        else:
+            return name
+
+    def _add_ctor_specific_stub_fields(self, stub:TaskStub) -> None:
+        """ add ctor specific fields,
+        such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
+        works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
+        """
+        match  doot.aliases.task.get((ctor:=doot.args.on_fail("task").cmd.args.ctor()), None):
+            case None:
+                raise doot.errors.CommandError("Task Ctor was not appliable", ctor)
+            case x:
+                task_ctor : CodeReference = CodeReference(x)
+
+        try:
+            match task_ctor():
+                case type() as ctor:
+                    task_mro = ctor.mro()
+                case Exception() as err:
+                    raise err
+        except TypeError as err:
+            logging.exception(err.args[0].replace("\n", ""))
+            task_mro = []
+            return
+
+        for cls in reversed(task_mro):
+            try:
+                cls.stub_class(stub)
+                if isinstance(cls, Task_p):
+                    stub['doot_version'].default         = doot.__version__
+                    stub['doc'].default             = []
+            except NotImplementedError:
+                pass
+            except AttributeError:
+                pass
+
+        # Convert to aliases
+        stub['ctor'].default   = task_ctor
 
 class _StubPrinter_m:
+    """
+    Mixin for stubbing printer config
+    """
 
     def param_specs(self) -> list:
         return [
@@ -322,5 +331,5 @@ class StubCmd(BaseCommand):
                 result = self._stub_printer()
             case _:
                 result = self._stub_task_toml(tasks, plugins)
-
+        ##--|
         self._print_text(result)

@@ -244,12 +244,13 @@ class InjectSpec_i(Buildable_p, Protocol):
 
 class RelationSpec_i(Protocol):
 
-    mark_e        : ClassVar[type[enum.Enum]]
-    target        : TaskName_p|Artifact_i
-    relation      : RelationMeta_e
-    object        : Maybe[TaskName_p|Artifact_i]
-    constraints   : dict[str, str]
-    inject        : Maybe[InjectSpec_i]
+    Marks        : ClassVar[type[enum.Enum]]
+    ##--|
+    target       : TaskName_p|Artifact_i
+    relation     : RelationMeta_e
+    object       : Maybe[TaskName_p|Artifact_i]
+    constraints  : dict[str, str]
+    inject       : Maybe[InjectSpec_i]
 
 class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
     """
@@ -259,30 +260,31 @@ class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
     # task specific extras to use in state
     _default_ctor                     : ClassVar[str]
     # Action Groups that are depended on, rather than are dependencies of, this task:
-    _blocking_groups                  : ClassVar[tuple[str]]
+    _blocking_groups  : ClassVar[tuple[str]]
+    Marks             : ClassVar[enum.Enum]
 
-    ##--| Core Instance Data
-    mark_e                            : ClassVar[enum.Enum]
-    name                              : TaskName_p
-    doc                               : Maybe[list[str]]
-    sources                           : list[Maybe[TaskName_p|pl.Path]]
+   ##--| Core Instance Data
+    name     : TaskName_p
+    doc      : Maybe[list[str]]
+    sources  : list[Maybe[TaskName_p|pl.Path]]
 
     ##--| Default Action Groups
-    actions                           : list[ActionSpec_i]
-    required_for                      : list[ActionSpec_i|RelationSpec_i]
-    depends_on                        : list[ActionSpec_i|RelationSpec_i]
-    setup                             : list[ActionSpec_i|RelationSpec_i]
-    cleanup                           : list[ActionSpec_i|RelationSpec_i]
-    on_fail                           : list[ActionSpec_i|RelationSpec_i]
+    actions       : list[ActionSpec_i]
+    required_for  : list[ActionSpec_i|RelationSpec_i]
+    depends_on    : list[ActionSpec_i|RelationSpec_i]
+    setup         : list[ActionSpec_i|RelationSpec_i]
+    cleanup       : list[ActionSpec_i|RelationSpec_i]
+    on_fail       : list[ActionSpec_i|RelationSpec_i]
 
     ##--| Any additional information:
-    version                           : str
-    priority                          : int
-    ctor                              : CodeReference
-    queue_behaviour                   : QueueMeta_e
-    meta                              : set[TaskMeta_e]
-    _transform                        : Maybe[Literal[False]|tuple[RelationSpec_i, RelationSpec_i]]
-    extra                             : ChainGuard
+    version          : str
+    priority         : int
+    ctor             : CodeReference
+    queue_behaviour  : QueueMeta_e
+    meta             : set[TaskMeta_e]
+    ##--|
+    _transform       : Maybe[Literal[False]|tuple[RelationSpec_i, RelationSpec_i]]
+    extra            : ChainGuard
 
 ##--|
 

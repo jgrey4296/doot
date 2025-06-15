@@ -72,7 +72,7 @@ logging = logmod.getLogger(__name__)
 # TODO make a decorator to register these onto the cmd
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
-reporter_target          = doot.config.on_fail(None, str|None).settings.commands.run.reporter()
+reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
 interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
 check_locs               = doot.config.on_fail(False).settings.commands.run.location_check.active()
 

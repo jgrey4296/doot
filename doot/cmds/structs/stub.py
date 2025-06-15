@@ -71,8 +71,8 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
     # str(obj) -> will now generate toml, including a "blah" key
 
     """
-    ctor       : str|CodeReference|type                     = DEFAULT_CTOR
-    parts      : dict[str, TaskStubPart]                        = {}
+    ctor   : str|CodeReference|type   = DEFAULT_CTOR
+    parts  : dict[str, TaskStubPart]  = {}
 
     # Don't copy these from TaskSpec blindly
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version", "queue_behaviour"])
@@ -103,6 +103,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
         return self
 
     def __getitem__(self, key):
+        """ If the key doesnt exist, a new stub part is created """
         if key not in self.parts:
             self.parts[key] = TaskStubPart(key=key)
         return self.parts[key]
@@ -180,18 +181,11 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
             return f"[[tasks.{self.default[0,:]}]]\n{'name':<20} = \"{self.default[1,:]}\""
 
         key_str     = self._key_str()
-        type_str    = self._type_str()
-        comment_str = self._comment_str()
+        # type_str    = self._type_str()
+        # comment_str = self._comment_str()
         val_str     = self._default_str()
 
-        return f"{self.prefix}{key_str} = {val_str:<20} # {type_str:<20} # {comment_str}"
-
-    def set(self, **kwargs):
-        self.type_     = kwargs.get('type_', self.type_)
-        self.prefix    = kwargs.get('prefix', self.prefix)
-        self.default   = kwargs.get('default', self.default)
-        self.comment   = kwargs.get('comment', self.comment)
-        self.priority  = kwargs.get('priority', self.priority)
+        return f"{self.prefix}{key_str} = {val_str}"
 
     def _key_str(self) -> str:
         return f"{self.key:<20}"
@@ -207,6 +201,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         return f"{self.comment}"
 
     def _default_str(self) -> str:
+        """ Formats the default toml representation of this stub part"""
         match self.default:
             case "" if isinstance(self.type_, enum.EnumMeta):
                 val_str = f'[ "{self.type_.default.name}" ]'
@@ -240,3 +235,10 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
                 val_str = '"unknown"'
 
         return val_str
+
+    def set(self, **kwargs):
+        self.type_     = kwargs.pop('type_', self.type_)
+        self.prefix    = kwargs.pop('prefix', self.prefix)
+        self.default   = kwargs.pop('default', self.default)
+        self.comment   = kwargs.pop('comment', self.comment)
+        self.priority  = kwargs.pop('priority', self.priority)

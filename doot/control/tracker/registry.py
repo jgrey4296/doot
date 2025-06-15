@@ -214,7 +214,7 @@ class _Registration_m(_Registry_d):
         # record that target needs spec
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.uuid():
+                case RelationSpec(target=target, relation=RelationSpec.Marks.blocks) if spec.name.uuid():
                     logging.info("[Requirement]: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self.blockers[target].append(rel)
