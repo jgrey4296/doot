@@ -15,7 +15,8 @@ implicit_task_cmd    = ["run"]
 # aliases_file       = ""
 
 [startup.plugins]
-# Allows for defining aliases
+# For loading plugins, by their group
+# Each dict maps a plugin name to its import path
 # command        = { tasks="doot.cmds.list_cmd:ListCmd" }
 
 [shutdown]
@@ -25,6 +26,7 @@ defaulted_values = { write=false, path=".defaulted_values.toml" }
 
 [settings.commands]
 # Set command specific values, and aliases
+# if an entry has an aliases entry, the cmd is called with the given args
 [settings.commands.run]
 tracker         = "default"
 runner          = "default"

@@ -274,7 +274,7 @@ class CLIArgParsing_m:
                     result.append(x)
                 case [name, *_] as args:
                     # is an alias
-                    doot.report.trace("Using Alias: %s -> %s", x, name)
+                    doot.report.trace("Using Alias: %s -> %s", x, args)
                     result += args
                 case x:
                     raise TypeError(type(x))
