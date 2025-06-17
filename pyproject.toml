@@ -30,15 +30,6 @@ dependencies   = [
     "packaging>=24.2",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "myst-parser>=4.0.1",
-    "pytest>=8.3.5",
-    "pytest-mock>=3.14.0",
-    "sphinx>=8.2.3",
-    "sphinx-rtd-theme>=3.0.2",
-]
-
 ##-- urls
 [project.urls]
 homepage      = "https://github.com/jgrey4296/doot"
@@ -132,7 +123,6 @@ tag                = false
 "doot/__data/constants.toml"  = ['^doot_version\s+=\s+"{version}"']
 "doot/__data/templates/basic_config_toml"  = ['^doot_version\s+=\s+"{version}"']
 "doot/__data/templates/tasks_toml"  = ['^doot_version\s+=\s+"{version}"']
-
 
 ##-- end bumpver
 
@@ -230,7 +220,6 @@ ignore_missing_imports  = true
 exclude                 = []
 incremental             = true
 
-
 # Per-module options:
 # [[tool.mypy.overrides]]
 # module                = "blah"
@@ -241,8 +230,19 @@ incremental             = true
 ##-- uv
 [tool.uv.sources]
 jgdv = { path = "../jgdv", editable = true }
+dootle = { path = "related_/dootle", editable = true }
 
 [dependency-groups]
-dev = []
+dev = [
+    "dootle>=0.3.0",
+    "jgdv",
+    "myst-parser>=4.0.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.14.0",
+    "sphinx>=8.2.3",
+    "sphinx-autoapi>=3.6.0",
+    "sphinx-rtd-theme>=3.0.2",
+]
 
 ##-- end uv
