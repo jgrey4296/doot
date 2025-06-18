@@ -91,7 +91,21 @@ SPECIAL_KEYS      : Final[list[str]]  = [CLI_K, MUST_INJECT_K]
 SUFFIX_K          : Final[str]        = "_add_suffix"
 USCORE_S          : Final[str]        = "_"
 DEFAULT_PRIORITY  : Final[int]        = 10
-# Body:
+##--| Enum Protocols:
+class Status_ep(Protocol):
+
+    @classmethod
+    def default(cls) -> Any: ...
+
+    @classmethod
+    def pre_set(cls) -> set: ...
+
+    @classmethod
+    def success_set(cls) -> set: ...
+
+    @classmethod
+    def fail_set(cls) -> set: ...
+
 ##--| Enums
 
 class QueueMeta_e(enum.Enum):
@@ -122,7 +136,9 @@ class RelationMeta_e(enum.Enum):
     blocks           = enum.auto()
     # excludes         = enum.auto() # noqa: ERA001
 
-    default          = needs
+    @classmethod
+    def default(cls) -> RelationMeta_e:
+        return cls.needs
 
 class TaskMeta_e(enum.StrEnum):
     """
@@ -182,20 +198,19 @@ class TaskStatus_e(enum.Enum):
     TEARDOWN        = enum.auto() # Task is ready to be killed
     DEAD            = enum.auto() # Task is done.
 
-    default         = NAMED
+    @classmethod
+    def default(cls) -> TaskStatus_e:
+        return cls.NAMED
 
     @classmethod # type: ignore
-    @property
     def pre_set(cls) -> set:
         return {cls.NAMED, cls.DECLARED, cls.DEFINED}
 
     @classmethod # type: ignore
-    @property
     def success_set(cls) -> set:
         return {cls.SUCCESS, cls.TEARDOWN, cls.DEAD}
 
     @classmethod # type: ignore
-    @property
     def fail_set(cls) -> set:
         return {cls.SKIPPED, cls.HALTED, cls.FAILED}
 
@@ -221,7 +236,6 @@ class ActionResponse_e(enum.Enum):
     SUCCESS  = SUCCEED
 
 ##--| Spec Interfaces
-
 
 class ActionSpec_i(Buildable_p, Protocol):
     do         : Maybe[CodeReference]
@@ -311,6 +325,7 @@ class TaskName_p(Strang_p, Protocol):
 
 @runtime_checkable
 class Task_p(Protocol):
+
     def __init__(self, spec:SpecStruct_p) -> None: ...
 
     def __hash__(self): ...
@@ -340,7 +355,6 @@ class Job_p(Task_p, Protocol):
     def expand_job(self) -> list:
         pass
 
-
 @runtime_checkable
 class Task_i(Task_p, Protocol):
     _default_flags : ClassVar[set[TaskMeta_e]]
@@ -349,6 +363,6 @@ class Task_i(Task_p, Protocol):
     _help            : tuple[str, ...]
     doc              : tuple[str, ...]
     state            : dict
-    spec             : SpecStruct_p
+    spec             : TaskSpec_i
     status           : TaskStatus_e
     priority         : int

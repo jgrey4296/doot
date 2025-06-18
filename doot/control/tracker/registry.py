@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     type ActionGroup = list[ActionElem]
 ##--|
 ##
-from doot.workflow._interface import Task_p
+from doot.workflow._interface import Task_i
 # isort: on
 # ##-- end types
 
@@ -85,11 +85,11 @@ class _Registry_d:
     - every concrete spec is in concrete under its abstract name
     - every implicit task that hasn't been registered is in implicit, mapped to its declaring spec
     """
-    specs                : dict[TaskName, TaskSpec]
-    concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]
-    implicit             : dict[Abstract[TaskName], TaskName]
-    tasks                : dict[Concrete[TaskName], Task_p]
-    artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]
+    specs               : dict[TaskName, TaskSpec]
+    concrete            : dict[Abstract[TaskName], list[Concrete[TaskName]]]
+    implicit            : dict[Abstract[TaskName], TaskName]
+    tasks               : dict[Concrete[TaskName], Task_i]
+    artifacts           : dict[TaskArtifact, set[Abstract[TaskName]]]
     # Artifact sets
     abstract_artifacts  : set[Abstract[TaskArtifact]]
     concrete_artifacts  : set[Concrete[TaskArtifact]]
@@ -157,7 +157,7 @@ class _Registration_m(_Registry_d):
 
             registered += 1
         else:
-            # logging.debug("[+] %s new", registered)
+            logging.debug("[+] %s new", registered)
             pass
 
     def _reify_partial_spec(self, spec:TaskSpec) -> TaskSpec:
@@ -308,9 +308,10 @@ class _Instantiation_m(_Registry_d):
 
         returns the concrete TaskName of the instanced target of the relation
         """
-        control_obj : Task_p|TaskSpec
-        instance    : TaskName
-        existing    : TaskName
+        control_obj  : Task_i|TaskSpec
+        instance     : Maybe[TaskName]
+        existing     : TaskName
+        injection    : bool|dict
         ##--|
         logging.debug("[Instance.Relation] : %s -> %s -> %s", control, rel.relation.name, rel.target)
         if control not in self.specs:
@@ -341,7 +342,7 @@ class _Instantiation_m(_Registry_d):
                         case x:
                             injection = x
                     instance  = self._instantiate_spec(rel.target, extra=injection)
-                    if not inj.validate(control_obj, self.specs[instance], only_spec=True):
+                    if instance and not inj.validate(control_obj, self.specs[instance], only_spec=True):
                         raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
                     assert(instance is not None)
                     assert(instance not in current)
@@ -354,21 +355,21 @@ class _Instantiation_m(_Registry_d):
                     logging.debug("[Instance.Relation.Basic] : %s", instance)
                     return instance
 
-    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_p]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]:
+    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 
           return the name of the task
           """
-        task : Task_p
+        task : Task_i
 
         match name, task_obj:
             case TaskName() as x, _ if not x.uuid():
                 raise doot.errors.TrackingError("Tried to build a task using a non-concrete spec", name)
-            case TaskName() as x, Task_p() as obj if x not in self.tasks:
+            case TaskName() as x, Task_i() as obj if x not in self.tasks:
                 self.tasks[x] = obj
                 return x
-            case TaskName() as x, Task_p() as obj:
+            case TaskName() as x, Task_i() as obj:
                 raise doot.errors.TrackingError("Tried to provide a task object for already existing task", name)
             case TaskName() as x, _ if x not in self.specs:
                 raise doot.errors.TrackingError("Tried to make a task from a non-existent spec name", name)
@@ -391,9 +392,9 @@ class _Instantiation_m(_Registry_d):
 
         match parent:
             case None:
-                task = spec.make(ensure=Task_p, inject=late_inject)
+                task = spec.make(ensure=Task_i, inject=late_inject)
             case TaskName() as x:
-                task = spec.make(ensure=Task_p, inject=late_inject, parent=self.tasks.get(x, None))
+                task = spec.make(ensure=Task_i, inject=late_inject, parent=self.tasks.get(x, None))
 
         # Store it
         self.tasks[name] = task
@@ -401,7 +402,7 @@ class _Instantiation_m(_Registry_d):
 
 class _Verification_m(_Registry_d):
 
-    def verify(self, strict:bool=True) -> bool:
+    def verify(self, *, strict:bool=True) -> bool:
         failures = []
         for k, vals in self.concrete.items():
             if k not in self.specs:
@@ -444,13 +445,13 @@ class TrackRegistry(_Registry_d):
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, target:Concrete[TaskName|TaskArtifact]|Task_p, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+    def set_status(self, target:Concrete[TaskName|TaskArtifact]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
         """
         match target, status:
-            case Task_p() as task, TaskStatus_e() if task.name in self.tasks:
+            case Task_i() as task, TaskStatus_e() if task.name in self.tasks:
                 logging.info("[%s] %s -> %s", task.name[:], self.get_status(task.name), status) # type: ignore
                 self.tasks[task.name].status = status # type: ignore
             case TaskName() as task, TaskStatus_e() if task in self.tasks:

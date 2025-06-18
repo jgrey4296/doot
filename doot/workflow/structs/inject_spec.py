@@ -144,6 +144,7 @@ class InjectSpec(BaseModel):
         except TypeError:
             raise doot.errors.InjectionError("Injection RHS Keys need to be explicit", keys) from None
 
+    ##--| validators
     @model_validator(mode="after")
     def _validate_injection(self) -> Self:
         # Build the target <- source mapping
@@ -173,6 +174,7 @@ class InjectSpec(BaseModel):
     def _validate_literal(cls, val:Any) -> dict:
         return cls._prep_keys(val, literal=True)
 
+    ##--| dunders
     def __bool__(self) -> bool:
         return (bool(self.from_spec)
                 | bool(self.from_state)
@@ -180,6 +182,7 @@ class InjectSpec(BaseModel):
                 | bool(self.literal)
                 | (self.with_suffix is not None))
 
+    ##--| public
     def validate(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec, *, only_spec:bool=False) -> bool:
         """ Ensures this injection is usable with given sources, and given required injections
 

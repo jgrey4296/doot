@@ -191,6 +191,7 @@ class _Expansion_m:
                 logging.debug("[Connect] %s -> %s", left, right)
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
 
+    ##--| internal
     def _add_node(self, name:Concrete[TaskName]|TaskArtifact) -> None:
         """idempotent"""
         match name:
@@ -450,6 +451,7 @@ class TrackNetwork:
 
         self._add_node(self._root_node)
 
+    ##--| properties
     @property
     def nodes(self) -> dict:
         return self._graph.nodes
@@ -470,6 +472,7 @@ class TrackNetwork:
     def succ(self) -> dict:
         return self._graph.succ
 
+    ##--| dunders
     def __len__(self) -> int:
         return len(self._graph.nodes)
 

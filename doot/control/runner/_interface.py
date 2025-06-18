@@ -60,19 +60,6 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class ExecutionPolicy_e(enum.Enum):
-    """ How the task execution will be ordered
-      PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
-      DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
-      BREADTH  : No (priority,retry,jobs). basic BFS of the pre-run dependency-network
-
-    """
-    PRIORITY = enum.auto() # By Task Priority
-    DEPTH    = enum.auto() # Depth First Search
-    BREADTH  = enum.auto() # Breadth First Search
-
-    default = PRIORITY
-
 @runtime_checkable
 class TaskRunner_p(Protocol):
     """

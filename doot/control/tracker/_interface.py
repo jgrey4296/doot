@@ -42,7 +42,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, Ident
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Self, Literal
@@ -50,6 +50,11 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from doot.workflow import TaskSpec, TaskName, TaskArtifact
+    from doot.workflow._interface import Task_i
+
+    type Abstract[T] = T
+    type Concrete[T] = T
 ##--|
 
 # isort: on
@@ -72,22 +77,20 @@ class EdgeType_e(enum.Enum):
     default           = TASK
 
     @classmethod # type: ignore
-    @property
-    def artifact_edge_set(cls) -> set[enum.Enum]:
-        return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
+    def artifact_edge_set[T](cls:type) -> set[T]:
+        return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS} # type: ignore[attr-defined]
+
 # Vars:
 MAX_LOOP                        : Final[int]                  = 100
 
+ARTIFACT_EDGES                  : Final[set[EdgeType_e]]      = EdgeType_e.artifact_edge_set()
+CLEANUP                         : Final[str]                  = "cleanup"
+DECLARE_PRIORITY                : Final[int]                  = 10
 EXPANDED                        : Final[str]                  = "expanded"  # Node attribute name
+INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
+MIN_PRIORITY                    : Final[int]                  = -10
 REACTIVE_ADD                    : Final[str]                  = "reactive-add"
 ROOT                            : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
-EXPANDED                        : Final[str]                  = "expanded"  # Node attribute name
-REACTIVE_ADD                    : Final[str]                  = "reactive-add"
-CLEANUP                         : Final[str]                  = "cleanup"
-ARTIFACT_EDGES                  : Final[set[EdgeType_e]]      = EdgeType_e.artifact_edge_set
-DECLARE_PRIORITY                : Final[int]                  = 10
-MIN_PRIORITY                    : Final[int]                  = -10
-INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
 SUCCESS_STATUSES : Final[set[TaskStatus_e|ArtifactStatus_e]]  = {
     TaskStatus_e.SUCCESS,
@@ -96,10 +99,21 @@ SUCCESS_STATUSES : Final[set[TaskStatus_e|ArtifactStatus_e]]  = {
     ArtifactStatus_e.EXISTS,
 }
 
-# Body:
+class ExecutionPolicy_e(enum.Enum):
+    """ How the task execution will be ordered
+      PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
+      DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
+      BREADTH  : No (priority,retry,jobs). basic BFS of the pre-run dependency-network
+
+    """
+    PRIORITY = enum.auto() # By Task Priority
+    DEPTH    = enum.auto() # Depth First Search
+    BREADTH  = enum.auto() # Breadth First Search
+
+    default = PRIORITY
 
 
-
+##--|
 class TaskTracker_p(Protocol):
     """
     Track tasks that have run, need to run, are running,
@@ -116,14 +130,14 @@ class TaskTracker_p(Protocol):
     def get_status(self, task:Concrete[Ident]) -> TaskStatus_e:
         pass
 
-    def set_status(self, task:Concrete[Ident]|Task_p, state:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool:
         pass
 
     def build_network(self) -> None:
         pass
 
-    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[PlanEntry]:
+    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[TaskName|TaskArtifact]:
         pass
 
-    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Actual]:
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName]|TaskArtifact]:
         pass

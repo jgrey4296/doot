@@ -82,7 +82,6 @@ logging    = logmod.getLogger(__name__)
 
 ##--|
 
-@Proto(API.TaskTracker_p, check=False)
 class Tracker_abs:
     """ A public base implementation of most of a tracker
     Has three components:
@@ -100,6 +99,7 @@ class Tracker_abs:
         self._network  = TrackNetwork(self._registry)
         self._queue    = TrackQueue(self._registry, self._network)
 
+    ##--| properties
     @property
     def active_set(self) -> set:
         return self._queue.active_set
@@ -112,32 +112,34 @@ class Tracker_abs:
     def _root_node(self) -> TaskName:
         return self._network._root_node
 
+    ##--| dunders
     def __bool__(self) -> bool:
         return bool(self._queue)
 
+    ##--| public
     def register_spec(self, *specs:TaskSpec)-> None:
         self._registry.register_spec(*specs)
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_p, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, parent:Maybe[TaskName]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:
-        queued : TaskName = self._queue.queue_entry(name, from_user=from_user, status=status)
+    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName|TaskArtifact]]:  # noqa: ARG002
+        queued = self._queue.queue_entry(name, from_user=from_user, status=status)
         return queued
 
     def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
         return self._registry.get_status(task)
 
     def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
-        self._registry.set_status(task, state)
+        return self._registry.set_status(task, state)
 
     def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
-        self._network.build_network(sources=sources)
+        self._network.build_network(sources=sources) # type: ignore[attr-defined]
 
     def validate_network(self) -> None:
-        self._network.validate_network()
+        self._network.validate_network() # type: ignore[attr-defined]
 
-    def generate_plan(self, *args):
+    def generate_plan(self, *args:Any) -> list:
         raise NotImplementedError()
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         self._queue.clear_queue()
 
 
@@ -146,7 +148,7 @@ class Tracker_abs:
 @Proto(API.TaskTracker_p)
 class Tracker(Tracker_abs):
 
-    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:
+    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:  # noqa: PLR0912, PLR0915
         """ ask for the next task that can be performed
 
           Returns a Task or Artifact that needs to be executed or created
@@ -154,10 +156,11 @@ class Tracker(Tracker_abs):
           or if theres nothing left in the queue
 
         """
-        focus : str|TaskName|TaskArtifact
-        count : int
-        result : Maybe[Task_p|TaskArtifact]
-        status : TaskStatus_e
+        x       : Any
+        focus   : str|TaskName|TaskArtifact
+        count   : int
+        result  : Maybe[Task_p|TaskArtifact]
+        status  : TaskStatus_e
 
         logging.info("[Next.For] (Active: %s)", len(self._queue.active_set))
         if not self._network.is_valid:
@@ -169,8 +172,8 @@ class Tracker(Tracker_abs):
         count  = API.MAX_LOOP
         result = None
         while (result is None) and bool(self._queue) and 0 < (count:=count-1):
-            focus  = self._queue.deque_entry()
-            status = self._registry.get_status(focus)
+            focus   = self._queue.deque_entry()
+            status  = self._registry.get_status(focus)
             if focus not in self._queue.active_set:
                 continue
 
@@ -212,7 +215,7 @@ class Tracker(Tracker_abs):
                     self.queue_entry(focus, status=TaskStatus_e.RUNNING)
                     result = self._registry.tasks[focus]
                 case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
-                    match self._network.incomplete_dependencies(focus):
+                    match self._network.incomplete_dependencies(focus): # type: ignore[attr-defined]
                         case []:
                             self.queue_entry(focus, status=TaskStatus_e.READY)
                         case [*xs]:
