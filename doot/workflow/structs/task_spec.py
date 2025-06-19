@@ -196,22 +196,24 @@ class _GenerateUtils_m:
           job.head()
           await job.cleanup()
         """
-        job_head          = self.name.de_uniq().with_head().to_uniq()
-        tasks             = []
-        head_section      = _raw_data_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
-        head_dependencies = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]
-        head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
+        job_head           = self.name.de_uniq().with_head().to_uniq()
+        tasks              = []
+        head_section       = _raw_data_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
+        head_dependencies  = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]
+        head_actions       = [x for x in head_section if not isinstance(x, RelationSpec)]
+        ctor               = self.extra.on_fail(None).sub_ctor()
 
         # build $head$
         head : TaskSpec = TaskSpec.build({
-            "name"            : job_head,
-            "sources"         : self.sources[:] + [self.name, None],
-            "queue_behaviour" : API.QueueMeta_e.reactive,
-            "depends_on"      : [self.name, *head_dependencies],
-            "required_for"    : self.required_for[:],
-            "cleanup"         : self.cleanup[:],
-            "meta"           : (self.meta | {TaskMeta_e.JOB_HEAD}) - {TaskMeta_e.JOB},
-            "actions"         : head_actions,
+            "name"             : job_head,
+            "ctor"             : ctor,
+            "sources"          : self.sources[:] + [self.name, None],
+            "queue_behaviour"  : API.QueueMeta_e.reactive,
+            "depends_on"       : [self.name, *head_dependencies],
+            "required_for"     : self.required_for[:],
+            "cleanup"          : self.cleanup[:],
+            "meta"             : (self.meta | {TaskMeta_e.JOB_HEAD}) - {TaskMeta_e.JOB},
+            "actions"          : head_actions,
             **self.extra,
             })
         assert(TaskMeta_e.JOB not in head.meta)
@@ -228,13 +230,14 @@ class _GenerateUtils_m:
         sources            = [self.name]
 
         cleanup = TaskSpec.build({
-            "name"            : cleanup_name,
-            "sources"         : sources,
-            "queue_behaviour" : API.QueueMeta_e.reactive,
-            "depends_on"      : base_deps,
-            "actions"         : actions,
-            "cleanup"         : [],
-            "meta"            : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
+            "name"             : cleanup_name,
+            "ctor"             : self.ctor,
+            "sources"          : sources,
+            "queue_behaviour"  : API.QueueMeta_e.reactive,
+            "depends_on"       : base_deps,
+            "actions"          : actions,
+            "cleanup"          : [],
+            "meta"             : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
             })
         assert(not bool(cleanup.cleanup))
         return [cleanup]
