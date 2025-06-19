@@ -207,7 +207,7 @@ class _ActionExecution_m:
 ##--|
 
 @Proto(TaskRunner_p, check=False)
-@Mixin(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m, RU._RunnerSleep_m)
+@Mixin(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m)
 class DootRunner:
     """ The simplest single threaded task runner """
 
@@ -245,9 +245,11 @@ class DootRunner:
         assert(isinstance(handler, ContextManager))
         with handler:
             while bool(self.tracker) and self.step < max_steps:
-                self._run_next_task()
+                self.run_next_task()
+            else:
+                pass
 
-    def _run_next_task(self) -> None:
+    def run_next_task(self) -> None:
         """
           Get the next task from the tracker, expand/run it,
           and handle the result/failure
@@ -258,34 +260,34 @@ class DootRunner:
                 case None:
                     pass
                 case TaskArtifact():
-                    self._notify_artifact(task)
+                    self.notify_artifact(task)
                 case Job_p():
-                    self._expand_job(task)
+                    self.expand_job(task)
                 case Task_p():
-                    self._execute_task(task)
+                    self.execute_task(task)
                 case x:
                     doot.report.error("Unknown Value provided to runner: %s", x)
         except doot.errors.TaskError as err:
             err.task = task
-            self._handle_failure(err)
+            self.handle_failure(err)
         except doot.errors.DootError as err:
-            self._handle_failure(err)
+            self.handle_failure(err)
         except Exception as err:
             doot.report.fail()
             self.tracker.clear_queue()
             raise
         else:
-            self._handle_task_success(task)
-            self._sleep(task)
+            self.handle_task_success(task)
+            self.sleep_after(task)
             self.step += 1
 
-    def _expand_job(self, job:Job_p) -> None:
+    def expand_job(self, job:Job_p) -> None:
         """ turn a job into all of its tasks, including teardowns """
         logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
         assert(isinstance(job, Job_p))
         try:
             doot.report.branch(job.spec.name, info=f"Job {self.step}")
-            if not self._test_conditions(job):
+            if not self.test_conditions(job):
                 return
 
             self._execute_action_group(job, group=SETUP_GROUP)
@@ -294,13 +296,13 @@ class DootRunner:
             self._execute_action_group(job, group=FAIL_GROUP)
             raise
 
-    def _execute_task(self, task:Task_p) -> None:
+    def execute_task(self, task:Task_p) -> None:
         """ execute a single task's actions """
         logmod.debug("-- Expanding Task %s: %s", self.step, task.name)
         assert(not isinstance(task, Job_p))
         try:
             doot.report.branch(task.spec.name, info=f"Task {self.step}")
-            if not self._test_conditions(task):
+            if not self.test_conditions(task):
                 return
 
             self._execute_action_group(task, group=SETUP_GROUP)
@@ -309,7 +311,7 @@ class DootRunner:
             self._execute_action_group(task, group=FAIL_GROUP)
             raise
 
-    def _test_conditions(self, task:Task_p) -> bool:
+    def test_conditions(self, task:Task_p) -> bool:
         """ run a task's depends_on group, coercing to a bool
         returns False if the runner should skip the rest of the task
         """

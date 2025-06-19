@@ -397,9 +397,7 @@ class _Validation_m:
                     pass
                 case TaskName() if API.CLEANUP in self.edges[x, focus]:
                     pass
-                case TaskName() if x not in self._registry.tasks:
-                    incomplete.append(x)
-                case TaskName() if not bool(self._registry.tasks[x]):
+                case TaskName():
                     incomplete.append(x)
                 case TaskArtifact() if not bool(x):
                     incomplete.append(x)

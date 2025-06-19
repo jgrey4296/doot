@@ -60,6 +60,18 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
+class RunnerHandlers_p(Protocol):
+
+    def run_next_task(self) -> None: ...
+
+    def handle_task_success[T:Maybe[Task_p|TaskArtifact]](self, task:T) -> T: ...
+
+    def handle_failure(self, failure:Exception) -> None: ...
+
+    def notify_artifact(self, art:TaskArtifact) -> None: ...
+
+    def sleep_after(self, task:Maybe[Task_p|TaskArtifact]) -> None: ...
+
 @runtime_checkable
 class TaskRunner_p(Protocol):
     """

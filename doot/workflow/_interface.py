@@ -92,6 +92,7 @@ SUFFIX_K          : Final[str]        = "_add_suffix"
 USCORE_S          : Final[str]        = "_"
 DEFAULT_PRIORITY  : Final[int]        = 10
 ##--| Enum Protocols:
+
 class Status_ep(Protocol):
 
     @classmethod
@@ -338,13 +339,8 @@ class Task_p(Protocol):
     @property
     def name(self) -> TaskName: ...
 
-    def add_execution_record(self, arg:Any) -> None: ...
-    """ Record some execution record information for display or debugging """
-
     def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None: ...
     """ utility method to log a message, useful as tasks are running """
-
-    def get_action_group(self, group_name:str) -> list[ActionSpec]: ...
 
 @runtime_checkable
 class Job_p(Task_p, Protocol):

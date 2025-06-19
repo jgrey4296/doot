@@ -65,7 +65,7 @@ from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler, ConfigDict,
                       WrapValidator, field_validator, model_validator)
 from jgdv import Maybe
-from .._interface import TaskSpec_i, Task_p, Job_p
+from .._interface import TaskSpec_i, Task_p, Job_p, Task_i
 
 if TYPE_CHECKING:
     import enum
@@ -88,6 +88,7 @@ logging = logmod.getLogger(__name__)
 ##--| Consts
 DEFAULT_ALIAS     : Final[str]             = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS # type: ignore
 DEFAULT_BLOCKING  : Final[tuple[str, ...]] = tuple(["required_for", "on_fail"])
+DEFAULT_RELATION   : Final[RelationMeta_e] = RelationMeta_e.default()
 ##--| Utils
 
 def _action_group_sort_key(val:ActionSpec|RelationSpec) -> Any:
@@ -101,7 +102,7 @@ def _action_group_sort_key(val:ActionSpec|RelationSpec) -> Any:
         case x:
             raise TypeError(type(x))
 
-def _raw_data_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
+def _raw_data_to_specs(deps:list[str|dict], *, relation:RelationMeta_e=DEFAULT_RELATION) -> list[ActionSpec|RelationSpec]:
     """ Convert toml provided raw data (str's, dicts) of specs into ActionSpec and RelationSpec object"""
     results = []
     for x in deps:
@@ -447,7 +448,7 @@ class _SpecUtils_m:
                 pass
             case InjectSpec() as inj, Task_p() as control:
                 task.state |= inj.apply_from_state(control)
-                if not inj.validate(control, task):
+                if not inj.validate(cast("Task_i", control), task):
                     raise doot.errors.TrackingError("Late Injection Failed")
 
         match self.param_specs(): # Apply CLI params

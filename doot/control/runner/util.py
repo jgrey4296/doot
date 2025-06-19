@@ -74,6 +74,7 @@ DEFAULT_SLEEP_LENGTH : Final[int|float]       = doot.config.on_fail(0.2, int|flo
 ##--|
 
 class _RunnerCtx_m:
+    """ Mixin for a runner that adds ctx manager functionality """
 
     _signal_failure : Maybe[doot.errors.DootError]
 
@@ -123,10 +124,11 @@ class _RunnerCtx_m:
                 raise self._signal_failure
 
 class _RunnerHandlers_m:
+    """ Mixin for runners with default handlers """
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def _handle_task_success[T:Maybe[Task_p|TaskArtifact]](self, task:T) -> T:
+    def handle_task_success[T:Maybe[Task_p|TaskArtifact]](self, task:T) -> T:
         """ The basic success handler. just informs the tracker of the success """
         match task:
             case None:
@@ -138,7 +140,7 @@ class _RunnerHandlers_m:
                 self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
-    def _handle_failure(self, failure:Exception) -> None:
+    def handle_failure(self, failure:Exception) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.
@@ -175,15 +177,12 @@ class _RunnerHandlers_m:
                 doot.report.error("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
 
-    def _notify_artifact(self, art:TaskArtifact) -> None:
+    def notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         doot.report.result(["Artifact: %s", art])
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
-class _RunnerSleep_m:
-    """ An incomplete implementation for runners to extend """
-
-    def _sleep(self, task:Maybe[Task_p|TaskArtifact]) -> None:
+    def sleep_after(self, task:Maybe[Task_p|TaskArtifact]) -> None:
         """
           The runner's sleep method, which spaces out tasks
         """

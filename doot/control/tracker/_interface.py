@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -28,7 +27,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from doot.workflow._interface import TaskStatus_e, ArtifactStatus_e
+from doot.workflow._interface import TaskStatus_e, ArtifactStatus_e, RelationSpec_i
 
 # ##-- types
 # isort: off
@@ -42,7 +41,6 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, Ident
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Self, Literal
@@ -50,6 +48,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from jgdv import Maybe, Ident
+    from jgdv.structs.chainguard import ChainGuard
     from doot.workflow import TaskSpec, TaskName, TaskArtifact
     from doot.workflow._interface import Task_i
 
@@ -63,7 +63,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
 
 class EdgeType_e(enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
@@ -112,8 +111,8 @@ class ExecutionPolicy_e(enum.Enum):
 
     default = PRIORITY
 
-
 ##--|
+
 class TaskTracker_p(Protocol):
     """
     Track tasks that have run, need to run, are running,
@@ -121,23 +120,48 @@ class TaskTracker_p(Protocol):
     Does not execute anything itself
     """
 
-    def register_spec(self, *specs:TaskSpec)-> None:
-        pass
+    def register_spec(self, *specs:TaskSpec)-> None: ...
 
-    def queue_entry(self, name:str|Ident|Concrete[TaskSpec], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
-        pass
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]: ...
 
-    def get_status(self, task:Concrete[Ident]) -> TaskStatus_e:
-        pass
+    def get_status(self, task:Concrete[Ident]) -> TaskStatus_e: ...
 
-    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool:
-        pass
+    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool: ...
 
-    def build_network(self) -> None:
-        pass
+    def build_network(self) -> None: ...
 
-    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[TaskName|TaskArtifact]:
-        pass
+    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[TaskName|TaskArtifact]: ...
 
-    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName]|TaskArtifact]:
-        pass
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName]|TaskArtifact]: ...
+
+##--|
+
+class Registry_p(Protocol):
+
+    def register_spec(self, *specs:TaskSpec) -> None: ...
+
+    def _instantiate_spec(self, name:Abstract[TaskName], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName]]: ...
+
+    def _instantiate_relation(self, rel:RelationSpec_i, *, control:Concrete[TaskName]) -> Concrete[TaskName]: ...
+
+    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]: ...
+
+    def verify(self, *, strict:bool=True) -> bool: ...
+
+class Network_p(Protocol):
+
+    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None: ...
+
+    def connect(self, left:Concrete[TaskName]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName]|TaskArtifact]=None, **kwargs) -> None:  ...
+
+    def validate_network(self, *, strict:bool=True) -> bool:  ...
+
+    def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]: ...
+
+class Queue_p(Protocol):
+
+    def queue_entry(self, target:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:  ...
+
+    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]|TaskArtifact: ...
+
+    def clear_queue(self) -> None: ...
