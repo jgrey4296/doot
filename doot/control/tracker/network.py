@@ -8,6 +8,7 @@ of graph.pred[x]  = [y] as y.depends_on[x]
 and graph.succ[x] = [y] as y.required_for[x]
 
 """
+# ruff: noqa: ERA001
 # mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
@@ -22,7 +23,6 @@ import pathlib as pl
 import re
 import time
 import types
-import weakref
 from collections import defaultdict
 from itertools import chain, cycle
 from uuid import UUID, uuid1
@@ -58,6 +58,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import weakref
     from doot.workflow._interface import TaskStatus_e, ArtifactStatus_e
     from jgdv import Maybe
     from typing import Final
@@ -98,7 +99,7 @@ class _Expansion_m:
     def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
         """
         for each task queued (ie: connected to the root node)
-        expand its dependencies and add into the _graph, until no mode nodes to expand.
+        expand its dependencies and add into the _graph, until no more nodes to expand.
         then connect concrete _registry.artifacts to abstract _registry.artifacts.
 
         # TODO _graph could be built in total, or on demand
@@ -432,12 +433,14 @@ class _Validation_m:
 @Mixin(_Expansion_m, _Validation_m)
 class TrackNetwork:
     """ The _graph of concrete tasks and their dependencies """
-    _registry         : TrackRegistry
-    _root_node        : TaskName
-    _declare_priority : int
-    _min_priority     : int
-    _graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact]
-    is_valid          : bool
+    # TODO use this instaed of _registry
+    _tracker           : weakref.ref[API.TaskTracker_p]
+    _registry          : TrackRegistry
+    _root_node         : TaskName
+    _declare_priority  : int
+    _min_priority      : int
+    _graph             : nx.DiGraph[Concrete[TaskName]|TaskArtifact]
+    is_valid           : bool
 
     def __init__(self, registry:TrackRegistry):
         self._registry         = registry

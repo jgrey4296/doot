@@ -16,7 +16,6 @@ import pathlib as pl
 import re
 import time
 import types
-import weakref
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -47,6 +46,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import weakref
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -79,11 +79,13 @@ logging.disabled = False
 class TrackQueue:
     """ The queue of active tasks. """
 
-    active_set             : set[Concrete[TaskName]|TaskArtifact]
-    execution_trace        : list[Concrete[TaskName|TaskArtifact]]
-    _registry              : TrackRegistry
-    _network               : TrackNetwork
-    _queue                 : boltons.queueutils.HeapPriorityQueue
+    active_set       : set[Concrete[TaskName]|TaskArtifact]
+    execution_trace  : list[Concrete[TaskName|TaskArtifact]]
+    # TODO use this instead of _registry and _network
+    _tracker         : weakref.ref[API.TaskTracker_p]
+    _registry        : TrackRegistry
+    _network         : TrackNetwork
+    _queue           : boltons.queueutils.HeapPriorityQueue
 
     def __init__(self, registry:TrackRegistry, network:TrackNetwork):
         self._registry              = registry
@@ -111,7 +113,7 @@ class TrackQueue:
         abs_name         : Maybe[TaskName]
         inst_name        : Concrete[TaskName]
         target_priority  : int  = self._network._declare_priority
-
+        ##--|
         match target:
             case TaskArtifact() as art:
                 assert(target in self._registry.artifacts)

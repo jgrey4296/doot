@@ -15,14 +15,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import weakref
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -45,23 +38,41 @@ import doot.errors
 
 # ##-- end 1st party imports
 
-from .._interface import RelationMeta_e, Task_p
+from .._interface import RelationMeta_e, Task_p, Task_i
 from .task_name import TaskName
 from .artifact import  TaskArtifact
 from .inject_spec import InjectSpec
 
 # ##-- types
 # isort: off
-if TYPE_CHECKING:
-   from jgdv import Maybe
-   type RelationTarget = TaskName|TaskArtifact
+# General
+import abc
+import collections.abc
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+from typing import no_type_check, final, override, overload
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+if typing.TYPE_CHECKING:
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv import Maybe
+    from .task_spec import TaskSpec
+    type RelationTarget  = TaskName|TaskArtifact
+    type RelationMark    = RelationMeta_e
+
 # isort: on
 # ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
 
 class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metaclass=ProtocolModelMeta):
     """ {object} is {relation} to {target}
@@ -74,27 +85,30 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         (baking <blocks> cake)
 
     May carry additional information:
-    - constraints : dict|list. Maps obj[x] == targ[y] requirements
-    - inject      : InjectSpec. Maps targ[x] = obj[y] values to pass to target.
-    - object      : Maybe[TaskName]. the owning base object of the relationship
+    - constraints  : dict|list. Maps obj[x]          == targ[y] requirements
+    - inject       : InjectSpec. Maps targ[x]        = obj[y] values to pass to target.
+    - object       : Maybe[TaskName]. the owning base object of the relationship
 
     """
 
     # What the Relation end point is:
-    Marks        : ClassVar[enum]  = RelationMeta_e
+    Marks          : ClassVar[type[RelationMark]]  = RelationMeta_e
     ##--|
     target       : TaskName|TaskArtifact
     relation     : RelationMeta_e                = RelationMeta_e.needs
     object       : Maybe[TaskName|TaskArtifact]  = None
     constraints  : dict[str, str]                = {}
     inject       : Maybe[InjectSpec]             = None
-    _meta        : dict()                        = {} # Misc metadata
+    _meta        : dict                          = {}  # Misc metadata
 
+    @override
     @classmethod
-    def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.Marks]=None) -> RelationSpec:
+    def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationMark]=None) -> RelationSpec: # type: ignore[override]
         """ Create a new relation, defaulting to a requirement.
 
         """
+        result : Any
+        target : Any
         relation = relation or cls.Marks.needs
         result = None
         match data:
@@ -104,18 +118,19 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 result = cls(target=TaskArtifact(data), relation=relation)
             case TaskName() | TaskArtifact():
                 result = cls(target=data, relation=relation)
-            case str() as x if TaskArtifact.section(0).end in x:
+            case str() as x if TaskArtifact.section(0).end in x: # type: ignore[operator]
                 target = TaskArtifact(x)
                 result = cls(target=target, relation=relation)
-            case str() as x if Location.section(0).end in x:
-                result = Location(x)
+            case str() as x if Location.section(0).end in x: # type: ignore[operator]
+                target = Location(x)
                 return cls(target=target, relation=relation)
-            case str() as x if TaskName.section(0).end in x:
+            case str() as x if TaskName.section(0).end in x: # type: ignore[operator]
                 target = TaskName(x)
                 result = cls(target=target, relation=relation)
             case {"path":path} if "task" not in data:
                 return cls(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
+                assert(isinstance(data, dict))
                 constraints = data.get("constraints", None) or data.get("constraints_", [])
                 inject      = data.get("inject", None)      or data.get("inject_", None)
                 result      = cls(target=TaskName(taskname),
@@ -134,7 +149,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return val
             case pl.Path():
                 return TaskArtifact(val)
-            case str() if TaskName.section(0).end in val:
+            case str() if TaskName.section(0).end in val: # type: ignore[operator]
                 return TaskName(val)
             case _:
                 raise ValueError("Unparsable target str")
@@ -161,9 +176,11 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case _:
                 raise TypeError("Unknown injection type", val)
 
+    @override
     def __str__(self):
         return f"<? {self.relation.name} {self.target}>"
 
+    @override
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
@@ -175,7 +192,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return query in self.target
             case TaskArtifact(), StrangMarkAbstract_e():
                 return query in self.target
-            case _, _:
+            case _:
                 raise NotImplementedError(self.target, query)
 
     def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName]=None) -> tuple[RelationTarget, RelationTarget]:
@@ -222,8 +239,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         """ is this relation's direction obj -> target? """
         return self.relation is RelationMeta_e.blocks
 
-
-    def accepts(self, control:Task_p|TaskSpec, target:Task_p|TaskSpec) -> bool:
+    def accepts(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec) -> bool:
         """ Test if this pair of Tasks satisfies the relation """
         if not (target.name.uuid() and control.name.uuid()):
             # abstract specs can't satisfy a relation
@@ -232,8 +248,8 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             # targets that are not extensions of the target don't satisfy
             return False
 
-        control_vals = control.state if isinstance(control, Task_p) else control.extra
-        target_vals  = target.state  if isinstance(target, Task_p) else target.extra
+        control_vals = control.state if isinstance(control, Task_p) else control.extra # type: ignore[union-attr]
+        target_vals  = target.state  if isinstance(target, Task_p) else target.extra # type: ignore[union-attr]
 
         # Check constraints match
         for targ_k,source_k in self.constraints.items():

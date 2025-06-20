@@ -169,13 +169,17 @@ class _GenerateUtils_m:
         logging.debug("[Generate] : %s (%s)", self.name, len(self.generated_names))
         result : list[TaskSpec] = []
         if not self.name.uuid():
+            # Non-instanced specs don't generate subspecs
             return result
 
         needs_job_head = TaskMeta_e.JOB in self.meta and not self.name.is_head()
         if needs_job_head:
+            # Jobs generate their head
             result += self._gen_job_head()
 
         if not (needs_job_head or self.name.is_cleanup()):
+            # Normal tasks generate their cleanup
+            # TODO shift to just executing the cleanup?
             result += self._gen_cleanup_task()
 
         self.generated_names.update([x.name  for x in result])
@@ -627,6 +631,7 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     def _validate_ctor(cls, val:Maybe[str|CodeReference]) -> CodeReference:
         match val:
             case None:
+                # TODO if default alias, delay ctor selection till task making
                 default_alias = cls._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return CodeReference(coderef_str)

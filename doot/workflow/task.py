@@ -80,6 +80,38 @@ TASK_ALISES                    = doot.aliases.task # type: ignore
 PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS # type: ignore
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K # type: ignore
 
+class _TaskActionPrep_m:
+
+    def prepare_actions(self) -> None:
+        """ if the task/action spec requires particular action ctors, load them.
+          if the action spec doesn't have a ctor, use the task's action_ctor
+
+        collects any action errors together, then raises them as a task error
+        """
+        logging.debug("Preparing Actions: %s", self.name)
+        failed : list[Exception] = []
+        for action_spec in self.spec.action_group_elements():
+            match action_spec:
+                case RelationSpec():
+                    pass
+                case ActionSpec() if action_spec.fun is not None:
+                    pass
+                case ActionSpec() if action_spec.do is not None:
+                    try:
+                        action_spec.set_function()
+                    except (doot.errors.StructError, ImportError) as err:
+                        failed.append(err)
+                case ActionSpec():
+                    action_spec.set_function(fun=self.action_ctor)
+                case _:
+                    failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.name))
+        else:
+            match failed:
+                case []:
+                    pass
+                case [*xs]:
+                    raise doot.errors.TaskError("Action Spec preparation failures", self.name[:], xs)
+
 class _TaskProperties_m:
 
     @classmethod
@@ -161,7 +193,7 @@ class _TaskHelp_m:
 ##--|
 
 @Proto(Task_p, check=True)
-@Mixin(ParamSpecMaker_m, _TaskProperties_m, _TaskStubbing_m, _TaskHelp_m)
+@Mixin(ParamSpecMaker_m, _TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, _TaskActionPrep_m)
 class DootTask:
     """
       The simplest task, which can import action classes.
@@ -201,6 +233,7 @@ class DootTask:
 
         self.prepare_actions()
 
+    @override
     def __repr__(self) -> str:
         cls = self.__class__.__qualname__
         return f"<{cls}: {self.name.de_uniq()}>"
@@ -208,6 +241,7 @@ class DootTask:
     def __bool__(self) -> bool:
         return self.status in DootTask.COMPLETE_STATES
 
+    @override
     def __hash__(self) -> int:
         return hash(self.name)
 
@@ -220,6 +254,7 @@ class DootTask:
                 name = other.spec.name
         return any(name in x.target for x in self.spec.depends_on)
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case str() | TaskName():

@@ -2,7 +2,7 @@
 """
 
 """
-# mypy: disable-error-code="attr-defined"
+# # mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ import pathlib as pl
 import re
 import time
 import types
-import weakref
 from collections import defaultdict
 from uuid import UUID, uuid1
 
@@ -35,7 +34,7 @@ from doot.workflow import (ActionSpec, InjectSpec, TaskArtifact, TaskName, TaskS
 
 # ##-- end 1st party imports
 
-from .. import _interface as API # noqa: N812
+from . import _interface as API # noqa: N812
 from doot.workflow import _interface as S_API  # noqa: N812
 
 # ##-- types
@@ -50,6 +49,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import weakref
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -85,6 +85,8 @@ class _Registry_d:
     - every concrete spec is in concrete under its abstract name
     - every implicit task that hasn't been registered is in implicit, mapped to its declaring spec
     """
+    _tracker            : weakref.ref[API.TaskTracker_p]
+
     specs               : dict[TaskName, TaskSpec]
     concrete            : dict[Abstract[TaskName], list[Concrete[TaskName]]]
     implicit            : dict[Abstract[TaskName], TaskName]
@@ -297,7 +299,7 @@ class _Instantiation_m(_Registry_d):
         assert(instance_spec.name.uuid())
         logging.debug("[Instance.new] %s into %s", name, instance_spec.name)
         # register the actual concrete spec
-        self.register_spec(instance_spec)
+        self.register_spec(instance_spec) # type: ignore[attr-defined]
 
         assert(instance_spec.name in self.specs)
         return instance_spec.name
@@ -327,7 +329,7 @@ class _Instantiation_m(_Registry_d):
         control_obj = self.tasks.get(control, None) or self.specs[control] # type: ignore[arg-type]
         potentials  = self.concrete.get(rel.target, [])
         for existing in potentials:
-            if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]):
+            if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]): # type: ignore[arg-type]
                 continue
             logging.debug("[Instance.Relation.Match] : %s", existing)
             return existing
@@ -346,7 +348,7 @@ class _Instantiation_m(_Registry_d):
                         raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
                     assert(instance is not None)
                     assert(instance not in current)
-                    self._register_late_injection(instance, inj, control)
+                    self._register_late_injection(instance, inj, control) # type: ignore[attr-defined]
                     logging.debug("[Instance.Relation.Inject] : %s", instance)
                     return instance
                 case _:

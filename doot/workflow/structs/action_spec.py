@@ -113,7 +113,7 @@ class ActionSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_
                 raise doot.errors.StructLoadError("Unrecognized specification data", data)
 
     @field_validator("do", mode="before")
-    def _validate_do(cls, val:Maybe[str|CodeReference]) -> Maybe[CodeReference]:
+    def _validate_do(cls, val:Maybe[str|CodeReference|Callable]) -> Maybe[CodeReference]:
         match val:
             case None:
                 return None
@@ -125,7 +125,7 @@ class ActionSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_
             case str():
                 return CodeReference(val) # type: ignore
             case x if callable(x):
-                return CodeReference.from_value(x)
+                return CodeReference(x)
             case _:
                 raise TypeError("Unrecognized action spec do type", val)
 

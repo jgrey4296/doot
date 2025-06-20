@@ -20,13 +20,13 @@ from ._base import DootError, BackendError, FrontendError, UserError
 from .command import CommandError
 from .config import ConfigError, InvalidConfigError, MissingConfigError, VersionMismatchError
 from .control import (ActionCallError, ActionStateError,
-                                  ControlError, TaskExecutionError,
-                                  TrackingError)
+                      ControlError, TaskExecutionError,
+                      TrackingError)
 from .parse import ParseError
 from .plugin import AliasSearchError, PluginError, PluginLoadError
 from .state import (StateError, InjectionError, KeyAccessError,
-                                KeyExpansionError, GlobalStateMismatch,
-                                LocationError)
+                    KeyExpansionError, GlobalStateMismatch,
+                    LocationError)
 from .struct import StructError, StructLoadError
 from .task import TaskError, TaskFailed, TaskTrackingError, ActionError
 

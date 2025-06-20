@@ -454,6 +454,7 @@ class DootOverlord:
         self.cmd_aliases                      = ChainGuard()
         self.args                             = ChainGuard() # parsed arg access
         self.locs                             = JGDVLocator(pl.Path.cwd()) # type: ignore
+        # TODO move to main
         self.log_config                       = JGDVLogConfig()
         # TODO fix this:
         self.report                           = BasicReporter() # type: ignore

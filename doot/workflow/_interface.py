@@ -329,11 +329,13 @@ class Task_p(Protocol):
 
     def __init__(self, spec:SpecStruct_p) -> None: ...
 
+    @override
     def __hash__(self): ...
 
     def __lt__(self, other:TaskName|Task_p) -> bool: ...
     """ Task A < Task B iff A ∈ B.run_after   """
 
+    @override
     def __eq__(self, other:object) -> bool: ...
 
     @property
@@ -341,6 +343,8 @@ class Task_p(Protocol):
 
     def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None: ...
     """ utility method to log a message, useful as tasks are running """
+
+    def prepare_actions(self) -> None: ...
 
 @runtime_checkable
 class Job_p(Task_p, Protocol):
