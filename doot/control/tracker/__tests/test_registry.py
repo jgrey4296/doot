@@ -73,8 +73,8 @@ class TestRegistry:
         spec = TaskSpec.build({"name":"basic::task"})
         name = spec.name
         obj.register_spec(spec)
-        instance  = obj._instantiate_spec(name)
-        result    = obj._make_task(instance)
+        instance  = obj.instantiate_spec(name)
+        result    = obj.make_task(instance)
         retrieved = obj.tasks[result]
         assert(isinstance(retrieved, Task_p))
 
@@ -83,8 +83,8 @@ class TestRegistry:
         spec = TaskSpec.build({"name":"basic::task"})
         name = spec.name
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result   = obj._make_task(instance)
+        instance = obj.instantiate_spec(name)
+        result   = obj.make_task(instance)
         status   = obj.get_status(result)
         assert(status is TaskStatus_e.INIT)
 
@@ -98,8 +98,8 @@ class TestRegistry:
         spec = TaskSpec.build({"name":"basic::task"})
         name = spec.name
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result = obj._make_task(instance)
+        instance = obj.instantiate_spec(name)
+        result = obj.make_task(instance)
         assert(obj.get_status(result) is TaskStatus_e.INIT)
         assert(obj.set_status(result, TaskStatus_e.SUCCESS) is True)
         assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
@@ -289,7 +289,7 @@ class TestInstantiation_Specs:
         obj.register_spec(spec)
         pre_count = len(obj.specs)
         assert(not bool(obj.concrete))
-        match obj._instantiate_spec(TaskName("basic::task")):
+        match obj.instantiate_spec(TaskName("basic::task")):
             case TaskName() as x if x.uuid():
                 assert(pre_count < len(obj.specs))
                 assert(bool(obj.concrete))
@@ -302,7 +302,7 @@ class TestInstantiation_Specs:
         obj.register_spec(spec)
         pre_count = len(obj.specs)
         assert(not bool(obj.concrete))
-        instance = obj._instantiate_spec(TaskName("basic::task"))
+        instance = obj.instantiate_spec(TaskName("basic::task"))
         assert(instance in obj.specs)
         assert(bool(obj.concrete[spec.name.with_cleanup()]))
 
@@ -313,7 +313,7 @@ class TestInstantiation_Specs:
         pre_count = len(obj.specs)
         assert(not bool(obj.concrete))
         with pytest.raises(KeyError):
-            obj._instantiate_spec(TaskName("basic::bad"))
+            obj.instantiate_spec(TaskName("basic::bad"))
 
     def test_reuse_instantiation(self):
         obj = TrackRegistry()
@@ -321,8 +321,8 @@ class TestInstantiation_Specs:
         obj.register_spec(spec)
         pre_count = len(obj.specs)
         assert(not bool(obj.concrete))
-        inst_1 = obj._instantiate_spec(TaskName("basic::task"))
-        inst_2 = obj._instantiate_spec(TaskName("basic::task"))
+        inst_1 = obj.instantiate_spec(TaskName("basic::task"))
+        inst_2 = obj.instantiate_spec(TaskName("basic::task"))
         assert(inst_1 == inst_2)
 
     def test_dont_reuse_instantiation(self):
@@ -331,8 +331,8 @@ class TestInstantiation_Specs:
         obj.register_spec(spec)
         pre_count = len(obj.specs)
         assert(not bool(obj.concrete))
-        inst_1 = obj._instantiate_spec(TaskName("basic::task"))
-        inst_2 = obj._instantiate_spec(TaskName("basic::task"), extra={"blah":"bloo"})
+        inst_1 = obj.instantiate_spec(TaskName("basic::task"))
+        inst_2 = obj.instantiate_spec(TaskName("basic::task"), extra={"blah":"bloo"})
         assert(inst_1 != inst_2)
 
     def test_instantiate_spec_no_op(self):
@@ -340,7 +340,7 @@ class TestInstantiation_Specs:
         base_spec = TaskSpec.build({"name":"basic::task"})
         spec      = TaskSpec.build({"name":"test::spec"})
         obj.register_spec(base_spec, spec)
-        special = obj._instantiate_spec(spec.name)
+        special = obj.instantiate_spec(spec.name)
         assert(spec is not special)
         assert(spec is not base_spec)
         assert(spec.name < special)
@@ -352,7 +352,7 @@ class TestInstantiation_Specs:
         obj.register_spec(spec)
         instances = set()
         for i in range(5):
-            instance = obj._instantiate_spec(spec.name)
+            instance = obj.instantiate_spec(spec.name)
             assert(isinstance(instance, TaskName))
             assert(instance in obj.concrete[spec.name])
             instances.add(instance)
@@ -367,7 +367,7 @@ class TestInstantiation_Specs:
         dep_spec  = TaskSpec.build({"name": "example::dep", "sources": ["basic::task"], "bloo":10, "aweg":15 })
         spec      = TaskSpec.build({"name":"test::spec", "sources": ["example::dep"], "aweg": 20})
         obj.register_spec(base_spec, dep_spec, spec)
-        special = obj._instantiate_spec(spec.name)
+        special = obj.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, TaskName))
@@ -381,7 +381,7 @@ class TestInstantiation_Specs:
                                     "blah": 2, "bloo": 5})
         dep_spec  = TaskSpec.build({"name": "example::dep"})
         obj.register_spec(base_spec, dep_spec, spec)
-        special = obj._instantiate_spec(spec.name)
+        special = obj.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, TaskName))
@@ -399,7 +399,7 @@ class TestInstantiation_Specs:
                                         "bloo": 15, "aweg": "aweg"})
         spec          = abs_spec.over(base_spec)
         obj.register_spec(base_spec, dep_spec, spec)
-        special = obj._instantiate_spec(spec.name)
+        special = obj.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, TaskName))
@@ -414,7 +414,7 @@ class TestInstantiation_Specs:
         dep_spec2 = TaskSpec.build({"name": "another::dep"})
         spec      = base_spec.under({"depends_on":["another::dep"]})
         obj.register_spec(base_spec, dep_spec, dep_spec2, spec)
-        special = obj._instantiate_spec(spec.name)
+        special = obj.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, TaskName))
@@ -436,7 +436,7 @@ class TestInstantiation_Jobs:
         abs_head = spec.name.with_head()
         obj.register_spec(spec)
         assert(abs_head not in obj.concrete)
-        instance = obj._instantiate_spec(spec.name)
+        instance = obj.instantiate_spec(spec.name)
         assert(instance in obj.specs)
         assert(abs_head in obj.concrete)
         assert(obj.concrete[abs_head][0] in obj.specs)
@@ -452,7 +452,7 @@ class TestInstantiation_Jobs:
         abs_head = spec.name.with_head()
         obj.register_spec(spec)
         assert(abs_head not in obj.concrete)
-        instance = obj._instantiate_spec(spec.name)
+        instance = obj.instantiate_spec(spec.name)
         assert(instance in obj.specs)
         assert(abs_head in obj.concrete)
         assert(obj.concrete[abs_head][0] in obj.specs)
@@ -474,7 +474,7 @@ class TestInstantiation_Jobs:
         assert(spec_cleanup not in obj.specs)
         assert(abs_head not in obj.concrete)
         assert(spec_cleanup not in obj.concrete)
-        instance = obj._instantiate_spec(spec.name)
+        instance = obj.instantiate_spec(spec.name)
         assert(instance in obj.specs)
         # After instantiation, the head is registered, cleanup isnt
         assert(abs_head in obj.concrete)
@@ -495,8 +495,8 @@ class TestInstantiation_Relations:
         dep_spec = TaskSpec.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
         obj.register_spec(control_spec, dep_spec)
 
-        control_inst = obj._instantiate_spec(control_spec.name)
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 assert(dep_name.uuid())
                 assert(dep_spec.name < dep_name)
@@ -513,8 +513,8 @@ class TestInstantiation_Relations:
         dep_spec = TaskSpec.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
         obj.register_spec(control_spec, dep_spec)
 
-        control_inst = obj._instantiate_spec(control_spec.name)
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 dep_inst_spec = obj.specs[dep_name]
                 assert(dep_inst_spec.extra["blah"] == "bloo")
@@ -528,8 +528,8 @@ class TestInstantiation_Relations:
         dep_spec = TaskSpec.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
         obj.register_spec(control_spec, dep_spec)
 
-        control_inst = obj._instantiate_spec(control_spec.name)
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 dep_inst_spec = obj.specs[dep_name]
                 assert(dep_inst_spec.extra["blah"] == "bloo")
@@ -549,10 +549,10 @@ class TestInstantiation_Relations:
         basic_dep = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(control_spec, basic_dep)
 
-        control_inst = obj._instantiate_spec(control_spec.name)
-        not_suitable = obj._instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
-        suitable     = obj._instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"qqqq"})
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        not_suitable = obj.instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
+        suitable     = obj.instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"qqqq"})
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 assert(dep_name == suitable)
             case x:
@@ -567,10 +567,10 @@ class TestInstantiation_Relations:
         basic_dep = TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(control_spec, basic_dep)
 
-        control_inst = obj._instantiate_spec(control_spec.name)
-        bad_1        = obj._instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
-        bad_2        = obj._instantiate_spec(basic_dep.name, extra={"blah":"BAD", "aweg":"qqqq"})
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        bad_1        = obj.instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
+        bad_2        = obj.instantiate_spec(basic_dep.name, extra={"blah":"BAD", "aweg":"qqqq"})
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 assert(dep_name != bad_1)
                 assert(dep_name != bad_2)
@@ -585,9 +585,9 @@ class TestInstantiation_Relations:
                                        })
         obj.register_spec(control_spec)
 
-        control_inst = obj._instantiate_spec(control_spec.name)
+        control_inst = obj.instantiate_spec(control_spec.name)
         with pytest.raises(doot.errors.TrackingError):
-            obj._instantiate_relation(control_spec.depends_on[0],
+            obj.instantiate_relation(control_spec.depends_on[0],
                                       control=control_inst)
 
     def test_relation_with_no_matching_control_spec_errors(self):
@@ -599,7 +599,7 @@ class TestInstantiation_Relations:
 
         control_inst = control_spec.name.to_uniq()
         with pytest.raises(doot.errors.TrackingError):
-            obj._instantiate_relation(control_spec.depends_on[0],
+            obj.instantiate_relation(control_spec.depends_on[0],
                                       control=control_inst)
 
 
@@ -608,14 +608,14 @@ class TestInstantiation_Relations:
         obj = TrackRegistry()
         target_spec = TaskSpec.build({"name":"basic::target"})
         obj.register_spec(target_spec)
-        target_inst = obj._instantiate_spec(target_spec.name)
+        target_inst = obj.instantiate_spec(target_spec.name)
         control_spec = TaskSpec.build({"name":"basic::task",
                                        "blah": "bloo", "aweg":"qqqq",
                                        "depends_on": [{"task":target_inst}],
                                        })
         obj.register_spec(control_spec)
-        control_inst = obj._instantiate_spec(control_spec.name)
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as x if x == target_inst:
                 assert(True)
             case x:
@@ -627,17 +627,17 @@ class TestInstantiation_Relations:
         obj = TrackRegistry()
         target_spec = TaskSpec.build({"name":"basic::target"})
         obj.register_spec(target_spec)
-        target_inst_1 = obj._instantiate_spec(target_spec.name,
+        target_inst_1 = obj.instantiate_spec(target_spec.name,
                                               extra={"blah":"bloo"})
-        target_inst_2 = obj._instantiate_spec(target_spec.name,
+        target_inst_2 = obj.instantiate_spec(target_spec.name,
                                               extra={"blah":"aweg"})
         relation = {"task":"basic::target", "inject":{"from_spec":["blah"]}}
         control_spec = TaskSpec.build({"name":"basic::control",
                                        "blah": "aweg",
                                        "depends_on": [relation]})
         obj.register_spec(control_spec)
-        control_inst = obj._instantiate_spec(control_spec.name)
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as x if x == target_inst_2:
                 assert(True)
             case x:
@@ -648,17 +648,17 @@ class TestInstantiation_Relations:
         obj = TrackRegistry()
         target_spec = TaskSpec.build({"name":"basic::target"})
         obj.register_spec(target_spec)
-        target_inst_1 = obj._instantiate_spec(target_spec.name,
+        target_inst_1 = obj.instantiate_spec(target_spec.name,
                                               extra={"blah":"bloo"})
-        target_inst_2 = obj._instantiate_spec(target_spec.name,
+        target_inst_2 = obj.instantiate_spec(target_spec.name,
                                               extra={"blah":"qqqq"})
         relation = {"task":"basic::target", "inject":{"from_spec":["blah"]}}
         control_spec = TaskSpec.build({"name":"basic::control",
                                        "blah": "aweg",
                                        "depends_on": [relation]})
         obj.register_spec(control_spec)
-        control_inst = obj._instantiate_spec(control_spec.name)
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        control_inst = obj.instantiate_spec(control_spec.name)
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as x if x not in [target_inst_1, target_inst_2]:
                 assert(True)
             case x:
@@ -674,16 +674,16 @@ class TestInstantiation_Relations:
                                        "blah": "aweg",
                                        "depends_on": [relation]})
         obj.register_spec(control_spec)
-        control_inst = obj._instantiate_spec(control_spec.name)
+        control_inst = obj.instantiate_spec(control_spec.name)
         # First instantiate the base job relation
-        match obj._instantiate_relation(control_spec.depends_on[0], control=control_inst):
+        match obj.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as x if "basic::+.target" < x and not x.is_head():
                 assert(True)
             case x:
                 assert(False), x
         # Then the head
-        obj._instantiate_spec(target_spec.name.with_head())
-        match obj._instantiate_relation(control_spec.depends_on[1], control=control_inst):
+        obj.instantiate_spec(target_spec.name.with_head())
+        match obj.instantiate_relation(control_spec.depends_on[1], control=control_inst):
             case TaskName() as x if "basic::+.target" < x and x.is_head():
                 assert(True)
             case x:
@@ -699,9 +699,9 @@ class TestInstantiation_Tasks:
         spec = TaskSpec.build({"name":"basic::task"})
         name = spec.name
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
+        instance = obj.instantiate_spec(name)
         assert(not bool(obj.tasks))
-        obj._make_task(instance)
+        obj.make_task(instance)
         assert(bool(obj.tasks))
 
     def test_make_task_with_late_injection(self):
@@ -709,12 +709,12 @@ class TestInstantiation_Tasks:
         spec = TaskSpec.build({"name":"basic::task"})
         inj  = InjectSpec.build({"from_state": ["blah"]})
         obj.register_spec(spec)
-        source_inst = obj._instantiate_spec(spec.name)
-        obj._make_task(source_inst)
+        source_inst = obj.instantiate_spec(spec.name)
+        obj.make_task(source_inst)
         obj.tasks[source_inst].state["blah"] = "bloo"
 
-        dep_inst = obj._instantiate_spec(spec.name)
+        dep_inst = obj.instantiate_spec(spec.name)
         obj._register_late_injection(dep_inst, inj, source_inst)
-        obj._make_task(dep_inst)
+        obj.make_task(dep_inst)
         assert("blah" in obj.tasks[dep_inst].state)
         assert(obj.tasks[dep_inst].state["blah"] == "bloo")

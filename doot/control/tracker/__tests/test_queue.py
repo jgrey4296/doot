@@ -37,10 +37,12 @@ from doot.workflow._interface import TaskStatus_e
 from doot.workflow import TaskSpec, TaskName, TaskArtifact
 from doot.util import mock_gen
 
+# ##-- end 1st party imports
+
+from ..tracker import Tracker
 from ..network import TrackNetwork
 from ..queue import TrackQueue
 from ..registry import TrackRegistry
-# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
@@ -70,9 +72,8 @@ logging = logmod.root
 
 @pytest.fixture(scope="function")
 def queue():
-    registry = TrackRegistry()
-    network  = TrackNetwork(registry)
-    return TrackQueue(registry, network)
+    tracker = Tracker()
+    return tracker._queue
 
 ##--|
 
@@ -84,7 +85,7 @@ class TestTrackerQueue:
     def test_tracker_bool(self, queue):
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})
-        obj._registry.register_spec(spec)
+        obj._tracker.register(spec)
         assert(not bool(obj._queue))
         assert(not bool(obj))
         instance = obj.queue_entry(spec.name)
@@ -94,7 +95,7 @@ class TestTrackerQueue:
     def test_queue_task(self, queue):
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})
-        obj._registry.register_spec(spec)
+        obj._tracker.register(spec)
         assert(not bool(obj._queue))
         instance = obj.queue_entry(spec.name)
         assert(instance in obj.active_set)
@@ -103,7 +104,7 @@ class TestTrackerQueue:
     def test_queue_task_idempotnent(self, queue):
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})
-        obj._registry.register_spec(spec)
+        obj._tracker.register(spec)
         assert(not bool(obj._queue))
         instance = obj.queue_entry(spec.name)
         assert(instance in obj.active_set)
@@ -123,8 +124,8 @@ class TestTrackerQueue:
         obj = queue
         artifact = TaskArtifact(pl.Path("test.txt"))
         # Stub artifact entry in tracker:
-        obj._registry._register_artifact(artifact)
-        obj._network._add_node(artifact)
+        obj._tracker.register(artifact)
+        obj._tracker._connect(artifact)
         assert(not bool(obj))
         result = obj.queue_entry(artifact)
         assert(bool(obj))
@@ -134,7 +135,7 @@ class TestTrackerQueue:
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})
         spec2 = TaskSpec.build({"name":"basic::other"})
-        obj._registry.register_spec(spec, spec2)
+        obj._tracker.register(spec, spec2)
         instance = obj.queue_entry(spec.name)
         instance2 = obj.queue_entry(spec2.name)
         assert(instance in obj.active_set)
@@ -147,8 +148,8 @@ class TestTrackerQueue:
         obj = queue
         artifact = TaskArtifact(pl.Path("test.txt"))
         # stub artifact in tracker:
-        obj._registry._register_artifact(artifact)
-        obj._network._add_node(artifact)
+        obj._tracker.register(artifact)
+        obj._tracker._connect(artifact)
         result   = obj.queue_entry(artifact)
         assert(bool(obj))
         val = obj.deque_entry()
@@ -159,7 +160,7 @@ class TestTrackerQueue:
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})
         spec2 = TaskSpec.build({"name":"basic::other"})
-        obj._registry.register_spec(spec, spec2)
+        obj._tracker.register(spec, spec2)
         instance  = obj.queue_entry(spec.name)
         instance2 = obj.queue_entry(spec2.name)
         assert(instance in obj.active_set)
@@ -171,7 +172,7 @@ class TestTrackerQueue:
     def test_clear_queue(self, queue):
         obj = queue
         spec  = TaskSpec.build({"name":"basic::task"})
-        obj._registry.register_spec(spec)
+        obj._tracker.register(spec)
         instance = obj.queue_entry(spec.name)
         assert(bool(obj.active_set))
         obj.clear_queue()

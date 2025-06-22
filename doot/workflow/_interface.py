@@ -238,12 +238,14 @@ class ActionResponse_e(enum.Enum):
 
 ##--| Spec Interfaces
 
+@runtime_checkable
 class ActionSpec_i(Buildable_p, Protocol):
     do         : Maybe[CodeReference]
     args       : list[Any]
     kwargs     : ChainGuard
     fun        : Maybe[Func]
 
+@runtime_checkable
 class InjectSpec_i(Buildable_p, Protocol):
     from_spec    : dict
     from_state   : dict
@@ -257,6 +259,7 @@ class InjectSpec_i(Buildable_p, Protocol):
 
     def apply_literal(self, val:Any) -> dict: ...
 
+@runtime_checkable
 class RelationSpec_i(Protocol):
 
     Marks        : ClassVar[type[enum.Enum]]
@@ -267,6 +270,7 @@ class RelationSpec_i(Protocol):
     constraints  : dict[str, str]
     inject       : Maybe[InjectSpec_i]
 
+@runtime_checkable
 class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
     """
     The data spec of a task. is created from TOML data

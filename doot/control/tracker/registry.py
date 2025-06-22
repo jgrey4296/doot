@@ -18,6 +18,7 @@ import time
 import types
 from collections import defaultdict
 from uuid import UUID, uuid1
+import weakref
 
 # ##-- end stdlib imports
 
@@ -49,7 +50,6 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    import weakref
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -85,7 +85,7 @@ class _Registry_d:
     - every concrete spec is in concrete under its abstract name
     - every implicit task that hasn't been registered is in implicit, mapped to its declaring spec
     """
-    _tracker            : weakref.ref[API.TaskTracker_p]
+    _tracker            : API.TaskTracker_p
 
     specs               : dict[TaskName, TaskSpec]
     concrete            : dict[Abstract[TaskName], list[Concrete[TaskName]]]
@@ -98,19 +98,22 @@ class _Registry_d:
     # indirect blocking requirements:
     blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]
     late_injections     : dict[Concrete[TaskName], tuple[InjectSpec, TaskName]]
+    artifact_builders   : dict[TaskArtifact, list[TaskName]]
+    artifact_consumers  : dict[TaskArtifact, list[TaskName]]
 
-    def __init__(self):
-        self.specs                = {}
-        self.concrete             = defaultdict(list)
-        self.implicit             = {}
-        self.tasks                = {}
-        self.artifacts            = defaultdict(set)
-        self.abstract_artifacts   = set()
-        self.concrete_artifacts   = set()
-        self.artifact_builders    = defaultdict(list)
-        self.artifact_consumers   = defaultdict(list)
-        self.blockers             = defaultdict(list)
-        self.late_injections      = {}
+    def __init__(self, *, tracker:Maybe[API.TaskTracker_p]=None) -> None:
+        self._tracker            = tracker # type: ignore[assignment]
+        self.specs               = {}
+        self.concrete            = defaultdict(list)
+        self.implicit            = {}
+        self.tasks               = {}
+        self.artifacts           = defaultdict(set)
+        self.abstract_artifacts  = set()
+        self.concrete_artifacts  = set()
+        self.artifact_builders   = defaultdict(list)
+        self.artifact_consumers  = defaultdict(list)
+        self.blockers            = defaultdict(list)
+        self.late_injections     = {}
 
 class _Registration_m(_Registry_d):
 
@@ -255,7 +258,7 @@ class _Registration_m(_Registry_d):
 
 class _Instantiation_m(_Registry_d):
 
-    def _instantiate_spec(self, name:Abstract[TaskName], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName]]:
+    def instantiate_spec(self, name:Abstract[TaskName], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName]]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
 
@@ -304,7 +307,7 @@ class _Instantiation_m(_Registry_d):
         assert(instance_spec.name in self.specs)
         return instance_spec.name
 
-    def _instantiate_relation(self, rel:RelationSpec, *, control:Concrete[TaskName]) -> Concrete[TaskName]:
+    def instantiate_relation(self, rel:RelationSpec, *, control:Concrete[TaskName]) -> Concrete[TaskName]:
         """ find a matching relation according to constraints,
             or create a new instance if theres no constraints/no match
 
@@ -343,7 +346,7 @@ class _Instantiation_m(_Registry_d):
                             injection = True
                         case x:
                             injection = x
-                    instance  = self._instantiate_spec(rel.target, extra=injection)
+                    instance  = self.instantiate_spec(rel.target, extra=injection)
                     if instance and not inj.validate(control_obj, self.specs[instance], only_spec=True):
                         raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
                     assert(instance is not None)
@@ -352,12 +355,12 @@ class _Instantiation_m(_Registry_d):
                     logging.debug("[Instance.Relation.Inject] : %s", instance)
                     return instance
                 case _:
-                    instance = self._instantiate_spec(rel.target, extra=True)
+                    instance = self.instantiate_spec(rel.target, extra=True)
                     assert(instance is not None)
                     logging.debug("[Instance.Relation.Basic] : %s", instance)
                     return instance
 
-    def _make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]:
+    def make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 

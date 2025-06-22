@@ -44,6 +44,7 @@ from .registry import TrackRegistry
 
 # ##-- end 1st party imports
 
+from doot.workflow._interface import RelationSpec_i, Task_i
 from . import _interface as API # noqa: N812
 
 # ##-- types
@@ -85,68 +86,128 @@ logging    = logmod.getLogger(__name__)
 class Tracker_abs:
     """ A public base implementation of most of a tracker
     Has three components:
-    _registry : db for specs and tasks
-    _network  : the links between specs in the registry
-    _queue    : the logic for determining what task to run next
+    _registry          : db for specs and tasks
+    _network           : the links between specs in the registry
+    _queue             : the logic for determining what task to run next
 
     """
-    _register : TrackRegistry
-    _network  : TrackNetwork
-    _queue    : TrackQueue
+    _registry          : API.Registry_p
+    _network           : API.Network_p
+    _queue             : API.Queue_p
+
+    _declare_priority  : int
+    _min_priority      : int
+    is_valid           : bool
 
     def __init__(self):
-        self._registry = TrackRegistry()
-        self._network  = TrackNetwork(self._registry)
-        self._queue    = TrackQueue(self._registry, self._network)
+        self._declare_priority  = API.DECLARE_PRIORITY
+        self._min_priority      = API.MIN_PRIORITY
+        self._root_node         = TaskName(API.ROOT)
+        self.is_valid           = False
+        self._registry          = TrackRegistry(tracker=self)
+        self._network           = TrackNetwork(tracker=self)
+        self._queue             = TrackQueue(tracker=self)
 
     ##--| properties
-    @property
-    def active_set(self) -> set:
-        return self._queue.active_set
 
     @property
-    def network(self) -> DiGraph:
-        return self._network._graph
+    def specs(self) -> dict[TaskName, TaskSpec]:
+        return self._registry.specs # type: ignore[attr-defined]
 
     @property
-    def _root_node(self) -> TaskName:
-        return self._network._root_node
+    def artifacts(self) -> dict[TaskArtifact, set[Abstract[TaskName]]]:
+        return self._registry.artifacts # type: ignore[attr-defined]
+
+    @property
+    def tasks(self) -> dict[Concrete[TaskName], Task_i]:
+        return self._registry.tasks # type: ignore[attr-defined]
+
+    @property
+    def concrete(self) -> Mapping:
+        return self._registry.concrete
+    @property
+    def artifact_builders(self) -> Mapping:
+        return self._registry.artifact_builders # type: ignore[attr-defined]
+
+    @property
+    def abstract_artifacts(self) -> Mapping:
+        return self._registry.abstract_artifacts # type: ignore[attr-defined]
+
+    @property
+    def concrete_artifacts(self) -> Mapping:
+        return self._registry.concrete_artifacts # type: ignore[attr-defined]
+
+    @property
+    def network(self) -> Mapping:
+        return self._network._graph # type: ignore[attr-defined]
+
+    @property
+    def active(self) -> set:
+            return self._queue.active_set
 
     ##--| dunders
+
     def __bool__(self) -> bool:
         return bool(self._queue)
 
-    ##--| public
-    def register_spec(self, *specs:TaskSpec)-> None:
-        self._registry.register_spec(*specs)
+    ##--| internal
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName|TaskArtifact]]:  # noqa: ARG002
+    def _instantiate(self, target:TaskName|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName]:
+        match target:
+            case TaskName() as x if task:
+                return self._registry.make_task(x, *args, **kwargs)
+            case TaskName() as x:
+                return self._registry.instantiate_spec(x, *args, **kwargs)
+            case RelationSpec_i() as x:
+                return self._registry.instantiate_relation(target, *args, **kwargs)
+            case x:
+                raise TypeError(type(x))
+
+    def _connect(self, left:Concrete[TaskName]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName]|TaskArtifact]=None, **kwargs:Any) -> None:
+        self._network.connect(left, right, **kwargs)
+
+    ##--| public
+
+    def register(self, *specs:TaskSpec|TaskArtifact)-> None:
+        for x in specs:
+            match x:
+                case TaskSpec():
+                    self._registry.register_spec(x)
+                case TaskArtifact():
+                    self._registry._register_artifact(x)
+                case x:
+                    raise TypeError(type(x))
+
+
+    def queue(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName|TaskArtifact]]:  # noqa: ARG002
         queued = self._queue.queue_entry(name, from_user=from_user, status=status)
         return queued
 
-    def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
-        return self._registry.get_status(task)
+    def build(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
+        self._network.build_network(sources=sources)
 
-    def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
-        return self._registry.set_status(task, state)
+    def validate(self) -> None:
+        self._network.validate_network()
 
-    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
-        self._network.build_network(sources=sources) # type: ignore[attr-defined]
-
-    def validate_network(self) -> None:
-        self._network.validate_network() # type: ignore[attr-defined]
-
-    def generate_plan(self, *args:Any) -> list:
+    def plan(self, *args:Any) -> list:
         raise NotImplementedError()
 
-    def clear_queue(self) -> None:
+    def clear(self) -> None:
         self._queue.clear_queue()
 
-
-
 ##--|
+
 @Proto(API.TaskTracker_p)
 class Tracker(Tracker_abs):
+
+    def _get_priority(self, target:Concrete[TaskName|TaskArtifact]) -> int:
+        return self._registry.get_priority(target) # type: ignore[attr-defined]
+
+    def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
+        return self._registry.get_status(task) # type: ignore[attr-defined]
+
+    def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
+        return self._registry.set_status(task, state) # type: ignore[attr-defined]
 
     def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:  # noqa: PLR0912, PLR0915
         """ ask for the next task that can be performed
@@ -163,17 +224,17 @@ class Tracker(Tracker_abs):
         status  : TaskStatus_e
 
         logging.info("[Next.For] (Active: %s)", len(self._queue.active_set))
-        if not self._network.is_valid:
+        if not self.is_valid:
             raise doot.errors.TrackingError("Network is in an invalid state")
 
         if target and target not in self._queue.active_set:
-            self.queue_entry(target, silent=True)
+            self.queue(target, silent=True)
 
         count  = API.MAX_LOOP
         result = None
         while (result is None) and bool(self._queue) and 0 < (count:=count-1):
             focus   = self._queue.deque_entry()
-            status  = self._registry.get_status(focus)
+            status  = self._registry.get_status(focus) # type: ignore[attr-defined]
             if focus not in self._queue.active_set:
                 continue
 
@@ -188,69 +249,71 @@ class Tracker(Tracker_abs):
                     self._queue.active_set.remove(focus)
                 case TaskStatus_e.TEARDOWN:
                     for succ in self._network.succ[focus]:
-                        match self.queue_entry(succ):
+                        match self.queue(succ):
                             case TaskName() as x if x.is_cleanup():
                                 # make the cleanup task early, to apply shared state
-                                self._registry._make_task(x, parent=focus)
+                                assert(isinstance(focus, TaskName))
+                                self._registry.make_task(x, parent=focus)
                             case _:
                                 pass
                     else:
                         # TODO for cleanup succ, move focus.state -> succ.state
-                        self._registry.set_status(focus, TaskStatus_e.DEAD)
+                        self._registry.set_status(focus, TaskStatus_e.DEAD) # type: ignore[attr-defined]
                 case ArtifactStatus_e.EXISTS:
                     # TODO artifact Exists, queue its dependents and *don't* add the artifact back in
                     self._queue.execution_trace.append(focus)
                 case TaskStatus_e.SUCCESS:
-                    self._queue.execution_trace.append(focus)
-                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
+                    self._queue.execution_trace.append(focus) # type: ignore[attr-defined]
+                    self.queue(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.FAILED:  # propagate failure
-                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
+                    self.queue(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.HALTED:  # remove and propagate halted status
-                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
+                    self.queue(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.SKIPPED:
-                    self.queue_entry(focus, status=TaskStatus_e.DEAD)
+                    self.queue(focus, status=TaskStatus_e.DEAD)
                 case TaskStatus_e.RUNNING:
-                    self.queue_entry(focus)
+                    self.queue(focus)
                 case TaskStatus_e.READY:   # return the task if its ready
-                    self.queue_entry(focus, status=TaskStatus_e.RUNNING)
+                    self.queue(focus, status=TaskStatus_e.RUNNING)
                     result = self._registry.tasks[focus]
                 case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
                     match self._network.incomplete_dependencies(focus): # type: ignore[attr-defined]
                         case []:
-                            self.queue_entry(focus, status=TaskStatus_e.READY)
+                            self.queue(focus, status=TaskStatus_e.READY)
                         case [*xs]:
                             logging.debug("Task Blocked: %s on : %s", focus, xs)
-                            self.queue_entry(focus)
+                            self.queue(focus)
                             for x in xs:
-                                self.queue_entry(x)
+                                self.queue(x)
                 case TaskStatus_e.INIT:
-                    task_name = self.queue_entry(focus, status=TaskStatus_e.WAIT)
+                    task_name = self.queue(focus, status=TaskStatus_e.WAIT)
                 case ArtifactStatus_e.STALE:
                     for pred in self._network.pred[focus]:
-                        self.queue_entry(pred)
+                        self.queue(pred)
                 case ArtifactStatus_e.DECLARED if bool(focus):
-                    self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
+                    self.queue(focus, status=ArtifactStatus_e.EXISTS)
                 case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self._network.incomplete_dependencies(focus):
                         case [] if not focus.is_concrete():
-                            self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
+                            self.queue(focus, status=ArtifactStatus_e.EXISTS)
                         case []:
                             assert(not bool(focus))
                             path = focus.expand()
-                            self.queue_entry(focus)
+                            self.queue(focus)
                             # Returns the artifact, the runner can try to create
                             # it, then override the halt
                             result = focus
                         case [*xs]:
                             logging.info("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
-                            self.queue_entry(focus)
+                            self.queue(focus)
                             for x in xs:
-                                self.queue_entry(x)
+                                self.queue(x)
                 case TaskStatus_e.DEFINED:
-                    self.queue_entry(focus, status=TaskStatus_e.HALTED)
+                    self.queue(focus, status=TaskStatus_e.HALTED)
                 case TaskStatus_e.DECLARED:
-                    self._registry._make_task(focus)
-                    self.queue_entry(focus)
+                    assert(isinstance(focus, TaskName))
+                    self._registry.make_task(focus)
+                    self.queue(focus)
                 case TaskStatus_e.NAMED:
                     logging.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
                 case x: # Error otherwise

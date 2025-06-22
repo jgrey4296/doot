@@ -17,6 +17,7 @@ import re
 import time
 import types
 from uuid import UUID, uuid1
+import weakref
 
 # ##-- end stdlib imports
 
@@ -46,7 +47,6 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    import weakref
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -81,15 +81,18 @@ class TrackQueue:
 
     active_set       : set[Concrete[TaskName]|TaskArtifact]
     execution_trace  : list[Concrete[TaskName|TaskArtifact]]
-    # TODO use this instead of _registry and _network
-    _tracker         : weakref.ref[API.TaskTracker_p]
-    _registry        : TrackRegistry
-    _network         : TrackNetwork
+    # TODO use this instead of _tracker._registry and _tracker._network
+    _tracker         : API.TaskTracker_p
     _queue           : boltons.queueutils.HeapPriorityQueue
 
-    def __init__(self, registry:TrackRegistry, network:TrackNetwork):
-        self._registry              = registry
-        self._network               = network
+    def __init__(self, *, tracker:Maybe[API.TaskTracker_p]=None) -> None:
+        match tracker:
+            case API.TaskTracker_p():
+                self._tracker = tracker
+            case None:
+                pass
+            case x:
+                raise TypeError(type(x))
         self.active_set             = set()
         self.execution_trace        = []
         self._queue                 = boltons.queueutils.HeapPriorityQueue()
@@ -102,31 +105,32 @@ class TrackQueue:
     def queue_entry(self, target:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:  # noqa: PLR0912
         """
           Queue a task by name|spec|Task_i.
-          registers and instantiates the relevant spec, inserts it into the _network
-          Does *not* rebuild the _network
+          registers and instantiates the relevant spec, inserts it into the _tracker._network
+          Does *not* rebuild the _tracker._network
 
-          returns a task name if the _network has changed, else None.
+          returns a task name if the _tracker._network has changed, else None.
 
           kwarg 'from_user' signifies the enty is a starting target, adding cli args if necessary and linking to the root.
         """
         x : Any
         abs_name         : Maybe[TaskName]
         inst_name        : Concrete[TaskName]
-        target_priority  : int  = self._network._declare_priority
+        target_priority  : int  = self._tracker._declare_priority
         ##--|
         match target:
             case TaskArtifact() as art:
-                assert(target in self._registry.artifacts)
-                self._network.connect(art, None if from_user else False) # type: ignore[attr-defined]
+                assert(target in self._tracker.artifacts)
+                self._tracker._connect(art, None if from_user else False) # type: ignore[attr-defined]
                 self.active_set.add(art)
                 self._queue.add(art, priority=art.priority)
                 if status:
-                    self._registry.set_status(art, status)
+                    assert(isinstance(status, TaskStatus_e))
+                    self._tracker.set_status(art, status)
 
-                logging.debug("[Queue] %s : %s", self._registry.get_status(art), art)
+                logging.debug("[Queue] %s : %s", self._tracker.get_status(art), art)
                 return art
             case TaskSpec() as spec:
-                self._registry.register_spec(spec) # type: ignore[attr-defined]
+                self._tracker.register(spec) # type: ignore[attr-defined]
                 if TaskName.Marks.partial in spec.name:
                     abs_name = spec.name.pop(top=False)
                 else:
@@ -137,18 +141,18 @@ class TrackQueue:
         match abs_name:
             case None:
                 return None
-            case TaskName() | str() as x if x not in self._registry.specs:
+            case TaskName() | str() as x if x not in self._tracker.specs:
                 raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", x)
             case TaskName() as x if not x.uuid():
-                inst_name = self._registry._instantiate_spec(x) # type: ignore[attr-defined]
+                inst_name = self._tracker._instantiate(x) # type: ignore[attr-defined]
             case TaskName() as x:
                 inst_name = x
 
-        if inst_name not in self._network:
-            self._network.connect(inst_name, None if from_user else False) # type: ignore[attr-defined]
+        if inst_name not in self._tracker.network:
+            self._tracker._connect(inst_name, None if from_user else False) # type: ignore[attr-defined]
 
         self.active_set.add(inst_name)
-        match self._registry.tasks.get(inst_name, None):
+        match self._tracker.tasks.get(inst_name, None):
             case None:
                 self._queue.add(inst_name, API.DECLARE_PRIORITY)
             case x:
@@ -156,9 +160,9 @@ class TrackQueue:
         # Apply the override status if necessary:
         match status:
             case TaskStatus_e():
-                self._registry.set_status(inst_name, status)
+                self._tracker.set_status(inst_name, status)
             case None:
-                status = self._registry.get_status(inst_name)
+                status = self._tracker.get_status(inst_name)
 
         logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name[:])
         return inst_name
@@ -171,13 +175,13 @@ class TrackQueue:
             return self._queue.peek()
 
         match self._queue.pop():
-            case TaskName() as focus if focus not in self._registry.tasks:
+            case TaskName() as focus if focus not in self._tracker.tasks:
                 pass
-            case TaskName() as focus if self._registry.get_priority(focus) < self._network._min_priority:
+            case TaskName() as focus if self._tracker._get_priority(focus) < self._tracker._min_priority:
                 logging.warning("[Deque] Halting (Min Priority) : %s", focus[:])
-                self._registry.set_status(focus, TaskStatus_e.HALTED)
+                self._tracker.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
-                task  = self._registry.tasks[focus]
+                task  = self._tracker.tasks[focus]
                 prior = task.priority
                 task.priority -= 1
                 logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus[:])
@@ -200,15 +204,15 @@ class TrackQueue:
 
         """
         match name:
-            case TaskName() if name == self._network._root_node:
+            case TaskName() if name == self._tracker._root_node:
                 return None
             case TaskName() if name in self.active_set:
                 return name
-            case TaskName() if name in self._registry.tasks:
+            case TaskName() if name in self._tracker.tasks:
                 return name
-            case TaskName() if name in self._network:
+            case TaskName() if name in self._tracker.network:
                 return name
-            case TaskName() if name in self._registry.specs:
+            case TaskName() if name in self._tracker.specs:
                 return name
             case TaskName():
                 raise doot.errors.TrackingError("Unrecognized queue argument provided, it may not be registered", name)
