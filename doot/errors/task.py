@@ -15,17 +15,22 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 
 # ##-- end stdlib imports
 
+from ._base import DootError, BackendError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from doot.workflow._interface import Task_i
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from ._base import DootError, BackendError
 
 class TaskError(BackendError):
     """ An Error indicating a specific task failed  """
     general_msg = "Doot Task Error:"
 
-    def __init__(self, msg, *args, task:None|"Task_i"=None):
+    def __init__(self, msg:str, *args:Any, task:Maybe[Task_i]=None):
         super().__init__(msg, *args)
         self.task = task
 

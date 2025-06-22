@@ -146,10 +146,13 @@ class Loading_m:
         ..  to equiv of 'doot list --actions'
 
         """
+        name        : str
+        details     : dict
+        registered  : dict
         doot.report.trace("Setting Command Aliases")
-        registered : dict = {}
+        registered = {}
         for name,details in doot.config.on_fail({}).settings.commands().items():
-            for alias, args in details.on_fail({}, non_root=True).aliases().items():
+            for alias, args in ChainGuard(details).on_fail({}, non_root=True).aliases().items():
                 doot.report.trace("- %s -> %s", name, alias)
                 registered[alias] = [name, *args]
         else:

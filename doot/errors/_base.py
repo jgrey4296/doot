@@ -17,6 +17,8 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 
 # ##-- end stdlib imports
 
+from typing import override
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
@@ -29,8 +31,9 @@ class DootError(Exception):
       The base class for all Doot Errors
       will try to % format the first argument with remaining args in str()
     """
-    general_msg = "Non-Specific Doot Error:"
+    general_msg : str = "Non-Specific Doot Error:"
 
+    @override
     def __str__(self):
         try:
             return self.args[0] % self.args[1:]

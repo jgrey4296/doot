@@ -29,10 +29,14 @@ from jgdv import Maybe, Proto
 # ##-- 1st party imports
 import doot
 from .._interface import Action_p, ActionResponse_e
-from ..structs.action_spec import ActionSpec
 from doot.errors import TaskError, TaskFailed
 
 # ##-- end 1st party imports
+
+from typing import override
+
+if TYPE_CHECKING:
+    from ..structs.action_spec import ActionSpec
 
 logging = logmod.getLogger(__name__)
 
@@ -46,6 +50,7 @@ class DootBaseAction:
     """
     ActRE = ActionResponse_e
 
+    @override
     def __str__(self):
         return f"Base Action"
 

@@ -2,6 +2,8 @@
 """
 
 """
+# ruff: noqa: ERA001, ANN202, ANN001, PLR2004, ARG002
+#
 ##-- imports
 from __future__ import annotations
 
@@ -97,7 +99,7 @@ class TestTaskLoader:
         basic = task.TaskLoader()
         mocker.patch.object(basic, "_load_specs_from_path")
         basic.setup({}, specs)
-        basic.cmd_names = set(["test"])
+        basic.cmd_names = {"test"}
 
         assert(not bool(basic.tasks))
         assert(not bool(basic.failures))
@@ -136,7 +138,7 @@ class TestTaskLoader:
         with pytest.raises(doot.errors.StructLoadError):
             result = basic.load()
 
-    def test_task_type(self, mocker):
+    def test_task_type_empty(self, mocker):
         specs = {"tasks": {"basic": []}}
         specs['tasks']['basic'].append({"name": "simple"})
 
@@ -152,7 +154,26 @@ class TestTaskLoader:
 
         assert(len(result) == 1)
         task_spec = result['basic::simple']
-        assert(task_spec.ctor is not None)
+        assert(task_spec.ctor is None)
+
+
+    def test_task_type_specified(self, mocker):
+        specs = {"tasks": {"basic": []}}
+        specs['tasks']['basic'].append({"name": "simple"})
+
+        mock_ctor                   = mock_task_ctor()
+        mock_ep                     = mock_entry_point(name="basic", value=mock_ctor)
+
+        plugins                     = ChainGuard({"task": [mock_ep]})
+        basic                       = task.TaskLoader()
+        mocker.patch.object(basic, "_load_specs_from_path")
+        basic.setup(plugins, ChainGuard(specs))
+
+        result    = basic.load()
+
+        assert(len(result) == 1)
+        task_spec = result['basic::simple']
+        assert(task_spec.ctor is None)
 
     def test_task_missing_plugin_results_in_disabled(self, mocker):
         """ a bad ctor alias disables the task """

@@ -219,16 +219,21 @@ class TestListCmd:
         assert(any(x.startswith("ctor import failed") for x in message_set) )
 
     def test_call_target_not_empty(self, caplog, mocker):
+        message_set  : set[str]
+        obj          : Command_p
+        plugin_mock  : dict
+        job_mock     : dict
+        result       : Any
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(simple_pattern))
-        obj = ListCmd()
+        obj          = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
-        job_mock = {
+        job_mock     = {
             "simple" : TaskSpec.build({"group": "blah", "name": "simple"}),
             "other"  : TaskSpec.build({"group": "bloo", "name": "other"}),
         }
-        result = obj(job_mock, plugin_mock)
-        message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
+        result       = obj(job_mock, plugin_mock)
+        message_set  = {x.message.lower().strip() for x in caplog.records}
 
         assert("registered tasks/jobs:" in message_set)
         assert( any(x.startswith("simple") for x in message_set) )

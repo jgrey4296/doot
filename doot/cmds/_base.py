@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from doot.errors import DootError
-    type ListVal = str|Lambda|tuple[str,dict]
+    type ListVal = Maybe[str|Lambda|tuple[str,dict]]
 
 # isort: on
 # ##-- end types

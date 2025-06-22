@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from jgdv.cli import ParamStruct_p
     from jgdv.cli.param_spec import ParamSpec
     from jgdv.structs.chainguard import ChainGuard
 
@@ -194,9 +195,9 @@ class _TaskLister_m:
 
     def _filter_tasks(self, data) -> list[dict]:
         logging.info("-- Filtering: %s", len(data))
-        show_internal    = doot.args.on_fail(False).cmd.args.internal()  # noqa: FBT003
-        no_hide_names    = bool(hide_names)
-        match doot.args.on_fail(None).cmd.args.pattern.lower():
+        show_internal  : bool  = doot.args.on_fail(False).cmd.args.internal()  # noqa: FBT003
+        no_hide_names          = bool(hide_names)
+        match doot.args.on_fail(None).cmd.args.pattern().lower():
             case None | "":
                 pattern = None
             case str() as x:
@@ -249,6 +250,7 @@ class _LocationLister_m:
         result : list[ListVal] = []
         result.append("Defined Locations: ")
 
+        assert(doot.locs.Current is not None)
         for x in sorted(doot.locs.Current):
             loc = doot.locs.Current.get(x)
             result.append(f"-- {x:<25} : {loc} ")
@@ -384,7 +386,8 @@ class ListCmd(BaseCommand):
         "Set settings.commands.list.hide with a list of regexs to ignore",
     ])
 
-    def param_specs(self) -> list[ParamSpec]:
+    @override
+    def param_specs(self) -> list[ParamStruct_p]:
         params = [
             *super().param_specs(),
             self.build_param(name="<0>pattern", type=str,  default="", desc="Filter the listing to only values passing this regex"),

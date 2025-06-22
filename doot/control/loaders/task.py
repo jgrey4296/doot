@@ -51,6 +51,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from doot.workflow._interface import Job_p
     import pathlib as pl
     from jgdv import Maybe
     from typing import Final
@@ -61,7 +62,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from doot.workflow._interface import Job_p, Task_p
+from doot.workflow._interface import Task_p
 from ._interface import TaskLoader_p
 # isort: on
 # ##-- end types
@@ -104,13 +105,20 @@ class TaskLoader:
     """
     load toml defined tasks, and create doot.structs.TaskSpecs of them
     """
-    tasks                 : ClassVar[dict[str, tuple(dict, Job_p)]]   = {}
-    failures              : ClassVar[dict[str, list]]                 = defaultdict(list)
-    cmd_names             : ClassVar[set[str]]                        = set()
-    task_builders         : ClassVar[dict[str,Any]]                   = dict()
-    extra                 : ClassVar[Maybe[ChainGuard]]               = None
+    tasks                 : dict[str, tuple[dict, Job_p]]
+    failures              : dict[str, list]
+    cmd_names             : set[str]
+    task_builders         : dict[str,Any]
+    extra                 : Maybe[ChainGuard]
+    exit_on_load_failures : bool
 
-    exit_on_load_failures : bool                                      = exit_on_load_failures
+    def __init__(self):
+        self.tasks                 =  {}
+        self.failures              = defaultdict(list)
+        self.cmd_names             = set()
+        self.task_builders         = dict()
+        self.extra                 = None
+        self.exit_on_load_failures = exit_on_load_failures
 
     def setup(self, plugins:ChainGuard, extra:Maybe[ChainGuard]=None) -> Self:
         logging.debug("---- Registering Task Builders")
@@ -239,7 +247,7 @@ class TaskLoader:
                 self._build_task_specs(raw_specs, self.cmd_names, source=task_file)
                 self._load_location_updates(data.on_fail([]).locations(), task_file)
 
-    def _build_task_specs(self, specs:list[dict], commands:set[str], source:Maybe[str|pl.Path]=None) -> None:
+    def _build_task_specs(self, specs:list[dict], commands:set[str], source:Maybe[str|pl.Path]=None) -> None:  # noqa: PLR0912
         """
         convert raw dicts into TaskSpec objects
 

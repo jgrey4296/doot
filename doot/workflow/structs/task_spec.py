@@ -55,7 +55,7 @@ from .task_name import TaskName
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Any, Annotated
+from typing import Generic, NewType, Any, Annotated, override
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -367,6 +367,7 @@ class _SpecUtils_m:
         return instance
 
     def reify_partial(self:TaskSpec_i, actual:TaskSpec) -> TaskSpec:
+        """ Turn a partial spec into a full spec by applying it over an actual spec """
         if TaskName.Marks.partial not in self.name:
             raise ValueError("Tried to reify a non-partial spec", self.name)
 
@@ -434,11 +435,20 @@ class _SpecUtils_m:
     def make(self:TaskSpec_i, *, ensure:type|SpecialType=None, inject:Maybe[tuple[InjectSpec, Task_p]]=None, parent:Maybe[Task_p]=None) -> Task_p:  # noqa: PLR0912
         """ Create actual task instance
 
+        if no ctor has been specified, uses the default ctor for job/task
         """
         if self.name.is_cleanup() and parent is None:
             raise ValueError("Parent was missing for cleanup task", self.name)
 
-        match self.ctor(check=ensure): # Make the task object
+        match self.ctor:
+            case None if TaskMeta_e.JOB in self.meta:
+                ctor = CodeReference(doot.aliases.task.job)
+            case None:
+                ctor = CodeReference(doot.aliases.task.task)
+            case CodeReference() as x:
+                ctor = x
+
+        match ctor(check=ensure): # Make the task object
             case ImportError() as err:
                 raise err
             case task_ctor:
@@ -573,7 +583,7 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
     # Any additional
     version          : str                                                      = Field(default=doot.__version__) # TODO: make dict?
     priority         : int                                                      = Field(default=10)
-    ctor             : CodeReference                                            = Field(default=None, validate_default=True)
+    ctor             : Maybe[CodeReference]                                     = Field(default=None, validate_default=True)
     queue_behaviour  : API.QueueMeta_e                                          = Field(default=API.QueueMeta_e.default)
     meta             : set[TaskMeta_e]                                          = Field(default_factory=set)
     generated_names  : set[TaskName]                                            = Field(init=False, default_factory=set)
@@ -628,13 +638,10 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
         return {x if isinstance(x, TaskMeta_e) else TaskMeta_e[x] for x in vals}
 
     @field_validator("ctor", mode="before")
-    def _validate_ctor(cls, val:Maybe[str|CodeReference]) -> CodeReference:
+    def _validate_ctor(cls, val:Maybe[str|CodeReference]) -> Maybe[CodeReference]:
         match val:
             case None:
-                # TODO if default alias, delay ctor selection till task making
-                default_alias = cls._default_ctor
-                coderef_str   = doot.aliases.task[default_alias]
-                return CodeReference(coderef_str)
+                return None
             case EntryPoint():
                 return CodeReference(val)
             case CodeReference():
@@ -694,11 +701,9 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
         if TaskName.Marks.extend in self.name and not self.name.is_head():
             base_meta.add(TaskMeta_e.JOB)
 
-        # Get metadata from the task ctor:
-        if TaskMeta_e.JOB in base_meta and self.ctor[:] == doot.aliases.task[self._default_ctor]:
-            self.ctor = CodeReference(doot.aliases.task[API.DEFAULT_JOB])
-
-        match self.ctor():
+        match self.ctor and self.ctor():
+            case None:
+                pass
             case ImportError() as err:
                 logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
                 base_meta.add(TaskMeta_e.DISABLED)
@@ -724,7 +729,8 @@ class TaskSpec(_TaskSpecBase, BaseModel, arbitrary_types_allowed=True, extra="al
 
         return self
 
-    def __hash__(self):
+    @override
+    def __hash__(self) -> int:
         return hash(str(self.name))
 
     @property

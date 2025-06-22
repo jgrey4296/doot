@@ -94,7 +94,7 @@ class PluginLoader:
         use entry_points(group="doot")
         add to the config ChainGuard
         """
-        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX) # type: ignore[attr-defined]
+        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
         try:
             self._load_system_plugins()
         except Exception as err:

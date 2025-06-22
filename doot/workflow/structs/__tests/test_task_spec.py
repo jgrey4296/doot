@@ -60,7 +60,7 @@ class TestTaskSpec:
         assert(isinstance(obj, TaskSpec))
         assert(obj.name[0,:]== "default")
         assert(obj.name[1,:] == "default")
-        assert(DEFAULT_CTOR in str(obj.ctor))
+        assert(obj.ctor is None)
         assert(obj.version == doot.__version__)
 
     def test_version(self):
@@ -68,7 +68,7 @@ class TestTaskSpec:
         assert(isinstance(obj, TaskSpec))
         assert(obj.name[0,:] == "default")
         assert(obj.name[1,:] == "default")
-        assert(str(obj.ctor) == DEFAULT_CTOR)
+        assert(obj.ctor is None)
         assert(obj.version == "0.5")
 
     def test_basic_name(self):
@@ -390,8 +390,8 @@ class TestTaskSpec_Instantiation:
                 assert(False), x
 
     def test_task_make(self):
-        base = TaskSpec.build({"name": "basic::task", "a":0})
-        concrete = base.instantiate()
+        base      = TaskSpec.build({"name": "basic::task", "a":0})
+        concrete  = base.instantiate()
         assert(concrete.name.uuid())
         match concrete.make():
             case Task_p() as inst:

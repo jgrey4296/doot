@@ -56,7 +56,6 @@ if TYPE_CHECKING:
     from doot.cmd._interface import Command_p
     from doot.errors import DootError
 
-    from doot.reporters._interface import WorkflowReporter_p
     from .._interface import Loadable
 
 ##--|

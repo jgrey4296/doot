@@ -32,15 +32,10 @@ from .task import TaskError, TaskFailed, TaskTrackingError, ActionError
 
 # ##-- end 1st party imports
 
-class EarlyExit(Exception):
+class EarlyExit(Exception):  # noqa: N818
     """ Doot was instructed to shut down before completing the requested comand """
     pass
 
-class Interrupt(ControlError):
+class Interrupt(ControlError):  # noqa: N818
     """ A Task was interrupted, usually to drop into a debugger """
-    pass
-
-class TaskFailed(TaskExecutionError):
-    """ A Task attempted to run, but failed in some way. """
-    general_msg = "Doot Task Failure:"
     pass

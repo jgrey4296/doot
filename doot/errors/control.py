@@ -15,25 +15,30 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 
 # ##-- end stdlib imports
 
+from ._base import DootError, BackendError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from doot.workflow._interface import Task_i
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from ._base import DootError, BackendError
 
 class ControlError(BackendError):
     pass
 
 class TrackingError(ControlError):
     """ The underlying sequencing of task running failed in some way.  """
-    general_msg = "Doot Tracking Failure:"
+    general_msg : str = "Doot Tracking Failure:"
     pass
 
 class TaskExecutionError(ControlError):
     """ An Error indicating a specific task failed  """
     general_msg = "Doot Task Error:"
 
-    def __init__(self, msg, *args, task:None|"Task_i"=None):
+    def __init__(self, msg:str, *args:Any, task:Maybe[Task_i]=None):
         super().__init__(msg, *args)
         self.task = task
 
