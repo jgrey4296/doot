@@ -41,7 +41,7 @@ from doot.workflow import TaskName
 
 # ##-| Local
 from . import _interface as API#  noqa: N812
-from doot.control.tracker.factory import TaskFactory
+from doot.util.factory import TaskFactory
 
 # # End of Imports.
 
@@ -57,7 +57,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from doot.control.tracker._interface import TaskFactory_p
+    from doot.util._interface import TaskFactory_p
     from doot.workflow import TaskSpec
     from doot.workflow._interface import Job_p
     import pathlib as pl

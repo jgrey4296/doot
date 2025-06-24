@@ -28,7 +28,7 @@ from jgdv.structs.strang import StrangError
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.control.tracker.factory import TaskFactory
+from doot.util.factory import TaskFactory
 from .. import InjectSpec, TaskSpec, TaskName
 from ...task import DootTask
 

@@ -34,7 +34,7 @@ from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 from doot.workflow.structs import TaskSpec
-from doot.control.tracker.factory import TaskFactory
+from doot.util.factory import TaskFactory
 
 # ##-- end 1st party imports
 

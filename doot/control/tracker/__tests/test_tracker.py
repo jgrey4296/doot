@@ -63,7 +63,7 @@ from doot.workflow._interface import Task_p
 logging = logmod.root
 logmod.getLogger("jgdv").propagate = False
 logmod.getLogger("doot.control.tracker.registry").propagate = False
-logmod.getLogger("doot.control.tracker.factory").propagate = False
+logmod.getLogger("doot.util.factory").propagate = False
 
 class TestTracker:
 

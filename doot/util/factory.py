@@ -344,7 +344,7 @@ class TaskFactory:
     def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec|RelationSpec]:
         """ Get the elements of: depends_on, setup, actions, and require_for.
         """
-        groups = [obj.depends_on, obj.setup, obj.actions, obj.required_for]
+        groups : list[list] = [obj.depends_on, obj.setup, obj.actions, obj.required_for]
         for group in groups:
             yield from group
 

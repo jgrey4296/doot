@@ -22,7 +22,7 @@ from ... import DootJob
 from ... import _interface as API
 from ..._interface import TaskMeta_e, Task_p
 from .. import TaskSpec, TaskName
-from doot.control.tracker.factory import TaskFactory
+from doot.util.factory import TaskFactory
 
 logging       = logmod.root
 

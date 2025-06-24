@@ -18,7 +18,7 @@ logging = logmod.root
 
 import doot
 from doot.cmds.structs.stub import TaskStub
-from doot.control.tracker import TaskFactory
+from doot.util.factory import TaskFactory
 from .. import TaskSpec, DootTask
 from .. import _interface as API
 

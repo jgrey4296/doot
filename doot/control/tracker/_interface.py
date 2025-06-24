@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from jgdv import Maybe, Ident
     from jgdv.structs.chainguard import ChainGuard
     from doot.workflow._interface import Task_i, TaskName_p, Artifact_i
+    from doot.util.factory._interface import TaskFactory_p, SubTaskFactory_p
 
     type Abstract[T] = T
     type Concrete[T] = T
@@ -115,34 +116,6 @@ class ExecutionPolicy_e(enum.Enum):
     BREADTH  = enum.auto() # Breadth First Search
 
     default = PRIORITY
-
-##--| Factories
-
-@runtime_checkable
-class TaskFactory_p(Protocol):
-
-    def __init__(self, *, spec_ctor:Maybe[type]=None, task_ctor:Maybe[type]=None, job_ctor:Maybe[type]=None): ...
-
-    def build(self, data:ChainGuard|dict|TaskName_p|str) -> TaskSpec_i: ...
-
-    def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping|bool]=None) -> TaskSpec_i: ...
-
-    def reify_partial(self, obj:TaskSpec_i, actual:TaskSpec_i) -> TaskSpec_i: ...
-
-    def over(self, obj:TaskSpec_i, data:TaskSpec_i, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i: ...
-
-    def under(self, obj:TaskSpec_i, data:dict|TaskSpec_i, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i: ...
-
-    def make(self, obj:TaskSpec_i, *, ensure:Maybe=None, inject:Maybe[tuple[InjectSpec_i, Task_i]]=None, parent:Maybe[Task_i]=None) -> Task_i:  ...
-
-    def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec_i|RelationSpec_i]: ...
-
-@runtime_checkable
-class SubTaskFactory_p(Protocol):
-
-    def generate_names(self, obj:TaskSpec_i) -> list[TaskName_p]: ...
-
-    def generate_specs(self, obj:TaskSpec_i) -> list[dict]: ...
 
 ##--| components
 

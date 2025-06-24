@@ -44,7 +44,7 @@ from .registry import TrackRegistry
 
 # ##-- end 1st party imports
 
-from .factory import TaskFactory, SubTaskFactory
+from doot.util.factory import TaskFactory, SubTaskFactory
 from doot.workflow._interface import RelationSpec_i, Task_i
 from . import _interface as API # noqa: N812
 

@@ -14,8 +14,8 @@ default = "doot.reporters:BasicReporter"
 
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
-basic    = "doot.control.tracker:SplitTracker"
-factory  = "doot.control.tracker.factory:TaskFactory"
+basic    = "doot.control.tracker:Tracker"
+factory  = "doot.util.factory:TaskFactory"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String
