@@ -262,7 +262,9 @@ class InjectSpec_i(Buildable_p, Protocol):
     def apply_literal(self, val:Any) -> dict: ...
 
     def validate(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> bool: ...
+
     def validate_details(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> dict: ...
+
 @runtime_checkable
 class RelationSpec_i(Protocol):
 
@@ -316,6 +318,7 @@ class TaskSpec_i(Protocol):
     queue_behaviour  : QueueMeta_e
     meta             : set[TaskMeta_e]
 
+@runtime_checkable
 class Action_p(Protocol):
     """
     holds individual action information and state, and executes it
@@ -323,6 +326,7 @@ class Action_p(Protocol):
 
     def __call__(self, spec:ActionSpec, task_state:dict) -> ActionReturn:
         pass
+
 @runtime_checkable
 class Artifact_i(Location_p, Protocol):
     pass
