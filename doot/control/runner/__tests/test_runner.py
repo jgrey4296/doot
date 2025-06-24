@@ -26,11 +26,11 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- 1st party imports
 import doot
-from doot.control.tracker import SplitTracker
 from doot.control.runner.runner import DootRunner
-from doot.workflow._interface import TaskStatus_e
-from doot.workflow import ActionSpec, TaskName, TaskSpec, DootTask, DootJob
+from doot.control.tracker import SplitTracker, TaskFactory
 from doot.util.dkey import DKey
+from doot.workflow import ActionSpec, DootJob, DootTask, TaskName, TaskSpec
+from doot.workflow._interface import TaskStatus_e
 
 # ##-- end 1st party imports
 
@@ -61,6 +61,7 @@ from doot.control.runner._interface import TaskRunner_p
 # ##-- end types
 
 logging = logmod.root
+factory = TaskFactory()
 
 class _MockObjs_m:
 
@@ -91,7 +92,7 @@ class TestRunner(_MockObjs_m):
         test_cond_spy         = mocker.spy(runner, "test_conditions")
         exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
-        spec                  = TaskSpec.build("basic::job")
+        spec                  = factory.build("basic::job")
         job                   = DootJob(spec)
         runner.expand_job(job)
 
@@ -100,7 +101,7 @@ class TestRunner(_MockObjs_m):
         exec_action_group_spy.assert_called()
 
     def test_expand_job_with_a_task_errors(self, ctor, mocker, setup_config, runner):
-        spec = TaskSpec.build("basic::job")
+        spec = factory.build("basic::job")
         task = DootTask(spec)
         with pytest.raises(AssertionError):
             runner.expand_job(task)
@@ -116,7 +117,7 @@ class TestRunner(_MockObjs_m):
 
         runner.test_conditions = MethodType(override_tests, runner)
 
-        spec                  = TaskSpec.build("basic::job")
+        spec                  = factory.build("basic::job")
         job                   = DootJob(spec)
         runner.expand_job(job)
         exec_action_group_spy.assert_called_with(job, group="depends_on")
@@ -125,7 +126,7 @@ class TestRunner(_MockObjs_m):
         test_cond_spy         = mocker.spy(runner, "test_conditions")
         exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
 
-        spec                  = TaskSpec.build("basic::job")
+        spec                  = factory.build("basic::job")
         task                  = DootTask(spec)
         runner.execute_task(task)
 
@@ -134,7 +135,7 @@ class TestRunner(_MockObjs_m):
         exec_action_group_spy.assert_called()
 
     def test_execute_task_with_a_job_errors(self, ctor, mocker, setup_config, runner):
-        spec                  = TaskSpec.build("basic::job")
+        spec                  = factory.build("basic::job")
         job                   = DootJob(spec)
         with pytest.raises(AssertionError):
             runner.execute_task(job)
@@ -150,7 +151,7 @@ class TestRunner(_MockObjs_m):
 
         runner.test_conditions = MethodType(override_tests, runner)
 
-        spec = TaskSpec.build("basic::job")
+        spec = factory.build("basic::job")
         task = DootTask(spec)
         runner.execute_task(task)
         exec_action_group_spy.assert_called_with(task, group="depends_on")

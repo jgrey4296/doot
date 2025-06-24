@@ -8,26 +8,32 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
+import atexit#  for @atexit.register
+import collections
+import contextlib
 import datetime
 import enum
+import faulthandler
 import functools as ftz
+import hashlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types
-import collections
-import contextlib
-import hashlib
 from copy import deepcopy
 from uuid import UUID, uuid1
 from weakref import ref
-import atexit # for @atexit.register
-import faulthandler
+
 # ##-- end stdlib imports
 
-from doot.workflow._interface import TaskStatus_e, ArtifactStatus_e, RelationSpec_i
+# ##-- 1st party imports
+from doot.workflow._interface import (ArtifactStatus_e, InjectSpec_i, ActionSpec_i,
+                                      RelationSpec_i, Task_i, TaskSpec_i,
+                                      TaskStatus_e)
+
+# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
@@ -50,8 +56,7 @@ if TYPE_CHECKING:
 
     from jgdv import Maybe, Ident
     from jgdv.structs.chainguard import ChainGuard
-    from doot.workflow import TaskSpec, TaskName, TaskArtifact
-    from doot.workflow._interface import Task_i
+    from doot.workflow._interface import Task_i, TaskName_p, Artifact_i
 
     type Abstract[T] = T
     type Concrete[T] = T
@@ -111,7 +116,79 @@ class ExecutionPolicy_e(enum.Enum):
 
     default = PRIORITY
 
-##--|
+##--| Factories
+
+@runtime_checkable
+class TaskFactory_p(Protocol):
+
+    def __init__(self, *, spec_ctor:Maybe[type]=None, task_ctor:Maybe[type]=None, job_ctor:Maybe[type]=None): ...
+
+    def build(self, data:ChainGuard|dict|TaskName_p|str) -> TaskSpec_i: ...
+
+    def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping|bool]=None) -> TaskSpec_i: ...
+
+    def reify_partial(self, obj:TaskSpec_i, actual:TaskSpec_i) -> TaskSpec_i: ...
+
+    def over(self, obj:TaskSpec_i, data:TaskSpec_i, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i: ...
+
+    def under(self, obj:TaskSpec_i, data:dict|TaskSpec_i, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i: ...
+
+    def make(self, obj:TaskSpec_i, *, ensure:Maybe=None, inject:Maybe[tuple[InjectSpec_i, Task_i]]=None, parent:Maybe[Task_i]=None) -> Task_i:  ...
+
+    def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec_i|RelationSpec_i]: ...
+
+@runtime_checkable
+class SubTaskFactory_p(Protocol):
+
+    def generate_names(self, obj:TaskSpec_i) -> list[TaskName_p]: ...
+
+    def generate_specs(self, obj:TaskSpec_i) -> list[dict]: ...
+
+##--| components
+
+class Registry_p(Protocol):
+    tasks : dict
+
+    def register_spec(self, *specs:TaskSpec_i) -> None: ...
+
+    def instantiate_spec(self, name:Abstract[TaskName_p], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]: ...
+
+    def instantiate_relation(self, rel:RelationSpec_i, *, control:Concrete[TaskName_p]) -> Concrete[TaskName_p]: ...
+
+    def make_task(self, name:Concrete[TaskName_p], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName_p]]=None) -> Concrete[TaskName_p]: ...
+
+    def verify(self, *, strict:bool=True) -> bool: ...
+
+class Network_p(Protocol):
+    _graph      : Any
+    _root_node  : TaskName_p
+    succ        : Mapping
+    pred        : Mapping
+
+    is_valid    : bool
+
+    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|Artifact_i]]=None) -> None: ...
+
+    def connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:  ...
+
+    def validate_network(self, *, strict:bool=True) -> bool:  ...
+
+    def incomplete_dependencies(self, focus:Concrete[TaskName_p]|Artifact_i) -> list[Concrete[TaskName_p]|Artifact_i]: ...
+
+class Queue_p(Protocol):
+    active_set : set[TaskName_p|Artifact_i]
+
+    @overload
+    def queue_entry(self, target:Artifact_i, *, from_user:bool=False) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  ...
+
+    @overload
+    def queue_entry(self, target:str|Concrete[TaskName_p|TaskSpec_i], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  ...
+
+    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName_p]|Artifact_i: ...
+
+    def clear_queue(self) -> None: ...
+
+##--| Tracker
 
 @runtime_checkable
 class TaskTracker_p(Protocol):
@@ -122,89 +199,50 @@ class TaskTracker_p(Protocol):
     """
 
     ##--| public
-    def active(self) -> set[TaskName]: ...
-    def register(self, *specs:TaskSpec)-> None: ...
 
-    def queue(self, name:str|Ident|Concrete[TaskSpec], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]: ...
+    def active(self) -> set[TaskName_p]: ...
 
-    def get_status(self, task:Concrete[Ident]) -> TaskStatus_e: ...
+    def register(self, *specs:TaskSpec_i)-> None: ...
 
-    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool: ...
+    def queue(self, name:str|Ident|Concrete[TaskSpec_i], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]: ...
+
+    def get_status(self, task:Concrete[TaskName_p|Ident]) -> TaskStatus_e: ...
+
+    def set_status(self, task:Concrete[TaskName_p|Ident]|Task_i, state:TaskStatus_e) -> bool: ...
 
     def build(self) -> None: ...
 
-    def plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[TaskName|TaskArtifact]: ...
+    def plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[TaskName_p|Artifact_i]: ...
 
-    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName]|TaskArtifact]: ...
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName_p]|Artifact_i]: ...
 
     ##--| internal
-    @overload
-    def _instantiate(self, name:Abstract[TaskName], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName]]: ...
 
     @overload
-    def _instantiate(self, rel:RelationSpec_i, *, control:Concrete[TaskName]) -> Concrete[TaskName]: ...
+    def _instantiate(self, name:Abstract[TaskName_p], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]: ...
 
     @overload
-    def _instantiate(self, name:Concrete[TaskName], **kwargs:Any) -> Concrete[TaskName]: ...
+    def _instantiate(self, rel:RelationSpec_i, *, control:Concrete[TaskName_p]) -> Concrete[TaskName_p]: ...
 
-    def _connect(self, left:Concrete[TaskName]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName]|TaskArtifact]=None, **kwargs:Any) -> None:  ...
+    @overload
+    def _instantiate(self, name:Concrete[TaskName_p], **kwargs:Any) -> Concrete[TaskName_p]: ...
 
-    def _get_priority(self, target:Concrete[TaskName|TaskArtifact]) -> int: ...
+    def _connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:  ...
+
+    def _get_priority(self, target:Concrete[TaskName_p|Artifact_i]) -> int: ...
 
 @runtime_checkable
 class TaskTracker_i(TaskTracker_p, Protocol):
-    _root_node          : TaskName
+    _factory            : TaskFactory_p
+    _subfactory         : SubTaskFactory_p
+    _root_node          : TaskName_p
     _declare_priority   : int
     _min_priority       : int
     is_valid            : bool
-    specs               : dict[TaskName, TaskSpec]
-    artifacts           : dict[TaskArtifact, set[Abstract[TaskName]]]
-    tasks               : dict[Concrete[TaskName], Task_i]
+    specs               : dict[TaskName_p, TaskSpec_i]
+    artifacts           : dict[Artifact_i, set[Abstract[TaskName_p]]]
+    tasks               : dict[Concrete[TaskName_p], Task_i]
     artifact_builders   : Mapping
     abstract_artifacts  : Mapping
     concrete_artifacts  : Mapping
     network             : Mapping
-
-##--|
-
-class Registry_p(Protocol):
-    tasks : dict
-
-    def register_spec(self, *specs:TaskSpec) -> None: ...
-
-    def instantiate_spec(self, name:Abstract[TaskName], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName]]: ...
-
-    def instantiate_relation(self, rel:RelationSpec_i, *, control:Concrete[TaskName]) -> Concrete[TaskName]: ...
-
-    def make_task(self, name:Concrete[TaskName], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName]]=None) -> Concrete[TaskName]: ...
-
-    def verify(self, *, strict:bool=True) -> bool: ...
-
-class Network_p(Protocol):
-    _graph      : Any
-    _root_node  : TaskName
-    succ        : Mapping
-    pred        : Mapping
-
-    is_valid    : bool
-
-    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None: ...
-
-    def connect(self, left:Concrete[TaskName]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName]|TaskArtifact]=None, **kwargs:Any) -> None:  ...
-
-    def validate_network(self, *, strict:bool=True) -> bool:  ...
-
-    def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]: ...
-
-class Queue_p(Protocol):
-    active_set : set[TaskName|TaskArtifact]
-
-    @overload
-    def queue_entry(self, target:TaskArtifact, *, from_user:bool=False) -> Maybe[Concrete[TaskName|TaskArtifact]]:  ...
-
-    @overload
-    def queue_entry(self, target:str|Concrete[TaskName|TaskSpec], *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:  ...
-
-    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]|TaskArtifact: ...
-
-    def clear_queue(self) -> None: ...

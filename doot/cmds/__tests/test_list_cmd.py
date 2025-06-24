@@ -33,12 +33,17 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from .._interface import Command_p
-from .. import list_cmd as list_mod
-from ..list_cmd import ListCmd
 from doot.workflow.structs import TaskSpec
+from doot.control.tracker.factory import TaskFactory
 
 # ##-- end 1st party imports
+
+# ##-| Local
+from .. import list_cmd as list_mod
+from .._interface import Command_p
+from ..list_cmd import ListCmd
+
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -141,7 +146,8 @@ plugins = true
 """
 
 ##-- end toml strings
-
+factory : TaskFactory = TaskFactory()
+##--|
 class TestListCmd:
 
     def test_initial(self):
@@ -188,8 +194,8 @@ class TestListCmd:
         mock_class2.__name__   = "other.type"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
-            "simple" : TaskSpec.build({"group": "blah", "name": "simple"}), # "ctor": mock_class1}),
-            "other"  : TaskSpec.build({"group": "bloo", "name": "other"}),  # "ctor": mock_class2})
+            "simple" : factory.build({"group": "blah", "name": "simple"}), # "ctor": mock_class1}),
+            "other"  : factory.build({"group": "bloo", "name": "other"}),  # "ctor": mock_class2})
         }
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
@@ -208,8 +214,8 @@ class TestListCmd:
         mock_class2 = "doot.workflow:DootJob_bad"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
-            "simple" : TaskSpec.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
-            "other"  : TaskSpec.build({"group": "bloo", "name": "other", "ctor": mock_class2}),
+            "simple" : factory.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
+            "other"  : factory.build({"group": "bloo", "name": "other", "ctor": mock_class2}),
         }
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
@@ -229,8 +235,8 @@ class TestListCmd:
         obj          = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock     = {
-            "simple" : TaskSpec.build({"group": "blah", "name": "simple"}),
-            "other"  : TaskSpec.build({"group": "bloo", "name": "other"}),
+            "simple" : factory.build({"group": "blah", "name": "simple"}),
+            "other"  : factory.build({"group": "bloo", "name": "other"}),
         }
         result       = obj(job_mock, plugin_mock)
         message_set  = {x.message.lower().strip() for x in caplog.records}
@@ -244,9 +250,9 @@ class TestListCmd:
         mocker.patch("doot.args", new=ChainGuard.read(partial_pattern))
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        job_mock = { "blah::simple"    : TaskSpec.build({"group": "blah", "name": "simple"}),
-                     "bloo::other"     : TaskSpec.build({"group": "bloo", "name": "other"}),
-                     "bloo::diffSimple": TaskSpec.build({"group": "bloo", "name": "diffSimple"}),
+        job_mock = { "blah::simple"    : factory.build({"group": "blah", "name": "simple"}),
+                     "bloo::other"     : factory.build({"group": "bloo", "name": "other"}),
+                     "bloo::diffSimple": factory.build({"group": "bloo", "name": "diffSimple"}),
                     }
         result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}

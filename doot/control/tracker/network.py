@@ -44,6 +44,7 @@ from doot.workflow import ActionSpec, TaskName, TaskSpec, DootTask, RelationSpec
 
 import matplotlib.pyplot as plt
 from . import _interface as API # noqa: N812
+from doot.workflow._interface import TaskName_p
 
 # ##-- types
 # isort: off
@@ -67,6 +68,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from .track_registry import TrackRegistry
+    from doot.worfklow._interface import TaskSpec_i, Artifact_i
+
     type Abstract[T] = T
     type Concrete[T] = T
 
@@ -102,7 +105,7 @@ class _Expansion_m:
     edges     : Mapping
     _graph    : Any
 
-    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
+    def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|TaskArtifact]]=None) -> None:
         """
         for each task queued (ie: connected to the root node)
         expand its dependencies and add into the _graph, until no more nodes to expand.
@@ -127,7 +130,7 @@ class _Expansion_m:
                 case x if x in processed or self.nodes[x].get(API.EXPANDED, False):
                     logging.debug("[Build.Processed] %s", current)
                     processed.add(x)
-                case TaskName() as x if x in self.nodes:
+                case TaskName_p() as x if x in self.nodes:
                     additions = self._expand_task_node(x)
                     queue    += additions
                     processed.add(x)
@@ -145,7 +148,7 @@ class _Expansion_m:
             self.report_tree() # type: ignore[attr-defined]
             pass
 
-    def connect(self, left:Concrete[TaskName]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName]|TaskArtifact]=None, **kwargs) -> None:  # noqa: ANN003, PLR0912
+    def connect(self, left:Concrete[TaskName_p]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName_p]|TaskArtifact]=None, **kwargs) -> None:  # noqa: ANN003, PLR0912
         """
         Connect a task node to another. left -> right
         If given left, None, connect left -> API.ROOT
@@ -202,7 +205,7 @@ class _Expansion_m:
 
     ##--| internal
 
-    def _add_node(self, name:Concrete[TaskName]|TaskArtifact) -> None:
+    def _add_node(self, name:Concrete[TaskName_p]|TaskArtifact) -> None:
         """idempotent"""
         match name:
             case x if x is self._tracker._root_node:
@@ -229,12 +232,13 @@ class _Expansion_m:
             case x:
                 raise TypeError(type(x))
 
-    def _expand_task_node(self, name:Concrete[TaskName]) -> set[Concrete[TaskName]|TaskArtifact]:
+    def _expand_task_node(self, name:Concrete[TaskName_p]) -> set[Concrete[TaskName_p]|TaskArtifact]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        to_expand : set[TaskName|TaskArtifact]
+        to_expand  : set[TaskName_p|TaskArtifact]
+        spec       : TaskSpec_i
         assert(name.uuid())
         assert(not self.nodes[name].get(API.EXPANDED, False))
         spec                 = self._tracker.specs[name]
@@ -244,7 +248,7 @@ class _Expansion_m:
         logging.info("[Build.Expand.Task] -> %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         # Connect Relations
-        for rel in itz.chain(spec.action_group_elements()):
+        for rel in self._tracker._factory.action_group_elements(spec):
             if not isinstance(rel, RelationSpec):
                 # Ignore Actions
                 continue
@@ -253,12 +257,12 @@ class _Expansion_m:
                 case RelationSpec(target=TaskArtifact() as target):
                     # Connect the artifact mentioned
                     assert(target in self._tracker.artifacts)
-                    self.connect(*rel.to_ordered_pair(name))
+                    self.connect(*rel.to_ordered_pair(name)) # type: ignore[arg-type]
                     to_expand.add(target)
                 case RelationSpec(target=TaskName() as target):
                     # Get specs and instances with matching target
                     instance = self._tracker._instantiate(rel, control=name)
-                    self.connect(*rel.to_ordered_pair(name, target=instance))
+                    self.connect(*rel.to_ordered_pair(name, target=instance)) # type: ignore[arg-type]
                     to_expand.add(instance)
         else:
             assert(name in self.nodes)
@@ -268,7 +272,7 @@ class _Expansion_m:
         logging.debug("[Build.Expand.Task] <- %s : %s", name, to_expand)
         return to_expand
 
-    def _generate_successor_nodes(self, spec:Concrete[TaskSpec]) -> list[Concrete[TaskName]]:
+    def _generate_successor_nodes(self, spec:Concrete[TaskSpec]) -> list[Concrete[TaskName_p]]:
         """
           instantiate and connect a job's head task
           TODO these could be shifted into the task/job class
@@ -282,7 +286,7 @@ class _Expansion_m:
         """
         result = []
         logging.debug("[Build.Task.Successor] : %s", spec.name)
-        names = spec.generate_names()
+        names = self._tracker._subfactory.generate_names(spec)
         assert(len(names) <= 1)
         for x in names:
             logging.debug("[Successor] : %s", x)
@@ -293,11 +297,11 @@ class _Expansion_m:
         else:
             return result
 
-    def _expand_artifact(self, artifact:TaskArtifact) -> set[Concrete[TaskName]|TaskArtifact]:
+    def _expand_artifact(self, artifact:TaskArtifact) -> set[Concrete[TaskName_p]|TaskArtifact]:
         """ expand _tracker._registry.artifacts, instantiating related tasks,
           and connecting the task to its abstract/concrete related _tracker._registry.artifacts
           """
-        to_expand : set[TaskName|TaskArtifact]
+        to_expand : set[TaskName_p|Artifact_i]
         assert(artifact in self._tracker.artifacts)
         assert(artifact in self.nodes)
         assert(not self.nodes[artifact].get(API.EXPANDED, False))
@@ -383,7 +387,7 @@ class _Validation_m:
                 logging.warning("Failures in network: %s", failures)
                 return False
 
-    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
+    def concrete_edges(self, name:Concrete[TaskName_p|TaskArtifact]) -> ChainGuard:
         """ get the concrete edges of a task.
           ie: the ones in the task _graph, not the abstract ones in the spec.
         """
@@ -400,11 +404,11 @@ class _Validation_m:
             "root" : self._tracker._root_node in succ,
             })
 
-    def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]:
+    def incomplete_dependencies(self, focus:Concrete[TaskName_p]|TaskArtifact) -> list[Concrete[TaskName_p]|Artifact_i]:
         """ Get all predecessors of a node that don't evaluate as complete """
         status     : TaskStatus_e | ArtifactStatus_e
         is_success : bool
-        incomplete : list[TaskName|TaskArtifact]
+        incomplete : list[TaskName_p|Artifact_i]
         assert(focus in self.nodes)
         incomplete = []
         for x in self.pred[focus]:
@@ -423,7 +427,7 @@ class _Validation_m:
             return incomplete
 
     def report_tree(self) -> None:
-        mapping : dict[TaskName|TaskArtifact, str]
+        mapping : dict[TaskName_p|Artifact_i, str]
         if not show_graph:
             return
 
@@ -437,7 +441,7 @@ class _Validation_m:
                     mapping[x] = f"{x[:]}.{count}"
                     count += 1
 
-        mapping[self._tracker._root_node] = self._tracker._root_node
+        mapping[self._tracker._root_node] = cast("str", self._tracker._root_node)
         undir = nx.Graph(self._graph)
         undir = nx.relabel_nodes(undir, mapping)
 
@@ -452,7 +456,7 @@ class TrackNetwork:
     """ The _graph of concrete tasks and their dependencies """
     # TODO use this instaed of _tracker._registry
     _tracker           : API.TaskTracker_p
-    _graph             : nx.DiGraph[Concrete[TaskName]|TaskArtifact]
+    _graph             : nx.DiGraph[Concrete[TaskName_p]|TaskArtifact]
 
     def __init__(self, *, tracker:Maybe[API.TaskTracker_p]=None) -> None:
         match tracker:
@@ -492,5 +496,5 @@ class TrackNetwork:
     def __len__(self) -> int:
         return len(self._graph.nodes)
 
-    def __contains__(self, other:Concrete[TaskName]|TaskArtifact) -> bool:
+    def __contains__(self, other:Concrete[TaskName_p]|TaskArtifact) -> bool:
         return other in self._graph

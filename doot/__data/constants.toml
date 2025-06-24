@@ -6,7 +6,7 @@ doot_version = "1.1.1"
 # plugin names and loaders
 # ie: [project.entry-points."doot.plugins.{}"]
 PLUGIN_TOML_PREFIX     = "doot.plugins"
-FRONTEND_PLUGIN_TYPES  = ["command", "reporter", "report-line"]
+FRONTEND_PLUGIN_TYPES  = ["command", "reporter"]
 BACKEND_PLUGIN_TYPES   = [
     "tracker", "runner",
     "command-loader", "task-loader",

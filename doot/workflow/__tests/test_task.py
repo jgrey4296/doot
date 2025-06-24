@@ -18,10 +18,12 @@ logging = logmod.root
 
 import doot
 from doot.cmds.structs.stub import TaskStub
+from doot.control.tracker import TaskFactory
 from .. import TaskSpec, DootTask
 from .. import _interface as API
 
-basic_action = lambda x: ftz.partial(lambda val, state: doot.report.user("Got: %s : %s", val, state), x)
+basic_action  = lambda x: ftz.partial(lambda val, state: doot.report.user("Got: %s : %s", val, state), x)
+factory       = TaskFactory()
 
 class TestBaseTask:
 
@@ -45,7 +47,7 @@ class TestBaseTask:
                  assert(False), x
 
     def test_lambda_action(self):
-        spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action})
+        spec = factory.build({"name":"basic::example", "action_ctor":basic_action})
         match DootTask(spec, job=None):
             case API.Task_p():
                 assert(True)
@@ -53,7 +55,7 @@ class TestBaseTask:
                  assert(False), x
 
     def test_expand_lambda_action(self):
-        spec = TaskSpec.build({"name":"basic::example",
+        spec = factory.build({"name":"basic::example",
                                "action_ctor":basic_action,
                                "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
@@ -66,7 +68,7 @@ class TestBaseTask:
     def test_run_lambda_action(self, caplog):
         caplog.clear()
         caplog.set_level(logmod.NOTSET, logger=doot.report.log.name)
-        spec = TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
+        spec = factory.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case API.Task_p() as task:
                 actions = list(task.get_action_group("actions"))
@@ -78,7 +80,7 @@ class TestBaseTask:
 
     def test_expand_action_str(self, caplog):
         caplog.set_level("DEBUG", logger=logging.root.name)
-        spec = TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
+        spec = factory.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case API.Task_p() as task:
                 actions      = task.get_action_group("actions")
@@ -97,7 +99,7 @@ class TestBaseTask:
     def test_toml_instance_stub(self):
         """ build the next simplest stub from an instance of the task """
         stub_obj = TaskStub(ctor=DootTask)
-        task     = DootTask(TaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
+        task     = DootTask(factory.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
         stub     = task.stub_instance(stub_obj)
         assert(str(stub['name'].default) == "basic::example")
         as_str = stub.to_toml()
@@ -106,12 +108,12 @@ class TestBaseTask:
     def test_toml_instance_stub_rebuild(self):
         """ take a stub and turn it into a task spec  """
         stub_obj         = TaskStub(ctor=DootTask)
-        task             = DootTask(TaskSpec.build({"name" : "basic::example",
+        task             = DootTask(factory.build({"name" : "basic::example",
                                                     "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
         stub             = task.stub_instance(stub_obj)
         as_str           = stub.to_toml()
         loaded           = ChainGuard.read(as_str)
         as_dict          = dict(loaded)
-        new_spec         = TaskSpec.build(as_dict)
+        new_spec         = factory.build(as_dict)
         assert(isinstance(new_spec, TaskSpec))
         assert(str(new_spec.name) == str(task.spec.name))

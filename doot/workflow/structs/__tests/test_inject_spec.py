@@ -28,6 +28,7 @@ from jgdv.structs.strang import StrangError
 # ##-- 1st party imports
 import doot
 import doot.errors
+from doot.control.tracker.factory import TaskFactory
 from .. import InjectSpec, TaskSpec, TaskName
 from ...task import DootTask
 
@@ -61,7 +62,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+factory = TaskFactory()
 # Body:
 
 class TestInjectSpec:
@@ -109,10 +110,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "bloo": "blah",
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "bloo": "blah",
                                   })
 
@@ -133,10 +134,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : ["blah"],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "blah" : "aweg"
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "aweg": "qqqq",
                                   })
 
@@ -156,10 +157,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "blah": 5,
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "bloo": 5,
                                   })
 
@@ -179,14 +180,14 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "blah": 5,
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "bloo": 5,
                                   })
-        control_task = control.make()
-        target_task  = target.make()
+        control_task = factory.make(control)
+        target_task  = factory.make(target)
         match inj.validate_details(control_task, target_task):
             case dict() as x if not any(bool(v) for v in x.values()):
                 assert(True)
@@ -203,14 +204,14 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "blah": 5,
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "bloo": 5,
                                   })
-        control_task = control.make()
-        target_task  = target.make()
+        control_task = factory.make(control)
+        target_task  = factory.make(target)
         target_task.state['bloo'] = 10
         match inj.validate_details(control_task, target_task):
             case dict() as x if any(bool(v) for v in x.values()):
@@ -225,10 +226,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "bloo": "blah",
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   })
 
         match inj.validate_details(control, target):
@@ -243,10 +244,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "bloo": "blah",
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "must_inject":["bloo"],
                                   })
 
@@ -262,8 +263,8 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control"})
-        target  = TaskSpec.build({"name":"basic::target"})
+        control = factory.build({"name":"basic::control"})
+        target  = factory.build({"name":"basic::target"})
 
         match inj.validate_details(control, target):
             case {"rhs_missing": set() as x } if "bloo" in x:
@@ -282,9 +283,9 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : ["blah"],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "aweg": "qqqq",
                                   })
 
@@ -305,10 +306,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : ["blah"],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "blah": "aweg",
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   })
 
         match inj.validate_details(control, target):
@@ -328,10 +329,10 @@ class TestInjectSpec_Validation:
             "from_state"  : [],
             "from_target" : [],
         })
-        control = TaskSpec.build({"name":"basic::control",
+        control = factory.build({"name":"basic::control",
                                   "blah": "aweg",
                                   })
-        target  = TaskSpec.build({"name":"basic::target",
+        target  = factory.build({"name":"basic::target",
                                   "blah": "not.aweg"
                                   })
 
@@ -353,8 +354,8 @@ class TestInjectSpec_Validation:
             "from_target"  : [],
             "literal"      : {"x": "blah"}
         })
-        control = TaskSpec.build({"name":"basic::control",})
-        target  = TaskSpec.build({"name":"basic::target",})
+        control = factory.build({"name":"basic::control",})
+        target  = factory.build({"name":"basic::target",})
 
         match inj.validate_details(control, target):
             case {"literal": set() as x } if bool(x):
@@ -374,8 +375,8 @@ class TestInjectSpec_Validation:
             "from_target"  : [],
             "literal"      : {"x": "blah"}
         })
-        control = TaskSpec.build({"name":"basic::control",})
-        target  = TaskSpec.build({"name":"basic::target", "x":"not blah"})
+        control = factory.build({"name":"basic::control",})
+        target  = factory.build({"name":"basic::target", "x":"not blah"})
 
         match inj.validate_details(control, target):
             case {"literal": set() as x } if bool(x):
@@ -395,8 +396,8 @@ class TestInjectSpec_Validation:
             "from_target"  : [],
             "literal"      : {"x": "aweg"}
         })
-        control = TaskSpec.build({"name":"basic::control",})
-        target  = TaskSpec.build({"name":"basic::target", "x": "aweg"})
+        control = factory.build({"name":"basic::control",})
+        target  = factory.build({"name":"basic::target", "x": "aweg"})
 
         match inj.validate_details(control, target):
             case {"literal": set() as x } if not bool(x):
@@ -418,7 +419,7 @@ class TestInjection_Application:
 
     def test_apply_from_spec(self):
         injection = InjectSpec.build({"from_spec":["blah"]})
-        control   = TaskSpec.build({"name": "simple::control",
+        control   = factory.build({"name": "simple::control",
                                     "blah": "bloo"})
         match injection.apply_from_spec(control):
             case {"blah":"bloo"}:
@@ -429,7 +430,7 @@ class TestInjection_Application:
     def test_apply_from_spec_only(self):
         injection = InjectSpec.build({"from_spec":["blah"],
                                       "from_state":["aweg"]})
-        control = TaskSpec.build({"name": "simple::control",
+        control = factory.build({"name": "simple::control",
                                     "blah": "bloo", "aweg": "other"})
         match injection.apply_from_spec(control):
             case {"aweg": "other"}:
@@ -441,7 +442,7 @@ class TestInjection_Application:
 
     def test_apply_from_state(self):
         injection   = InjectSpec.build({"from_state":["aweg"]})
-        control = TaskSpec.build({"name": "simple::control",
+        control = factory.build({"name": "simple::control",
                                   "aweg": "other"})
         control_task = DootTask(control)
         control_task.state['aweg'] = "task_state"
@@ -453,7 +454,7 @@ class TestInjection_Application:
 
     def test_apply_from_target(self):
         injection   = InjectSpec.build({"from_target":["blah"]})
-        control = TaskSpec.build({"name": "simple::control",
+        control = factory.build({"name": "simple::control",
                                   "blah": "bloo"})
         match injection.apply_from_spec(control):
             case {"blah": DKey() as x}:

@@ -84,7 +84,7 @@ class TestTrackerQueue:
 
     def test_tracker_bool(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         assert(not bool(obj._queue))
         assert(not bool(obj))
@@ -94,7 +94,7 @@ class TestTrackerQueue:
 
     def test_queue_task(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         assert(not bool(obj._queue))
         instance = obj.queue_entry(spec.name)
@@ -103,7 +103,7 @@ class TestTrackerQueue:
 
     def test_queue_task_idempotnent(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         assert(not bool(obj._queue))
         instance = obj.queue_entry(spec.name)
@@ -115,7 +115,7 @@ class TestTrackerQueue:
 
     def test_queue_task_fail_when_not_registered(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
         name1 = TaskName("basic::task")
         with pytest.raises(doot.errors.TrackingError):
             obj.queue_entry(name1)
@@ -133,8 +133,8 @@ class TestTrackerQueue:
 
     def test_deque_task(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
-        spec2 = TaskSpec.build({"name":"basic::other"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
+        spec2 = queue._tracker._factory.build({"name":"basic::other"})
         obj._tracker.register(spec, spec2)
         instance = obj.queue_entry(spec.name)
         instance2 = obj.queue_entry(spec2.name)
@@ -158,8 +158,8 @@ class TestTrackerQueue:
 
     def test_peek_task(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
-        spec2 = TaskSpec.build({"name":"basic::other"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
+        spec2 = queue._tracker._factory.build({"name":"basic::other"})
         obj._tracker.register(spec, spec2)
         instance  = obj.queue_entry(spec.name)
         instance2 = obj.queue_entry(spec2.name)
@@ -171,7 +171,7 @@ class TestTrackerQueue:
 
     def test_clear_queue(self, queue):
         obj = queue
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = queue._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         instance = obj.queue_entry(spec.name)
         assert(bool(obj.active_set))

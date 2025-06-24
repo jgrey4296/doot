@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, no_type_check, final, override, overload
 # from dataclasses import InitVar, dataclass, field
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from jgdv import Maybe
+from collections.abc import Mapping
 
 if TYPE_CHECKING:
    from typing import Final
@@ -56,7 +57,7 @@ if TYPE_CHECKING:
    from typing import Never, Self, Literal
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from collections.abc import Sequence, MutableMapping, Hashable
 
    from .. import TaskSpec
    from jgdv._abstract.protocols import SpecStruct_p
@@ -183,7 +184,7 @@ class InjectSpec(BaseModel):
                 | (self.with_suffix is not None))
 
     ##--| public
-    def validate(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec, *, only_spec:bool=False) -> bool:
+    def validate(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> bool:
         """ Ensures this injection is usable with given sources, and given required injections
 
         eg:
@@ -208,7 +209,7 @@ class InjectSpec(BaseModel):
         result = self.validate_details(control, target, only_spec=only_spec)
         return not any(bool(x) for x in result.values())
 
-    def validate_details(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec, *, only_spec:bool=False) -> dict:
+    def validate_details(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> dict:
         """
         validate specs or tasks
         checks from_spec,
@@ -224,14 +225,14 @@ class InjectSpec(BaseModel):
                 control_vals   = control.state
                 control_needs |= set(self.from_state.values())
             case _:
-                control_vals   = control.extra
+                control_vals   = control.extra # type: ignore[attr-defined]
 
         match target:
             case Task_i():
                 target_vals   = target.state
                 target_needs |= set(self.from_state.keys())
             case _:
-                target_vals  = target.extra
+                target_vals  = target.extra # type: ignore[attr-defined]
 
 
         must_inject       = target_vals.get(MUST_INJECT_K, [])
@@ -263,19 +264,23 @@ class InjectSpec(BaseModel):
             "literal"         : literals,
         }
 
-    def apply_from_spec(self, control:dict|TaskSpec|Task_i) -> dict:
+    def apply_from_spec(self, control:dict|TaskSpec_i|Task_i) -> dict:
         """ Apply values from the control's spec values.
 
         Fully expands keys in 'from_spec',
         Only partially expands (L1) from 'from_target'
         """
-        control_data : dict|SpecStruct_p
+        control_data : Mapping|SpecStruct_p
         # logging.info("Applying from_spec injection: %s", control.name)
         match control:
             case Task_i():
-                control_data = control.spec
-            case _:
+                control_data = cast("SpecStruct_p", control.spec)
+            case TaskSpec_i():
+                control_data = cast("SpecStruct_p", control)
+            case Mapping():
                 control_data = control
+            case x:
+                raise TypeError(type(x))
 
         data = {}
         for x,y in self.from_spec.items():

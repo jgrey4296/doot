@@ -61,6 +61,9 @@ from doot.workflow._interface import Task_p
 # isort: on
 # ##-- end types
 logging = logmod.root
+logmod.getLogger("jgdv").propagate = False
+logmod.getLogger("doot.control.tracker.registry").propagate = False
+logmod.getLogger("doot.control.tracker.factory").propagate = False
 
 class TestTracker:
 
@@ -89,7 +92,7 @@ class TestTracker:
         assert(tracker.next_for() is None)
 
     def test_next_for_no_connections(self, tracker):
-        spec = TaskSpec.build({"name":"basic::Task"})
+        spec = tracker._factory.build({"name":"basic::Task"})
         tracker.register(spec)
         t_name = tracker.queue(spec.name)
         assert(t_name.uuid())
@@ -103,8 +106,8 @@ class TestTracker:
         assert(tracker.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_simple_dependendency(self, tracker):
-        spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = TaskSpec.build({"name":"basic::dep"})
+        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name = tracker.queue(spec.name, from_user=True)
         assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
@@ -118,8 +121,8 @@ class TestTracker:
         assert(tracker.get_status(t_name) is TaskStatus_e.WAIT)
 
     def test_next_dependency_success_produces_ready_state_(self, tracker):
-        spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = TaskSpec.build({"name":"basic::dep"})
+        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name = tracker.queue(spec.name, from_user=True)
         assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
@@ -136,8 +139,8 @@ class TestTracker:
         assert(tracker.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_artificial_success(self, tracker):
-        spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = TaskSpec.build({"name":"basic::dep"})
+        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name   = tracker.queue(spec.name)
         dep_inst = tracker.queue(dep.name)
@@ -154,8 +157,8 @@ class TestTracker:
         assert(tracker.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_halt(self, tracker):
-        spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = TaskSpec.build({"name":"basic::dep"})
+        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name   = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
@@ -181,8 +184,8 @@ class TestTracker:
             assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
     def test_next_fail(self, tracker):
-        spec = TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = TaskSpec.build({"name":"basic::dep"})
+        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name   = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
@@ -208,8 +211,8 @@ class TestTracker:
             assert(x.status in [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
     def test_next_job_head(self, tracker):
-        job_spec  = TaskSpec.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
-        task_spec = TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
+        job_spec  = tracker._factory.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
+        task_spec = tracker._factory.build({"name":"basic::task", "test_key": "bloo"})
         tracker.register(job_spec)
         tracker.register(task_spec)
         tracker.queue(job_spec, from_user=True)
@@ -244,9 +247,9 @@ class TestTracker:
                 assert(False), x
 
     def test_next_job_head_with_subtasks(self, tracker):
-        job_spec  = TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
-        sub_spec1 = TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
-        sub_spec2 = TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
+        job_spec  = tracker._factory.build({"name":"basic::job", "meta": ["JOB"]})
+        sub_spec1 = tracker._factory.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
+        sub_spec2 = tracker._factory.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
         tracker.register(job_spec)
         tracker.queue(job_spec, from_user=True)
         assert(job_spec.name in tracker.concrete)
@@ -281,7 +284,7 @@ class TestTrackingStates:
 
     def test_cleanup_shares_spec(self, tracker):
         tracker       = Tracker()
-        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"do":"log", "msg":"{blah}"}], "blah":"aweg"})
+        spec      = tracker._factory.build({"name":"basic::task", "cleanup":[{"do":"log", "msg":"{blah}"}], "blah":"aweg"})
         tracker.register(spec)
         tracker.queue(spec, from_user=True)
         tracker.build()
@@ -301,7 +304,7 @@ class TestTrackingStates:
                  assert(False), x
 
     def test_cleanup_shares_state(self, tracker):
-        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[]})
+        spec      = tracker._factory.build({"name":"basic::task", "cleanup":[]})
         tracker.register(spec)
         tracker.queue(spec, from_user=True)
         tracker.build()
@@ -322,8 +325,8 @@ class TestTrackingStates:
                  assert(False), x
 
     def test_cleanup_shares_state_to_deps(self, tracker):
-        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
-        dep = TaskSpec.build({"name":"basic::dep"})
+        spec      = tracker._factory.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         tracker.queue(spec, from_user=True)
         tracker.build()
@@ -352,8 +355,8 @@ class TestTrackingStates:
                  assert(False), x
 
     def test_cleanup_shares_to_deps_cleanup(self, tracker):
-        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
-        dep = TaskSpec.build({"name":"basic::dep"})
+        spec      = tracker._factory.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         tracker.queue(spec, from_user=True)
         tracker.build()
@@ -393,8 +396,8 @@ class TestTrackingStates:
                  assert(False), x
 
     def test_cleanup_dep_must_injects(self, tracker):
-        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
-        dep = TaskSpec.build({"name":"basic::dep", "must_inject": ["blah"]})
+        spec      = tracker._factory.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep = tracker._factory.build({"name":"basic::dep", "must_inject": ["blah"]})
         tracker.register(spec, dep)
         tracker.queue(spec, from_user=True)
         tracker.build()
@@ -438,8 +441,8 @@ class TestTrackingStates:
                  assert(False), x
 
     def test_cleanup_injections(self, tracker):
-        spec      = TaskSpec.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
-        dep = TaskSpec.build({"name":"basic::dep", "must_inject": ["blah"]})
+        spec  = tracker._factory.build({"name":"basic::task", "cleanup":[{"task":"basic::dep", "inject":{"from_state": ["blah"]}}]})
+        dep   = tracker._factory.build({"name":"basic::dep", "must_inject": ["blah"]})
         tracker.register(spec, dep)
         tracker.queue(spec, from_user=True)
         tracker.build()

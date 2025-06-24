@@ -24,20 +24,26 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Proto
-from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.strang import CodeReference
 from jgdv.debugging.timeblock_ctx import TimeBlock_ctx
+from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.locator.errors import LocationError, StrangError
+from jgdv.structs.strang import CodeReference
 from pydantic import ValidationError
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow import TaskName, TaskSpec
+from doot.workflow import TaskName
 
-from . import _interface as API  # noqa: N812
 # ##-- end 1st party imports
+
+# ##-| Local
+from . import _interface as API#  noqa: N812
+from doot.control.tracker.factory import TaskFactory
+
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -51,6 +57,8 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from doot.control.tracker._interface import TaskFactory_p
+    from doot.workflow import TaskSpec
     from doot.workflow._interface import Job_p
     import pathlib as pl
     from jgdv import Maybe
@@ -105,20 +113,22 @@ class TaskLoader:
     """
     load toml defined tasks, and create doot.structs.TaskSpecs of them
     """
-    tasks                 : dict[str, tuple[dict, Job_p]]
-    failures              : dict[str, list]
-    cmd_names             : set[str]
-    task_builders         : dict[str,Any]
-    extra                 : Maybe[ChainGuard]
-    exit_on_load_failures : bool
+    tasks                  : dict[str, tuple[dict, Job_p]]
+    failures               : dict[str, list]
+    cmd_names              : set[str]
+    task_builders          : dict[str,Any]
+    extra                  : Maybe[ChainGuard]
+    exit_on_load_failures  : bool
+    factory                : TaskFactory_p
 
     def __init__(self):
-        self.tasks                 =  {}
-        self.failures              = defaultdict(list)
-        self.cmd_names             = set()
-        self.task_builders         = dict()
-        self.extra                 = None
-        self.exit_on_load_failures = exit_on_load_failures
+        self.tasks                  =  {}
+        self.failures               = defaultdict(list)
+        self.cmd_names              = set()
+        self.task_builders          = dict()
+        self.extra                  = None
+        self.exit_on_load_failures  = exit_on_load_failures
+        self.factory                = TaskFactory()
 
     def setup(self, plugins:ChainGuard, extra:Maybe[ChainGuard]=None) -> Self:
         logging.debug("---- Registering Task Builders")
@@ -269,12 +279,12 @@ class TaskLoader:
             try:
                 match spec:
                     case {"name": task_name, "ctor": CodeReference() as ctor}:
-                        task_spec = TaskSpec.build(spec)
+                        task_spec = self.factory.build(spec)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders:
                         spec['ctor'] = CodeReference(self.task_builders[task_alias])
-                        task_spec = TaskSpec.build(spec)
+                        task_spec = self.factory.build(spec)
                     case {"name": task_name}:
-                        task_spec = TaskSpec.build(spec)
+                        task_spec = self.factory.build(spec)
                     case _: # Else complain
                         raise doot.errors.StructLoadError("Task Spec missing, at least, needs at least a name and ctor", spec, spec['sources'][0] )
             except ValidationError as err:

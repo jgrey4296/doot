@@ -80,11 +80,11 @@ class CheckLocsTask(DootTask):
                 locations = [DKey(x, implicit=True) for x in doot.locs]
                 actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
 
-        spec      = TaskSpec.build({
+        spec      = {
             "name"         : CheckLocsTask.task_name,
             "actions"      : actions,
             "priority"     : 100,
-        })
+        }
         super().__init__(spec)
 
     @DKeyed.args

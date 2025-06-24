@@ -31,10 +31,12 @@ import pytest
 from jgdv.structs.locator import Location
 import doot
 import doot.errors
+from doot.control.tracker.factory import TaskFactory
 from ..._interface import RelationMeta_e
 from .. import TaskName, InjectSpec, RelationSpec, TaskSpec
 
 logging = logmod.root
+factory = TaskFactory()
 
 class TestRelationSpec:
 
@@ -147,11 +149,11 @@ class TestRelationSpec_Acceptance:
         assert(True is not False) # noqa: PLR0133
 
     def test_accepts_basic(self):
-        obj          = RelationSpec.build({"task": "basic::target"})
-        control_spec = TaskSpec.build({"name":"basic::control"})
-        control_i    = control_spec.instantiate()
-        target_spec  = TaskSpec.build({"name":"basic::target"})
-        target_i     = target_spec.instantiate()
+        obj           = RelationSpec.build({"task": "basic::target"})
+        control_spec  = factory.build({"name":"basic::control"})
+        control_i     = factory.instantiate(control_spec)
+        target_spec   = factory.build({"name":"basic::target"})
+        target_i      = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case True:
                 assert(True)
@@ -160,10 +162,10 @@ class TestRelationSpec_Acceptance:
 
     def test_accepts_fails_on_non_target(self):
         obj          = RelationSpec.build({"task": "basic::target"})
-        control_spec = TaskSpec.build({"name":"basic::control"})
-        control_i    = control_spec.instantiate()
-        target_spec  = TaskSpec.build({"name":"basic::not.target"})
-        target_i     = target_spec.instantiate()
+        control_spec = factory.build({"name":"basic::control"})
+        control_i    = factory.instantiate(control_spec)
+        target_spec  = factory.build({"name":"basic::not.target"})
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case False:
                 assert(True)
@@ -172,9 +174,9 @@ class TestRelationSpec_Acceptance:
 
     def test_accepts_fails_on_non_instance_target(self):
         obj          = RelationSpec.build({"task": "basic::target"})
-        control_spec = TaskSpec.build({"name":"basic::control"})
-        control_i    = control_spec.instantiate()
-        target_spec  = TaskSpec.build({"name":"basic::target"})
+        control_spec = factory.build({"name":"basic::control"})
+        control_i    = factory.instantiate(control_spec)
+        target_spec  = factory.build({"name":"basic::target"})
         match obj.accepts(control_i, target_spec):
             case False:
                 assert(True)
@@ -183,9 +185,9 @@ class TestRelationSpec_Acceptance:
 
     def test_accepts_fails_on_non_instance_control(self):
         obj          = RelationSpec.build({"task": "basic::target"})
-        control_spec = TaskSpec.build({"name":"basic::control"})
-        target_spec  = TaskSpec.build({"name":"basic::target"})
-        target_i     = target_spec.instantiate()
+        control_spec = factory.build({"name":"basic::control"})
+        target_spec  = factory.build({"name":"basic::target"})
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_spec, target_i):
             case False:
                 assert(True)
@@ -199,10 +201,10 @@ class TestRelationSpec_Acceptance:
         obj          = RelationSpec.build({"task": "basic::target",
                                            "constraints": ["blah"],
                                            })
-        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
-        target_spec  = TaskSpec.build({"name":"basic::target", "blah":"bloo"})
-        control_i    = control_spec.instantiate()
-        target_i     = target_spec.instantiate()
+        control_spec = factory.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = factory.build({"name":"basic::target", "blah":"bloo"})
+        control_i    = factory.instantiate(control_spec)
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case True:
                 assert(True)
@@ -217,10 +219,10 @@ class TestRelationSpec_Acceptance:
         obj          = RelationSpec.build({"task": "basic::target",
                                            "constraints": ["blah"],
                                            })
-        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
-        target_spec  = TaskSpec.build({"name":"basic::target", "blah":"aweg"})
-        control_i    = control_spec.instantiate()
-        target_i     = target_spec.instantiate()
+        control_spec = factory.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = factory.build({"name":"basic::target", "blah":"aweg"})
+        control_i    = factory.instantiate(control_spec)
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case False:
                 assert(True)
@@ -238,13 +240,13 @@ class TestRelationSpec_Acceptance:
         obj          = RelationSpec.build({"task": "basic::target",
                                            "constraints": {"qqqq": "blah"},
                                            })
-        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
-        target_spec  = TaskSpec.build({"name":"basic::target",
+        control_spec = factory.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = factory.build({"name":"basic::target",
                                        "blah":"aweg",
                                        "qqqq":"bloo",
                                        })
-        control_i    = control_spec.instantiate()
-        target_i     = target_spec.instantiate()
+        control_i    = factory.instantiate(control_spec)
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case True:
                 assert(True)
@@ -261,13 +263,13 @@ class TestRelationSpec_Acceptance:
         obj          = RelationSpec.build({"task": "basic::target",
                                            "constraints": {"qqqq": "blah"},
                                            })
-        control_spec = TaskSpec.build({"name":"basic::control", "blah":"bloo"})
-        target_spec  = TaskSpec.build({"name":"basic::target",
+        control_spec = factory.build({"name":"basic::control", "blah":"bloo"})
+        target_spec  = factory.build({"name":"basic::target",
                                        "blah":"aweg",
                                        "qqqq":"blahaweg",
                                        })
-        control_i    = control_spec.instantiate()
-        target_i     = target_spec.instantiate()
+        control_i    = factory.instantiate(control_spec)
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case False:
                 assert(True)
@@ -284,12 +286,12 @@ class TestRelationSpec_Acceptance:
         obj          = RelationSpec.build({"task": "basic::target",
                                            "constraints": ["blah"],
                                            })
-        control_spec = TaskSpec.build({"name":"basic::control"})
-        target_spec  = TaskSpec.build({"name":"basic::target",
+        control_spec = factory.build({"name":"basic::control"})
+        target_spec  = factory.build({"name":"basic::target",
                                        "blah":"aweg",
                                        })
-        control_i    = control_spec.instantiate()
-        target_i     = target_spec.instantiate()
+        control_i    = factory.instantiate(control_spec)
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case True:
                 assert(True)
@@ -307,14 +309,14 @@ class TestRelationSpec_Acceptance:
         obj          = RelationSpec.build({"task": "basic::target",
                                            "inject": {"from_spec":["blah"]},
                                            })
-        control_spec = TaskSpec.build({"name":"basic::control",
+        control_spec = factory.build({"name":"basic::control",
                                        "blah": "qqqq",
                                        })
-        target_spec  = TaskSpec.build({"name":"basic::target",
+        target_spec  = factory.build({"name":"basic::target",
                                        "blah":"qqqq",
                                        })
-        control_i    = control_spec.instantiate()
-        target_i     = target_spec.instantiate()
+        control_i    = factory.instantiate(control_spec)
+        target_i     = factory.instantiate(target_spec)
         match obj.accepts(control_i, target_i):
             case True:
                 assert(True)

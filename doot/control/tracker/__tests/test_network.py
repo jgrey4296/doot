@@ -65,6 +65,9 @@ if TYPE_CHECKING:
 logging = logmod.root
 logmod.getLogger("jgdv").propagate = False
 
+def expected_spec_count(*args:Any) -> int:
+    return len(args)
+
 @pytest.fixture(scope="function")
 def network(mocker):
     tracker = Tracker()
@@ -82,7 +85,7 @@ class TestTrackerNetwork:
 
     def test_network_connect_to_root(self, network):
         obj   = network
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = network._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -178,16 +181,16 @@ class TestTrackerNetwork:
 
     def test_concrete_edges(self, network):
         obj   = network
-        spec  = TaskSpec.build({
+        spec  = network._tracker._factory.build({
             "name":"basic::task",
             "depends_on":[{"task":"basic::dep", "inject":{"from_spec": {"test_key":"{test_key}"}}}],
             "required_for": ["basic::chained"],
             "test_key": "bloo"
         })
-        spec2 = TaskSpec.build({"name":"basic::dep",
+        spec2 = network._tracker._factory.build({"name":"basic::dep",
                                 "depends_on": [{"task":"basic::chained", "inject":{"from_spec":{"test_key":"{test_key}"}}}],
                                 })
-        spec3 = TaskSpec.build({"name":"basic::chained", "must_inject":["test_key"]})
+        spec3 = network._tracker._factory.build({"name":"basic::chained", "must_inject":["test_key"]})
         obj._tracker.register(spec, spec2, spec3)
         instance = obj._tracker._instantiate(spec.name)
         assert(instance.uuid())
@@ -216,7 +219,7 @@ class TestTrackerNetworkBuild:
     def test_build_task(self, network):
         """ $cleanup$ successors are not built till a task is instantiated """
         obj          = network
-        spec         = TaskSpec.build({"name":"basic::task"})
+        spec         = network._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         assert(len(obj) == 1) # Root node
         assert(len(obj._tracker.specs) == 1) # Just the spec
@@ -231,7 +234,7 @@ class TestTrackerNetworkBuild:
     def test_build_cleanup(self, network):
         """ $cleanup$ successors are not built till a task is instantiated """
         obj  = network
-        spec = TaskSpec.build({"name":"basic::task"})
+        spec = network._tracker._factory.build({"name":"basic::task"})
         cleanup_name = spec.name.with_cleanup()
         obj._tracker.register(spec)
         instance     = obj._tracker._instantiate(spec.name)
@@ -248,8 +251,8 @@ class TestTrackerNetworkBuild:
 
     def test_build_single_dependency_node(self, network):
         obj   = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
-        spec2 = TaskSpec.build({"name":"basic::dep"})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec2 = network._tracker._factory.build({"name":"basic::dep"})
         obj._tracker.register(spec, spec2)
         assert(len(obj) == 1)
         assert(len(obj._tracker.specs) == 2)
@@ -267,8 +270,8 @@ class TestTrackerNetworkBuild:
 
     def test_build_single_dependent_node(self, network):
         obj   = network
-        spec  = TaskSpec.build({"name":"basic::task", "required_for":["basic::req"]})
-        spec2 = TaskSpec.build({"name":"basic::req"})
+        spec  = network._tracker._factory.build({"name":"basic::task", "required_for":["basic::req"]})
+        spec2 = network._tracker._factory.build({"name":"basic::req"})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -287,7 +290,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_cleanup_task_even_when_empty(self, network):
         obj   = network
-        spec  = TaskSpec.build({"name":"basic::task"})
+        spec  = network._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -299,9 +302,9 @@ class TestTrackerNetworkBuild:
     def test_build_dep_chain(self, network):
         """Check basic::task triggers basic::dep, which triggers basic::chained"""
         obj = network
-        spec = TaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
-        spec2 = TaskSpec.build({"name":"basic::dep", "depends_on":["basic::chained"]})
-        spec3 = TaskSpec.build({"name":"basic::chained"})
+        spec = network._tracker._factory.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec2 = network._tracker._factory.build({"name":"basic::dep", "depends_on":["basic::chained"]})
+        spec3 = network._tracker._factory.build({"name":"basic::chained"})
         obj._tracker.register(spec, spec2, spec3)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -335,8 +338,8 @@ class TestTrackerNetworkBuild:
         """
         obj      = network
         relation = {"task":"basic::dep", "inject":{"from_spec":["blah"]}}
-        spec     = TaskSpec.build({"name":"basic::task", "depends_on":[relation]})
-        dep      = TaskSpec.build({"name":"basic::dep", "must_inject":["blah"]})
+        spec     = network._tracker._factory.build({"name":"basic::task", "depends_on":[relation]})
+        dep      = network._tracker._factory.build({"name":"basic::dep", "must_inject":["blah"]})
         obj._tracker.register(spec, dep)
         T1 = obj._tracker._instantiate(spec.name, extra={"blah":"bloo"})
         T2 = obj._tracker._instantiate(spec.name, extra={"blah":"aweg"})
@@ -355,8 +358,8 @@ class TestTrackerNetworkBuild:
         """
         obj      = network
         relation = {"task":"basic::dep", "inject":{"from_state":["blah"]}}
-        spec     = TaskSpec.build({"name":"basic::task", "depends_on":[relation]})
-        dep      = TaskSpec.build({"name":"basic::dep", "must_inject":["blah"]})
+        spec     = network._tracker._factory.build({"name":"basic::task", "depends_on":[relation]})
+        dep      = network._tracker._factory.build({"name":"basic::dep", "must_inject":["blah"]})
         obj._tracker.register(spec, dep)
         T1 = obj._tracker._instantiate(spec.name, extra={"blah":"bloo"})
         T2 = obj._tracker._instantiate(spec.name, extra={"blah":"aweg"})
@@ -373,8 +376,8 @@ class TestTrackerNetworkBuild_Constraints:
 
     def test_build_dep_match_no_constraints(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":False}], "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":False}], "test_key": "bloo"})
+        spec2 = network._tracker._factory.build({"name":"basic::dep", "test_key": "blah"})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -393,8 +396,8 @@ class TestTrackerNetworkBuild_Constraints:
 
     def test_build_dep_match_with_constraint(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}], "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::dep", "test_key": "bloo"})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}], "test_key": "bloo"})
+        spec2 = network._tracker._factory.build({"name":"basic::dep", "test_key": "bloo"})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -413,10 +416,10 @@ class TestTrackerNetworkBuild_Constraints:
     def test_build_dep_match_with_constraint_fail(self, network):
         obj = network
         relation = {"task":"basic::dep", "constraints":["test_key"]}
-        spec  = TaskSpec.build({"name":"basic::task",
+        spec  = network._tracker._factory.build({"name":"basic::task",
                                 "depends_on":[relation],
                                 "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
+        spec2 = network._tracker._factory.build({"name":"basic::dep", "test_key": "blah"})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -429,10 +432,10 @@ class TestTrackerNetworkBuild_Constraints:
 
     def test_build_dep_match_with_injection(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task",
+        spec  = network._tracker._factory.build({"name":"basic::task",
                                 "depends_on":[{"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{test_key}"}}}],
                                 "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::dep", "must_inject":["inj_key"]})
+        spec2 = network._tracker._factory.build({"name":"basic::dep", "must_inject":["inj_key"]})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -452,10 +455,10 @@ class TestTrackerNetworkBuild_Constraints:
     def test_build_dep_match_with_injection_fail(self, network):
         obj = network
         relation = {"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{bad_key}"}}}
-        spec  = TaskSpec.build({"name":"basic::task",
+        spec  = network._tracker._factory.build({"name":"basic::task",
                                 "depends_on":[relation],
                                 "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::dep"})
+        spec2 = network._tracker._factory.build({"name":"basic::dep"})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -472,9 +475,9 @@ class TestTrackerNetworkBuild_Constraints:
           test_key=bloo should be carried from basic::task to basic::dep to basic::chained
         """
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"from_spec":["test_key"]}}], "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::dep",  "depends_on": [{"task":"basic::chained", "inject":{"from_spec":["test_key"]}}], "test_key": "blah"})
-        spec3 = TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"from_spec":["test_key"]}}], "test_key": "bloo"})
+        spec2 = network._tracker._factory.build({"name":"basic::dep",  "depends_on": [{"task":"basic::chained", "inject":{"from_spec":["test_key"]}}], "test_key": "blah"})
+        spec3 = network._tracker._factory.build({"name":"basic::chained", "test_key": "aweg"})
         obj._tracker.register(spec, spec2, spec3)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -509,14 +512,14 @@ class TestTrackerNetworkBuild_Constraints:
           """
         obj = network
         # Abstract specs
-        spec  = TaskSpec.build({"name":"basic::task",
+        spec  = network._tracker._factory.build({"name":"basic::task",
                                              "required_for":[{"task":"basic::req", "inject":{"from_spec": ["test_key"]}}],
                                              "test_key": "bloo"})
-        spec2 = TaskSpec.build({"name":"basic::req",
+        spec2 = network._tracker._factory.build({"name":"basic::req",
                                              "required_for": [{"task":"basic::chained", "inject":{"from_spec": ["test_key"]}}],
                                              "must_inject":["test_key"],
                                              })
-        spec3 = TaskSpec.build({"name":"basic::chained", "must_inject":["test_key"]})
+        spec3 = network._tracker._factory.build({"name":"basic::chained", "must_inject":["test_key"]})
         obj._tracker.register(spec, spec2, spec3)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -553,7 +556,7 @@ class TestTrackerNetworkBuild_Jobs:
         """ a job should build a ..$head$ as well,
         and the head should build a ..$cleanup$ """
         obj         = network
-        spec        = TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"]})
+        spec        = network._tracker._factory.build({"name":"basic::+.job", "meta": ["JOB"]})
         job_head    = spec.name.with_head()
         job_cleanup = job_head.with_cleanup()
         obj._tracker.register(spec)
@@ -581,9 +584,9 @@ class TestTrackerNetworkBuild_Jobs:
 
     def test_build_with_head_dep(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task",
+        spec  = network._tracker._factory.build({"name":"basic::task",
                                 "depends_on":["basic::+.job..$head$"]})
-        spec2 = TaskSpec.build({"name":"basic::+.job"})
+        spec2 = network._tracker._factory.build({"name":"basic::+.job"})
         assert(TaskMeta_e.JOB in spec2.name)
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
@@ -605,8 +608,8 @@ class TestTrackerNetworkBuild_Artifacts:
     def test_build_dep_chain_with_artifact(self, network):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj   = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":["file::>test.blah"]})
-        spec2 = TaskSpec.build({"name":"basic::dep", "required_for":["file::>test.blah"]})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":["file::>test.blah"]})
+        spec2 = network._tracker._factory.build({"name":"basic::dep", "required_for":["file::>test.blah"]})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
         assert(not bool(obj.adj[obj._tracker._root_node]))
@@ -625,7 +628,7 @@ class TestTrackerNetworkBuild_Artifacts:
 
     def test_build_with_concrete_artifact(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":["file::>basic.txt"]})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":["file::>basic.txt"]})
         obj._tracker.register(spec)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -637,7 +640,7 @@ class TestTrackerNetworkBuild_Artifacts:
 
     def test_build_with_concrete_artifact(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "required_for":["file::>basic.txt"]})
+        spec  = network._tracker._factory.build({"name":"basic::task", "required_for":["file::>basic.txt"]})
         obj._tracker.register(spec)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -649,7 +652,7 @@ class TestTrackerNetworkBuild_Artifacts:
 
     def test_build_with_abstract_artifact(self, network):
         obj = network
-        spec  = TaskSpec.build({"name":"basic::task", "depends_on":["file::>*.txt"]})
+        spec  = network._tracker._factory.build({"name":"basic::task", "depends_on":["file::>*.txt"]})
         obj._tracker.register(spec)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -658,11 +661,10 @@ class TestTrackerNetworkBuild_Artifacts:
         obj.build_network()
         assert(spec.depends_on[0].target in obj.pred[instance])
 
-    @pytest.mark.xfail
     def test_build_abstract_artifact_chain(self, network):
         obj = network
-        consumer     = TaskSpec.build({"name":"basic::consumer", "depends_on":["file::>*.txt"]})
-        producer     = TaskSpec.build({"name":"basic::producer", "required_for":["file::>blah.txt"]})
+        consumer     = network._tracker._factory.build({"name":"basic::consumer", "depends_on":["file::>*.txt"]})
+        producer     = network._tracker._factory.build({"name":"basic::producer", "required_for":["file::>blah.txt"]})
         dep_artifact = consumer.depends_on[0].target
         req_artifact = producer.required_for[0].target
         obj._tracker.register(consumer, producer)

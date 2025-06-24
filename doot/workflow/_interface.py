@@ -33,6 +33,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.strang._interface import Strang_p
+from jgdv.structs.locator._interface import Location_p
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -69,7 +70,8 @@ if TYPE_CHECKING:
 
     from doot.workflow import ActionSpec, TaskName
     type ActionReturn = Maybe[dict|bool|ActionResponse_e]
-    Artifact_i = NewType("Artifact_i", object)
+    type RelationTarget  = TaskName_p|Artifact_i
+    type RelationMark    = RelationMeta_e
 
 # isort: on
 # ##-- end types
@@ -253,12 +255,14 @@ class InjectSpec_i(Buildable_p, Protocol):
     literal      : dict
     with_suffix  : Maybe[str]
 
-    def apply_from_spec(self, parent:dict|TaskSpec_i) -> dict: ...
+    def apply_from_spec(self, parent:Mapping|TaskSpec_i) -> dict: ...
 
-    def apply_from_state(self, parent:dict|Task_p) -> dict: ...
+    def apply_from_state(self, parent:Mapping|Task_p) -> dict: ...
 
     def apply_literal(self, val:Any) -> dict: ...
 
+    def validate(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> bool: ...
+    def validate_details(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> dict: ...
 @runtime_checkable
 class RelationSpec_i(Protocol):
 
@@ -270,19 +274,29 @@ class RelationSpec_i(Protocol):
     constraints  : dict[str, str]
     inject       : Maybe[InjectSpec_i]
 
+    def __contains__(self, query:enum.Enum|TaskName_p|Artifact_i) -> bool: ...
+
+    def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName_p]=None) -> tuple[Maybe[RelationTarget], Maybe[RelationTarget]]: ...
+
+    def instantiate(self, *, obj:Maybe[RelationTarget]=None, target:Maybe[RelationTarget]=None) -> RelationSpec_i:  ...
+
+    def forward_dir_p(self) -> bool: ...
+
+    def accepts(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i) -> bool: ...
+
 @runtime_checkable
-class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
+class TaskSpec_i(Protocol):
     """
     The data spec of a task. is created from TOML data
     """
 
     # task specific extras to use in state
-    _default_ctor                     : ClassVar[str]
+    _default_ctor     : ClassVar[str]
     # Action Groups that are depended on, rather than are dependencies of, this task:
-    _blocking_groups  : ClassVar[tuple[str]]
+    _blocking_groups  : ClassVar[tuple[str, ...]]
     Marks             : ClassVar[enum.Enum]
 
-   ##--| Core Instance Data
+    ##--| Core Instance Data
     name     : TaskName_p
     doc      : Maybe[list[str]]
     sources  : list[Maybe[TaskName_p|pl.Path]]
@@ -301,13 +315,7 @@ class TaskSpec_i(SpecStruct_p, Buildable_p, Protocol):
     ctor             : CodeReference
     queue_behaviour  : QueueMeta_e
     meta             : set[TaskMeta_e]
-    ##--|
-    _transform       : Maybe[Literal[False]|tuple[RelationSpec_i, RelationSpec_i]]
-    extra            : ChainGuard
 
-##--|
-
-@runtime_checkable
 class Action_p(Protocol):
     """
     holds individual action information and state, and executes it
@@ -315,10 +323,17 @@ class Action_p(Protocol):
 
     def __call__(self, spec:ActionSpec, task_state:dict) -> ActionReturn:
         pass
+@runtime_checkable
+class Artifact_i(Location_p, Protocol):
+    pass
 ##--|
 
 @runtime_checkable
 class TaskName_p(Strang_p, Protocol):
+
+    def with_head(self) -> Self: ...
+
+    def is_head(self) -> bool: ...
 
     def with_cleanup(self) -> Self:
         pass
@@ -336,14 +351,14 @@ class Task_p(Protocol):
     @override
     def __hash__(self): ...
 
-    def __lt__(self, other:TaskName|Task_p) -> bool: ...
+    def __lt__(self, other:TaskName_p|Task_p) -> bool: ...
     """ Task A < Task B iff A ∈ B.run_after   """
 
     @override
     def __eq__(self, other:object) -> bool: ...
 
     @property
-    def name(self) -> TaskName: ...
+    def name(self) -> TaskName_p: ...
 
     def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None: ...
     """ utility method to log a message, useful as tasks are running """

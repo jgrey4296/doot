@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, field_validator,
                       model_validator)
-from jgdv import Maybe
+from jgdv import Maybe, Proto
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference, Strang
 from jgdv.structs.strang._interface import StrangMarkAbstract_e
@@ -38,7 +38,7 @@ import doot.errors
 
 # ##-- end 1st party imports
 
-from .._interface import RelationMeta_e, Task_p, Task_i
+from .._interface import RelationMeta_e, Task_p, Task_i, RelationSpec_i
 from .task_name import TaskName
 from .artifact import  TaskArtifact
 from .inject_spec import InjectSpec
@@ -64,8 +64,7 @@ if typing.TYPE_CHECKING:
 
     from jgdv import Maybe
     from .task_spec import TaskSpec
-    type RelationTarget  = TaskName|TaskArtifact
-    type RelationMark    = RelationMeta_e
+    from .._interface import RelationMark, RelationTarget, TaskName_p, Artifact_i
 
 # isort: on
 # ##-- end types
@@ -143,19 +142,19 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         return result
 
     @field_validator("target", mode="before")
-    def _validate_target(cls, val) -> RelationTarget:
+    def _validate_target(cls, val:Any) -> RelationTarget:
         match val:
             case TaskName() | TaskArtifact():
-                return val
+                return cast("TaskName_p", val)
             case pl.Path():
-                return TaskArtifact(val)
+                return cast("Artifact_i", TaskArtifact(val))
             case str() if TaskName.section(0).end in val: # type: ignore[operator]
-                return TaskName(val)
+                return cast("TaskName_p", TaskName(val))
             case _:
                 raise ValueError("Unparsable target str")
 
     @field_validator("constraints", mode="before")
-    def _validate_constraints(cls, val) -> dict:
+    def _validate_constraints(cls, val:Any) -> dict:
          match val:
              case list():
                  return {x:x for x in val}
@@ -165,7 +164,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                  raise TypeError("Unknown constraints type", val)
 
     @field_validator("inject", mode="before")
-    def _validate_inject(cls, val) -> Maybe[str|InjectSpec]:
+    def _validate_inject(cls, val:Any) -> Maybe[str|InjectSpec]:
         match val:
             case None:
                 return None
@@ -195,19 +194,19 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case _:
                 raise NotImplementedError(self.target, query)
 
-    def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName]=None) -> tuple[RelationTarget, RelationTarget]:
+    def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName]=None) -> tuple[Maybe[RelationTarget], Maybe[RelationTarget]]:
         """ a helper to make an edge for the tracker.
           uses the current (abstract) target, unless an instance is provided
           """
         match self.relation:
             case RelationMeta_e.needs:
                 # target is a predecessor
-                return (target or self.target, obj)
+                return (target or self.target, obj) # type: ignore[return-value]
             case RelationMeta_e.blocks:
                 # target is a succcessor
-                return (obj, target or self.target)
+                return (obj, target or self.target) # type: ignore[return-value]
 
-    def instantiate(self, *, object:Maybe[RelationTarget]=None, target:Maybe[RelationTarget]=None):
+    def instantiate(self, *, obj:Maybe[RelationTarget]=None, target:Maybe[RelationTarget]=None) -> RelationSpec:
         """
           Duplicate this relation, but with a suitable concrete task or artifact as the object or subject
         """
@@ -218,20 +217,20 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if not target.uuid():
+            case TaskName(), TaskName() if not target.uuid(): # type: ignore[union-attr]
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
-            case TaskArtifact(), TaskArtifact() if (match:=self.target.reify(target)) is not None:
+            case TaskArtifact(), TaskArtifact() if (match:=self.target.reify(target)) is not None: # type: ignore[operator, arg-type]
                 target = match
             case _, _:
                 pass
 
         if target is None:
-            target = self.target
-        if object is None:
-            object = self.object
+            target = self.target # type: ignore[assignment]
+        if obj is None:
+            obj = self.object  # type: ignore[assignment]
 
         return RelationSpec(target=target,
-                            object=object or self.object,
+                            object=obj or self.object,
                             relation=self.relation,
                             constraints=self.constraints)
 

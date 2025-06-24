@@ -1,5 +1,5 @@
 # Doot Plugin Alias Mapping
-doot_version = "1.1.1"
+doot_version = "1.1"
 
 [[doot.aliases.command]]
 # Map {alias} -> CodeRef String
@@ -12,12 +12,10 @@ stub      = "doot.cmds.stub_cmd:StubCmd"
 # Map {alias} -> CodeRef String
 default = "doot.reporters:BasicReporter"
 
-[[doot.aliases.report-line]]
-# Map {alias} -> CodeRef String
-
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
-basic = "doot.control.tracker:SplitTracker"
+basic    = "doot.control.tracker:SplitTracker"
+factory  = "doot.control.tracker.factory:TaskFactory"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String
@@ -72,3 +70,4 @@ touch    =       "doot.workflow.actions.io.io:TouchFileAction"
 # Map {alias} -> CodeRef String
 "job"   = "doot.workflow:DootJob"
 "task"  = "doot.workflow:DootTask"
+"spec"  = "doot.workflow:TaskSpec"

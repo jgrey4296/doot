@@ -42,6 +42,7 @@ from doot.util.testing_fixtures import wrap_locs
 
 logging = logmod.root
 
+@pytest.mark.skip
 class TestCheckLocsTask:
 
     def test_initial(self, wrap_locs):

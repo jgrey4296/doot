@@ -28,8 +28,8 @@ import boltons.queueutils
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow._interface import (TaskMeta_e, TaskStatus_e, ArtifactStatus_e, QueueMeta_e)
-from doot.workflow import (ActionSpec, TaskName, TaskSpec, DootTask, TaskArtifact)
+from doot.workflow._interface import (TaskMeta_e, TaskStatus_e, ArtifactStatus_e, QueueMeta_e, TaskName_p, TaskSpec_i, ActionSpec_i, Artifact_i)
+from doot.workflow import (DootTask, TaskArtifact, TaskName)
 
 # ##-- end 1st party imports
 
@@ -60,7 +60,7 @@ if TYPE_CHECKING:
 
     type Abstract[T]  = T
     type Concrete[T]  = T
-    type ActionElem   = ActionSpec|RelationSpec
+    type ActionElem   = ActionSpec_i|RelationSpec
     type ActionGroup  = list[ActionElem]
     type Status  = ArtifactStatus_e|TaskStatus_e
 
@@ -79,15 +79,15 @@ logging.disabled = False
 class TrackQueue:
     """ The queue of active tasks. """
 
-    active_set       : set[Concrete[TaskName]|TaskArtifact]
-    execution_trace  : list[Concrete[TaskName|TaskArtifact]]
+    active_set       : set[Concrete[TaskName_p]|Artifact_i]
+    execution_trace  : list[Concrete[TaskName_p|Artifact_i]]
     # TODO use this instead of _tracker._registry and _tracker._network
-    _tracker         : API.TaskTracker_p
+    _tracker         : API.TaskTracker_i
     _queue           : boltons.queueutils.HeapPriorityQueue
 
     def __init__(self, *, tracker:Maybe[API.TaskTracker_p]=None) -> None:
         match tracker:
-            case API.TaskTracker_p():
+            case API.TaskTracker_i():
                 self._tracker = tracker
             case None:
                 pass
@@ -102,7 +102,7 @@ class TrackQueue:
         return self._queue.peek(default=None) is not None
 
     ##--| public
-    def queue_entry(self, target:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName|TaskArtifact]]:  # noqa: PLR0912
+    def queue_entry(self, target:str|Concrete[TaskName_p|TaskSpec_i]|Artifact_i, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: PLR0912
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the _tracker._network
@@ -113,39 +113,39 @@ class TrackQueue:
           kwarg 'from_user' signifies the enty is a starting target, adding cli args if necessary and linking to the root.
         """
         x : Any
-        abs_name         : Maybe[TaskName]
-        inst_name        : Concrete[TaskName]
+        abs_name         : Maybe[TaskName_p]
+        inst_name        : Concrete[TaskName_p]
         target_priority  : int  = self._tracker._declare_priority
         ##--|
         match target:
             case TaskArtifact() as art:
                 assert(target in self._tracker.artifacts)
-                self._tracker._connect(art, None if from_user else False) # type: ignore[attr-defined]
-                self.active_set.add(art)
+                self._tracker._connect(art, None if from_user else False) # type: ignore[arg-type]
+                self.active_set.add(art) # type: ignore[arg-type]
                 self._queue.add(art, priority=art.priority)
                 if status:
                     assert(isinstance(status, TaskStatus_e))
                     self._tracker.set_status(art, status)
 
                 logging.debug("[Queue] %s : %s", self._tracker.get_status(art), art)
-                return art
-            case TaskSpec() as spec:
+                return cast("Artifact_i", art)
+            case TaskSpec_i() as spec:
                 self._tracker.register(spec) # type: ignore[attr-defined]
-                if TaskName.Marks.partial in spec.name:
-                    abs_name = spec.name.pop(top=False)
+                if TaskName.Marks.partial in spec.name: # type: ignore[attr-defined]
+                    abs_name = cast("TaskName_p", spec.name.pop(top=False))
                 else:
                     abs_name = spec.name
-            case TaskName() | str():
+            case TaskName_p() | str():
                 abs_name = self._queue_prep_name(target)
 
         match abs_name:
             case None:
                 return None
-            case TaskName() | str() as x if x not in self._tracker.specs:
+            case TaskName_p() | str() as x if x not in self._tracker.specs:
                 raise doot.errors.TrackingError("Unrecognized task name, it may not be registered", x)
-            case TaskName() as x if not x.uuid():
-                inst_name = self._tracker._instantiate(x) # type: ignore[attr-defined]
-            case TaskName() as x:
+            case TaskName_p() as x if not x.uuid():
+                inst_name = cast("TaskName_p", self._tracker._instantiate(x)) # type: ignore[attr-defined]
+            case TaskName_p() as x:
                 inst_name = x
 
         if inst_name not in self._tracker.network:
@@ -167,26 +167,27 @@ class TrackQueue:
         logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name[:])
         return inst_name
 
-    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]|TaskArtifact:
+    def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName_p]|Artifact_i:
         """ remove (or peek) the top task from the _queue .
           decrements the priority when popped.
         """
+        focus : TaskName_p|Artifact_i
         if peek:
             return self._queue.peek()
 
         match self._queue.pop():
-            case TaskName() as focus if focus not in self._tracker.tasks:
+            case TaskName_p() as focus if focus not in self._tracker.tasks:
                 pass
-            case TaskName() as focus if self._tracker._get_priority(focus) < self._tracker._min_priority:
+            case TaskName_p() as focus if self._tracker._get_priority(focus) < self._tracker._min_priority:
                 logging.warning("[Deque] Halting (Min Priority) : %s", focus[:])
                 self._tracker.set_status(focus, TaskStatus_e.HALTED)
-            case TaskName() as focus:
+            case TaskName_p() as focus:
                 task  = self._tracker.tasks[focus]
                 prior = task.priority
                 task.priority -= 1
                 logging.debug("[Deque] %s -> %s : %s", prior, task.priority, focus[:])
-            case TaskArtifact() as focus:
-                focus.priority -= 1
+            case TaskArtifact() as focus: # type: ignore[misc]
+                focus.priority -= 1 # type: ignore[union-attr]
 
         return focus
 
@@ -199,22 +200,22 @@ class TrackQueue:
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
 
     ##--| private
-    def _queue_prep_name(self, name:str|TaskName) -> Maybe[TaskName]:  # noqa: PLR0911
+    def _queue_prep_name(self, name:str|TaskName_p) -> Maybe[TaskName_p]:  # noqa: PLR0911
         """ Heuristics for queueing task names
 
         """
         match name:
-            case TaskName() if name == self._tracker._root_node:
+            case TaskName_p() if name == self._tracker._root_node:
                 return None
-            case TaskName() if name in self.active_set:
+            case TaskName_p() if name in self.active_set:
                 return name
-            case TaskName() if name in self._tracker.tasks:
+            case TaskName_p() if name in self._tracker.tasks:
                 return name
-            case TaskName() if name in self._tracker.network:
+            case TaskName_p() if name in self._tracker.network:
                 return name
-            case TaskName() if name in self._tracker.specs:
+            case TaskName_p() if name in self._tracker.specs:
                 return name
-            case TaskName():
+            case TaskName_p():
                 raise doot.errors.TrackingError("Unrecognized queue argument provided, it may not be registered", name)
             case str():
                 return self._queue_prep_name(TaskName(name))

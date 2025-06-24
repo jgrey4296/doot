@@ -44,6 +44,7 @@ from .registry import TrackRegistry
 
 # ##-- end 1st party imports
 
+from .factory import TaskFactory, SubTaskFactory
 from doot.workflow._interface import RelationSpec_i, Task_i
 from . import _interface as API # noqa: N812
 
@@ -89,8 +90,9 @@ class Tracker_abs:
     _registry          : db for specs and tasks
     _network           : the links between specs in the registry
     _queue             : the logic for determining what task to run next
-
     """
+    _factory           : API.TaskFactory_p
+    _subfactory        : API.SubTaskFactory_p
     _registry          : API.Registry_p
     _network           : API.Network_p
     _queue             : API.Queue_p
@@ -99,14 +101,21 @@ class Tracker_abs:
     _min_priority      : int
     is_valid           : bool
 
-    def __init__(self):
+    def __init__(self, **kwargs:Any) -> None:
+        factory                 = kwargs.pop("factory", TaskFactory)
+        subfactory              = kwargs.pop("subfactory", SubTaskFactory)
+        registry                = kwargs.pop("registry", TrackRegistry)
+        network                 = kwargs.pop("network", TrackNetwork)
+        queue                   = kwargs.pop("queue", TrackQueue)
         self._declare_priority  = API.DECLARE_PRIORITY
         self._min_priority      = API.MIN_PRIORITY
         self._root_node         = TaskName(API.ROOT)
         self.is_valid           = False
-        self._registry          = TrackRegistry(tracker=self)
-        self._network           = TrackNetwork(tracker=self)
-        self._queue             = TrackQueue(tracker=self)
+        self._factory           = factory()
+        self._subfactory        = subfactory()
+        self._registry          = registry(tracker=self)
+        self._network           = network(tracker=self)
+        self._queue             = queue(tracker=self)
 
     ##--| properties
 
@@ -124,7 +133,7 @@ class Tracker_abs:
 
     @property
     def concrete(self) -> Mapping:
-        return self._registry.concrete
+        return self._registry.concrete # type: ignore[attr-defined]
     @property
     def artifact_builders(self) -> Mapping:
         return self._registry.artifact_builders # type: ignore[attr-defined]
@@ -155,7 +164,7 @@ class Tracker_abs:
     def _instantiate(self, target:TaskName|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName]:
         match target:
             case TaskName() as x if task:
-                return self._registry.make_task(x, *args, **kwargs)
+                return self._registry.make_task(x, *args, **kwargs) # type: ignore[return-value]
             case TaskName() as x:
                 return self._registry.instantiate_spec(x, *args, **kwargs)
             case RelationSpec_i() as x:
@@ -174,7 +183,7 @@ class Tracker_abs:
                 case TaskSpec():
                     self._registry.register_spec(x)
                 case TaskArtifact():
-                    self._registry._register_artifact(x)
+                    self._registry._register_artifact(x) # type: ignore[attr-defined]
                 case x:
                     raise TypeError(type(x))
 
