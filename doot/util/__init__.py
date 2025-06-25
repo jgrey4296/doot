@@ -59,8 +59,6 @@ Keys can have a number of forms:
 {x}  : Direct Expansion form
 {x_} : Indirect Expansion form
 x    : Name form, no expansion
-
-
-
-
 """
+
+from ._interface import DelayedSpec

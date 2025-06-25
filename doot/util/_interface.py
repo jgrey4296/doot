@@ -84,9 +84,9 @@ class DelayedSpec:
     def __init__(self, **kwargs:Any) -> None:
         self.base       = kwargs.pop("base")
         self.target     = kwargs.pop("target")
+        self.inject     = kwargs.pop("inject", None)
+        self.applied    = kwargs.pop("applied", None)
         self.overrides  = kwargs.pop("overrides")
-        self.inject     = kwargs.pop("inject")
-        self.applied    = kwargs.pop("applied")
         assert(not bool(kwargs))
 ##--|
 class TaskFactory_p(Protocol):
