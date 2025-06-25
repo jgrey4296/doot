@@ -378,7 +378,7 @@ class TestInstantiation_Specs:
         abs_spec      = registry._tracker._factory.build({"name":"basic::task.a",
                                         "sources": ["basic::task"],
                                         "bloo": 15, "aweg": "aweg"})
-        spec          = registry._tracker._factory.over(abs_spec, base_spec)
+        spec          = registry._tracker._factory.merge(top=abs_spec, bot=base_spec)
         registry.register_spec(base_spec, dep_spec, spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec.name < special)
@@ -392,7 +392,7 @@ class TestInstantiation_Specs:
         base_spec = registry._tracker._factory.build({"name":"basic::task", "depends_on":["example::dep"]})
         dep_spec  = registry._tracker._factory.build({"name": "example::dep"})
         dep_spec2 = registry._tracker._factory.build({"name": "another::dep"})
-        spec      = registry._tracker._factory.under(base_spec, {"depends_on":["another::dep"]})
+        spec      = registry._tracker._factory.merge(bot=base_spec, top={"depends_on":["another::dep"]})
         registry.register_spec(base_spec, dep_spec, dep_spec2, spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec.name < special)

@@ -165,10 +165,14 @@ class Tracker_abs:
     ##--| public
 
     def register(self, *specs:TaskSpec_i|Artifact_i|DelayedSpec)-> None:
+        actual : TaskSpec_i
         for x in specs:
             match x:
                 case DelayedSpec():
-                    actual : TaskSpec_i = self._upgrade_delayed_to_actual(x)
+                    actual = self._upgrade_delayed_to_actual(x)
+                    self._registry.register_spec(actual)
+                case TaskSpec_i() if TaskName.Marks.partial in x.name:
+                    actual = self._reify_partial_spec(x)
                     self._registry.register_spec(actual)
                 case TaskSpec_i():
                     self._registry.register_spec(x)
@@ -222,8 +226,13 @@ class Tracker_abs:
 
     def _upgrade_delayed_to_actual(self, spec:DelayedSpec) -> TaskSpec_i:
         result  : TaskSpec_i
-        base    : TaskSpec_i  = self.specs[spec.base]
-        data = {}
+        base    : TaskSpec_i
+        data    : dict  = {}
+        match self.specs.get(spec.base, None):
+            case TaskSpec_i() as x:
+                base = x
+            case None:
+                raise ValueError("The Base for a delayed spec was not found", spec.base)
         match spec.inject:
             case None:
                 pass
@@ -239,8 +248,34 @@ class Tracker_abs:
 
         data |= spec.overrides
         data['name'] = spec.target
-        result = self._factory.under(base, data)
+        result = self._factory.merge(bot=base, top=data)
         return result
+
+    def _reify_partial_spec(self, spec:TaskSpec_i) -> TaskSpec_i:
+        assert(TaskName.Marks.partial in spec.name)
+        result  : TaskSpec_i
+        base    : TaskSpec_i
+        target  : TaskName_p
+        match spec.sources[-1]:
+            case TaskName_p() as x if x not in self.specs:
+                raise ValueError("Could not find a partial spec's source", x)
+            case TaskName_p() as x:
+                base = self.specs[x]
+            case x:
+                raise TypeError(type(x))
+
+        match spec.name.pop(top=False):
+            case TaskName_p() as adjusted if adjusted in self.specs:
+                raise doot.errors.TrackingError("Tried to reify a partial spec into one that already is registered", spec.name, adjusted)
+            case TaskName_p() as x:
+                target = x
+            case x:
+                raise TypeError(type(x))
+
+        result = self._factory.merge(bot=base, top=spec, suffix=False)
+        result.name = base
+        return result
+
 ##--|
 
 @Proto(API.TaskTracker_p)

@@ -70,22 +70,23 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # TODO make a decorator to register these onto the cmd
-tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
-runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
-reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
-interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
-check_locs               = doot.config.on_fail(False).settings.commands.run.location_check.active()
+tracker_target           : Final = doot.config.on_fail("default", str).settings.commands.run.tracker()
+runner_target            : Final = doot.config.on_fail("default", str).settings.commands.run.runner()
+reporter_target          : Final = doot.config.on_fail("default", str).settings.commands.run.reporter()
+interrupt_handler        : Final = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
+check_locs               : Final = doot.config.on_fail(False).settings.commands.run.location_check.active()  # noqa: FBT003
 
 ##--|
 
 @Proto(Command_i)
 class RunCmd(BaseCommand):
-    _name                        = "run"
-    _help : ClassVar[tuple[str]] = tuple(["Will perform the tasks/jobs targeted.",
-                                          "Can be parameterized in a commands.run block with:",
-                                          "tracker(str), runner(str)",
-                                          ])
+    _name                               = "run"
+    _help  : ClassVar[tuple[str, ...]]  = tuple(["Will perform the tasks/jobs targeted.",
+                                                 "Can be parameterized in a commands.run block with:",
+                                                 "tracker(str), runner(str)",
+                                                 ])
 
+    @override
     def param_specs(self) -> list:
         return [
             *super().param_specs(),
@@ -141,7 +142,7 @@ class RunCmd(BaseCommand):
     def _register_specs(self, tracker, tasks) -> None:
         doot.report.trace("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
-            tracker.register_spec(task)
+            tracker.register(task)
 
         match CheckLocsTask():
             case x if bool(x.spec.actions) and check_locs:

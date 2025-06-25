@@ -35,7 +35,6 @@ from doot.workflow import _interface as S_API#  noqa: N812
 from doot.workflow._interface import (ActionSpec_i, ArtifactStatus_e, RelationMeta_e,
                                       InjectSpec_i, RelationSpec_i, TaskMeta_e,
                                       TaskName_p, TaskSpec_i, TaskStatus_e, Task_p)
-
 # ##-- end 1st party imports
 
 # ##-| Local
@@ -149,8 +148,7 @@ class _Registration_m(_Registry_d):
                         raise ValueError("Tried to overwrite a spec", spec.name)
                     continue
                 case TaskName_p() as x if TaskName.Marks.partial in x:
-                    logging.info("[+.Partial] : %s", spec.name[:])
-                    spec = self._reify_partial_spec(spec)
+                    raise ValueError("By this point a partial spec should have been reified", x)
                 case TaskName_p() if x.uuid(): # type: ignore
                     logging.info("[+.Concrete] : %s", spec.name)
                 case TaskName_p():
@@ -171,22 +169,6 @@ class _Registration_m(_Registry_d):
         else:
             logging.debug("[+] %s new", registered)
             pass
-
-    def _reify_partial_spec(self, spec:TaskSpec_i) -> TaskSpec_i:
-        """ Take a partial spec a.b.c..$partial$,
-        Apply it over it the spec a.b.c
-        """
-        adjusted_name = spec.name.pop(top=False)
-        if adjusted_name in self.specs:
-            raise doot.errors.TrackingError("Tried to reify a partial spec into one that already is registered", spec.name, adjusted_name)
-
-        base_name = spec.sources[-1]
-        assert(isinstance(base_name, TaskName_p))
-        match self.specs.get(base_name, None):
-            case TaskSpec_i() as base_spec:
-                return self._tracker._factory.reify_partial(spec, base_spec)
-            case _:
-                raise ValueError("No Base Spec for Partial", spec.name, base_name)
 
     def _register_spec_artifacts(self, spec:TaskSpec_i) -> None:
         """ Register the artifacts a spec produces """

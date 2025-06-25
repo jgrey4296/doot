@@ -193,7 +193,7 @@ class TaskFactory:
             case None | True:
                 result = instance
             case dict():
-                result = self.under(instance, extra)
+                result = self.merge(bot=instance, top=extra)
             case x:
                 raise TypeError(type(x))
 
@@ -201,26 +201,7 @@ class TaskFactory:
         assert(result.name.uuid())
         return result
 
-    def reify_partial(self, obj:TaskSpec_i, actual:TaskSpec_i) -> TaskSpec_i:
-        """ Turn a partial spec into a full spec by applying it over an actual spec
-
-        A Partial spec is one marked with $partial$,
-        and doesn't contain a full spec definition.
-        eg: no actions, just the data a full spec will use
-        """
-        adjusted : dict
-        if TaskName.Marks.partial not in obj.name:
-            raise ValueError("Tried to reify a non-partial spec", obj.name)
-
-        last_source = obj.sources[-1]
-        if last_source != actual.name:
-            raise ValueError("Incorrect base spec for partial", obj.name, last_source, actual.name)
-
-        adjusted          = obj.model_dump()
-        adjusted['name']  = obj.name.pop(top=False)
-        return self.under(actual, adjusted, suffix=False)
-
-    def over(self, top:dict|TaskSpec_i, bot:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:  # noqa: PLR0912
+    def merge(self, top:dict|TaskSpec_i, bot:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:  # noqa: PLR0912
         """ bot + top -> TaskSpec """
         if bot is top:
             raise doot.errors.TrackingError("Tried to apply a spec over itself", top, bot)
@@ -264,12 +245,6 @@ class TaskFactory:
         result = self._specialize_merge(bot=bot_data, top=top_data)
         result['name'] = name
         return self.build(result)
-
-    def under(self, bot:dict|TaskSpec_i, top:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:
-        """
-
-        """
-        return self.over(top, bot, suffix=suffix)
 
     ##--| Task construction
 

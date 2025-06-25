@@ -19,17 +19,19 @@ if typing.TYPE_CHECKING:
     from jgdv.structs.chainguard._interface import ChainGuard_p
     from jgdv.structs.locator._interface import Locator_p
     from jgdv.logging._interface import LogConfig_p
+    from doot.reporters._interface import Reporter_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-config       : ChainGuard_p
-constants    : ChainGuard_p
-aliases      : ChainGuard_p
-log_config   : LogConfig_p
-args         : ChainGuard_p
-locs         : Locator_p
+config      : ChainGuard_p
+constants   : ChainGuard_p
+aliases     : ChainGuard_p
+log_config  : LogConfig_p
+args        : ChainGuard_p
+locs        : Locator_p
+report      : Reporter_p
 
 match getattr(__main__, "doot_setup", False):
     # Initialises the overlord as the 'doot' module

@@ -93,7 +93,7 @@ class TestTaskFactory_Over:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": ["agroup::base"]})
 
-        match factory.over(over_task, under_task):
+        match factory.merge(top=over_task, bot=under_task):
             case TaskSpec_i() as new_spec:
                 assert(new_spec is not under_task)
                 assert(new_spec is not over_task)
@@ -111,7 +111,7 @@ class TestTaskFactory_Over:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
 
-        match factory.over(over_task, under_task, suffix="blah"):
+        match factory.merge(top=over_task, bot=under_task, suffix="blah"):
             case TaskSpec() as new_spec:
                 assert(new_spec.name == "agroup::base.a..blah")
             case x:
@@ -121,7 +121,7 @@ class TestTaskFactory_Over:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
 
-        match factory.over(over_task, under_task, suffix=False):
+        match factory.merge(top=over_task, bot=under_task, suffix=False):
             case TaskSpec() as new_spec:
                 assert(new_spec.name == "agroup::base.a")
             case x:
@@ -130,14 +130,14 @@ class TestTaskFactory_Over:
     def test_extends_sources(self, factory):
         base_task                = factory.build({"name": "agroup::base", "a": 0})
         override_task            = factory.build({"name": "agroup::base.a", "b": 2, "sources":[ "agroup::base"]})
-        instance                 = factory.over(override_task, base_task)
+        instance                 = factory.merge(top=override_task, bot=base_task)
         for x in ["agroup::base", "agroup::base.a"]:
             assert(x in instance.sources)
 
     def test_prefers_newer_vals(self, factory):
         base_task                   = factory.build({"name": "agroup::base", "a": 0})
         override_task               = factory.build({"name": "agroup::base.a", "a": 100, "b": 2, "sources":[ "agroup::base"]})
-        instance                    = factory.over(override_task, base_task)
+        instance                    = factory.merge(top=override_task, bot=base_task)
         assert(instance.extra['a']  == 100)
         for x in  ["agroup::base", "agroup::base.a"]:
             assert(x in instance.sources)
@@ -155,7 +155,7 @@ class TestTaskFactory_Under:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": ["agroup::base"]})
 
-        match factory.under(under_task, over_task):
+        match factory.merge(bot=under_task, top=over_task):
             case TaskSpec() as new_spec:
                 assert(new_spec is not under_task)
                 assert(new_spec is not over_task)
@@ -173,7 +173,7 @@ class TestTaskFactory_Under:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
 
-        match factory.under(under_task, over_task, suffix="blah"):
+        match factory.merge(bot=under_task, top=over_task, suffix="blah"):
             case TaskSpec() as new_spec:
                 assert(new_spec.name == "agroup::base.a..blah")
             case x:
@@ -183,7 +183,7 @@ class TestTaskFactory_Under:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_data = {"blah": "bloo"}
 
-        match factory.under(under_task, over_data):
+        match factory.merge(bot=under_task, top=over_data):
             case TaskSpec() as new_spec:
                 assert(new_spec is not under_task)
                 assert(new_spec.name != under_task.name)
@@ -199,34 +199,34 @@ class TestTaskFactory_Under:
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
         over_data = {"blah": "bloo"}
 
-        match factory.under(under_task, over_data, suffix="blah"):
+        match factory.merge(bot=under_task, top=over_data, suffix="blah"):
             case TaskSpec() as new_spec:
                 assert(new_spec.name == "agroup::base..blah")
             case x:
                  assert(False), x
 
     def test_fails_from_when_unrelated(self, factory):
-        """ Trying to apply base under an unrelated task errors """
+        """ Trying to apply base merge an unrelated task errors """
         base_task     = factory.build({"name": "agroup::base", "a": 0})
         override_task = factory.build({"name": "agroup::not.base", "b": 2, "sources":["agroup::not.base"]})
 
         assert(not base_task.name < TaskName(override_task.sources[-1]))
         with pytest.raises(doot.errors.TrackingError):
-            factory.under(base_task, override_task)
+            factory.merge(bot=base_task, top=override_task)
 
     def test_keeps_base_actions(self, factory):
-        """ Applying a task under another will use the most specific set of actions """
+        """ Applying a task merge another will use the most specific set of actions """
         base_task      = factory.build({"name": "agroup::base", "a": 0, "actions":[{"do":"basic"}]})
         override_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources":["agroup::base"]})
 
-        instance       = factory.under(base_task, override_task)
+        instance       = factory.merge(bot=base_task, top=override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(len(instance.actions) == 1)
         assert("DootBaseAction" in instance.actions[0].do)
 
     def test_merges_actions(self, factory):
-        """ Applying a task under another will use the most specific set of actions """
+        """ Applying a task merge another will use the most specific set of actions """
         base_task      = factory.build({"name": "agroup::base", "a": 0,
                                         "actions":[{"do":"basic"}]})
         override_task  = factory.build({"name": "agroup::base.a", "b": 2,
@@ -234,7 +234,7 @@ class TestTaskFactory_Under:
                                         "actions": [{"do":"log", "msg":"not base action"}],
                                         })
 
-        instance       = factory.under(base_task, override_task)
+        instance       = factory.merge(bot=base_task, top=override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(len(instance.actions) == 2)
@@ -244,7 +244,7 @@ class TestTaskFactory_Under:
     def test_merges_dependencies(self, factory):
         base_task      = factory.build({"name": "agroup::base", "a": 0, "depends_on": ["basic::dep"]})
         override_task  = factory.build({"name": "agroup::base.a", "depends_on": ["extra::dep"], "b": 2, "sources"  :[ "agroup::base"]})
-        instance       = factory.under(base_task, override_task)
+        instance       = factory.merge(bot=base_task, top=override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(len(instance.depends_on) == 2)
@@ -252,7 +252,7 @@ class TestTaskFactory_Under:
     def test_simple_data_extension(self, factory):
         base_task  = factory.build({"name": "agroup::base", "a": 0, "c": "blah"})
         data       = {"a": 2, "b": 3}
-        instance   = factory.under(base_task, data)
+        instance   = factory.merge(bot=base_task, top=data)
         assert(instance is not base_task)
         assert(base_task.name < instance.name)
         assert(instance.a == 2)
@@ -261,7 +261,7 @@ class TestTaskFactory_Under:
 
     def test_keeps_spec_independence(self, factory):
         base          = factory.build({"name": "agroup::base", "a": 0, "c": "blah"})
-        second        = factory.under(base, {})
+        second        = factory.merge(bot=base, top={})
         assert(base is not second)
         base.sources.append("testing")
         assert("testing" not in second.sources)
@@ -269,33 +269,7 @@ class TestTaskFactory_Under:
     def test_cant_apply_to_self(self, factory):
         base_task     = factory.build({"name": "agroup::base", "a": 0, "c": "blah"})
         with pytest.raises(doot.errors.TrackingError):
-            factory.under(base_task, base_task)
-
-class TestTaskFactory_Reify:
-
-    @pytest.fixture(scope="function")
-    def factory(self, mocker):
-        return TaskFactory()
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_reify_partial(self, factory):
-        base      = factory.build({"name": "agroup::base", "a": 0, "actions"    : [{"do":"log", "msg":"blah"}]})
-        partial   = factory.build({"name": "agroup::base.blah..$partial$", "a": 20, "b": "blah", "sources": ["agroup::base"]})
-
-        match factory.reify_partial(partial, base):
-            case TaskSpec() as new_spec:
-                assert(new_spec.name == "agroup::base.blah")
-            case x:
-                 assert(False), x
-
-    def test_reify_incorrect(self, factory):
-        bad_base  = factory.build({"name": "agroup::base.bad", "a": 0, "actions"  : [{"do":"log", "msg":"blah"}]})
-        partial   = factory.build({"name": "agroup::base.blah..$partial$", "a": 20, "b": "blah", "sources": ["agroup::base"]})
-
-        with pytest.raises(ValueError):
-            factory.reify_partial(partial, bad_base)
+            factory.merge(bot=base_task, top=base_task)
 
 class TestSpecFactory_Instantiation:
     """ Tests the instantiation of a spec from abstract to concrete
@@ -425,7 +399,6 @@ class TestSubTaskFactory:
             case x:
                  assert(False), x
 
-
 @pytest.mark.skip
 class TestTaskSpec_CLIParams:
 
@@ -442,7 +415,7 @@ class TestTaskSpec_CLIParams:
         base     = factory.build({"name":"agroup::base",
                                            "cli" : [{"name":"--blah", "default":"aweg", "type":"str"}],
                                            })
-        instance = base.under({})
+        instance = base.merge({})
         assert(not hasattr(instance, "blah"))
         match instance.make():
             case Task_p() as task:
@@ -460,7 +433,7 @@ class TestTaskSpec_CLIParams:
         base     = factory.build({"name":"agroup::base",
                                            "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
                                            })
-        instance = base.under({})
+        instance = base.merge({})
         assert(not hasattr(instance, "blah"))
         match instance.make():
             case Task_p() as task:
@@ -479,7 +452,7 @@ class TestTaskSpec_CLIParams:
         base     = factory.build({"name":"agroup::base",
                                            "cli" : [{"name":"-blah", "default":"aweg", "type":"str"}],
                                            })
-        instance = base.under({})
+        instance = base.merge({})
         other_inst = instance.make()
         other_inst.state["blah"] = "qqqq"
         assert(not hasattr(instance, "blah"))
