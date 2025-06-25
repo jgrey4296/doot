@@ -312,8 +312,8 @@ class _Instantiation_m(_Registry_d):
             return rel.target
         ##--|
         match self.tasks.get(control, None) or self.specs[control]:
-            case Task_i() as x:
-                control_obj   = cast("Task_p", x)
+            case Task_p() as x:
+                control_obj   = x
                 control_data  = x.spec
             case TaskSpec_i() as x:
                 control_obj   = x
