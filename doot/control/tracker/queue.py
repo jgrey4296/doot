@@ -127,7 +127,7 @@ class TrackQueue:
                     assert(isinstance(status, TaskStatus_e))
                     self._tracker.set_status(art, status)
 
-                logging.debug("[Queue] %s : %s", self._tracker.get_status(art), art)
+                logging.debug("[Queue] %s : %s", self._tracker.get_status(target=art), art)
                 return cast("Artifact_i", art)
             case TaskName_p() | str():
                 abs_name = self._queue_prep_name(target)
@@ -158,7 +158,7 @@ class TrackQueue:
             case TaskStatus_e():
                 self._tracker.set_status(inst_name, status)
             case None:
-                status = self._tracker.get_status(inst_name)
+                status = self._tracker.get_status(target=inst_name)
 
         logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name[:])
         return inst_name
@@ -174,7 +174,7 @@ class TrackQueue:
         match self._queue.pop():
             case TaskName_p() as focus if focus not in self._tracker.tasks:
                 pass
-            case TaskName_p() as focus if self._tracker._get_priority(focus) < self._tracker._min_priority:
+            case TaskName_p() as focus if self._tracker.get_priority(target=focus) < self._tracker._min_priority:
                 logging.warning("[Deque] Halting (Min Priority) : %s", focus[:])
                 self._tracker.set_status(focus, TaskStatus_e.HALTED)
             case TaskName_p() as focus:

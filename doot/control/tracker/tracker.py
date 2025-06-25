@@ -122,7 +122,7 @@ class Tracker_abs:
     ##--| properties
 
     @property
-    def specs(self) -> dict[TaskName, TaskSpec]:
+    def specs(self) -> dict[TaskName_p, TaskSpec_i]:
         return self._registry.specs # type: ignore[attr-defined]
 
     @property
@@ -252,10 +252,18 @@ class Tracker_abs:
         return result
 
     def _reify_partial_spec(self, spec:TaskSpec_i) -> TaskSpec_i:
-        assert(TaskName.Marks.partial in spec.name)
+        """
+        converts spec(name=group::task.a.b..$partial$, sources[*_, base], data)
+        into spec(name=group::a.b, data)
+        using base
+
+        """
+        x       : Any
         result  : TaskSpec_i
         base    : TaskSpec_i
         target  : TaskName_p
+        ##--|
+        assert(TaskName.Marks.partial in spec.name)
         match spec.sources[-1]:
             case TaskName_p() as x if x not in self.specs:
                 raise ValueError("Could not find a partial spec's source", x)
@@ -273,7 +281,7 @@ class Tracker_abs:
                 raise TypeError(type(x))
 
         result = self._factory.merge(bot=base, top=spec, suffix=False)
-        result.name = base
+        result.name = target
         return result
 
 ##--|
@@ -281,11 +289,27 @@ class Tracker_abs:
 @Proto(API.TaskTracker_p)
 class Tracker(Tracker_abs):
 
-    def _get_priority(self, target:Concrete[TaskName|TaskArtifact]) -> int:
-        return self._registry.get_priority(target) # type: ignore[attr-defined]
+    def get_priority(self, *, target:Maybe[Concrete[TaskName_p|Artifact_i]]=None, default:bool=False) -> int:
+        match target, default:
+            case None, True:
+                return self._declare_priority
+            case None, False:
+                raise ValueError()
+            case x, _:
+                return self._registry.get_priority(target) # type: ignore[attr-defined]
+            case x:
+                raise TypeError(type(x))
 
-    def get_status(self, task:Concrete[TaskName]|TaskArtifact) -> TaskStatus_e:
-        return self._registry.get_status(task) # type: ignore[attr-defined]
+    def get_status(self, *, target:Maybe[Concrete[TaskName_p]|Artifact_i]=None, default:bool=False) -> TaskStatus_e:
+        match target, default:
+            case None, True:
+                return TaskStatus_e.NAMED
+            case None, False:
+                raise ValueError()
+            case x, _:
+                return self._registry.get_status(target) # type: ignore[attr-defined]
+            case x:
+                raise TypeError(type(x))
 
     def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
         return self._registry.set_status(task, state) # type: ignore[attr-defined]

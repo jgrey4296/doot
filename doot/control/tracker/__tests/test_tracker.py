@@ -97,21 +97,21 @@ class TestTracker:
         tracker.register(spec)
         t_name = tracker.queue(spec.name)
         assert(t_name.uuid())
-        assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         tracker.build()
         match tracker.next_for():
             case Task_p():
                 assert(True)
             case x:
                  assert(False), x
-        assert(tracker.get_status(t_name) is TaskStatus_e.RUNNING)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
 
     def test_next_simple_dependendency(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name = tracker.queue(spec.name, from_user=True)
-        assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         tracker.build()
         match tracker.next_for():
             case Task_p() as result:
@@ -119,14 +119,14 @@ class TestTracker:
                 assert(True)
             case _:
                 assert(False)
-        assert(tracker.get_status(t_name) is TaskStatus_e.WAIT)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.WAIT)
 
     def test_next_dependency_success_produces_ready_state_(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
         t_name = tracker.queue(spec.name, from_user=True)
-        assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         tracker.build()
         dep_inst = tracker.next_for()
         assert(dep.name < dep_inst.name)
@@ -137,7 +137,7 @@ class TestTracker:
                 assert(True)
             case _:
                 assert(False)
-        assert(tracker.get_status(t_name) is TaskStatus_e.RUNNING)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
 
     def test_next_artificial_success(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
@@ -145,7 +145,7 @@ class TestTracker:
         tracker.register(spec, dep)
         t_name   = tracker.queue(spec.name)
         dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         tracker.build()
         # Force the dependency to success without getting it from next_for:
         tracker.set_status(dep_inst, TaskStatus_e.SUCCESS)
@@ -155,7 +155,7 @@ class TestTracker:
                 assert(True)
             case _:
                 assert(False)
-        assert(tracker.get_status(t_name) is TaskStatus_e.RUNNING)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
 
     def test_next_halt(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
@@ -163,7 +163,7 @@ class TestTracker:
         tracker.register(spec, dep)
         t_name   = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         logging.info("--------------------------------------------------")
         tracker.build()
         logging.info("--------------------------------------------------")
@@ -190,7 +190,7 @@ class TestTracker:
         tracker.register(spec, dep)
         t_name   = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         logging.info("--------------------------------------------------")
         tracker.build()
         logging.info("--------------------------------------------------")

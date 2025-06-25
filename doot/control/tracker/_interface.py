@@ -181,11 +181,21 @@ class TaskTracker_p(Protocol):
 
     def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName_p]|Artifact_i]: ...
 
-    ##--| to remove
-
-    def get_status(self, task:Concrete[TaskName_p|Ident]|Artifact_i) -> TaskStatus_e: ...
+    ##--| inspection. TODO to remove
 
     def set_status(self, task:Concrete[TaskName_p|Ident]|Task_i|Artifact_i, state:TaskStatus_e) -> bool: ...
+
+    @overload
+    def get_status(self, task:Concrete[TaskName_p|Ident]|Artifact_i) -> TaskStatus_e: ...
+
+    @overload
+    def get_status(self, *_, default:bool=False) -> TaskStatus_e: ...
+
+    @overload
+    def get_priority(self, *, target:Concrete[TaskName_p|Artifact_i]) -> int: ...
+
+    @overload
+    def get_priority(self, *, default:bool=False) -> int: ...
 
     ##--| internal
 
@@ -199,8 +209,6 @@ class TaskTracker_p(Protocol):
     def _instantiate(self, name:Concrete[TaskName_p], **kwargs:Any) -> Concrete[TaskName_p]: ...
 
     def _connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:  ...
-
-    def _get_priority(self, target:Concrete[TaskName_p|Artifact_i]) -> int: ...
 
 @runtime_checkable
 class TaskTracker_i(TaskTracker_p, Protocol):

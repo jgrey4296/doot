@@ -412,7 +412,7 @@ class _Validation_m:
         assert(focus in self.nodes)
         incomplete = []
         for x in self.pred[focus]:
-            status     = self._tracker.get_status(x)
+            status     = self._tracker.get_status(target=x)
             is_success = status in API.SUCCESS_STATUSES
             match x:
                 case _ if is_success:
