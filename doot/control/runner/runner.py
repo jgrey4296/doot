@@ -33,8 +33,12 @@ from jgdv.debugging import NullHandler, SignalHandler
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow import ActionSpec, TaskArtifact, TaskName, TaskSpec, RelationSpec
+from doot.control.runner._interface import TaskRunner_p
+from doot.util.factory import DelayedSpec
+from doot.workflow import (ActionSpec, RelationSpec, TaskArtifact, TaskName,
+                           TaskSpec)
 from doot.workflow._interface import ActionResponse_e as ActRE
+from doot.workflow._interface import Job_p, Task_p, TaskName_p, TaskSpec_i, ActionSpec_i, RelationSpec_i
 
 # ##-- end 1st party imports
 
@@ -55,6 +59,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from doot.control.tracker._interface import TaskTracker_p
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -64,9 +69,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from doot.workflow._interface import (Action_p, Job_p, Task_p)
-from doot.control.runner._interface import TaskRunner_p
-from doot.control.tracker._interface import TaskTracker_p
 from typing import ContextManager
 # isort: on
 # ##-- end types
@@ -78,7 +80,7 @@ logging           = logmod.getLogger(__name__)
 ##--| Vars
 skip_msg            : Final[str]   = doot.constants.printer.skip_by_condition_msg
 max_steps           : Final[int]   = doot.config.on_fail(100_000).commands.run.max_steps()
-hide_empty_cleanup  : Final[bool]  = doot.config.on_fail(False).commands.run.hide_empty_cleanup()
+hide_empty_cleanup  : Final[bool]  = doot.config.on_fail(False).commands.run.hide_empty_cleanup()  # noqa: FBT003
 
 SETUP_GROUP         : Final[str]   = "setup"
 ACTION_GROUP        : Final[str]   = "actions"
@@ -94,14 +96,19 @@ class _ActionExecution_m:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
-        actions = task.get_action_group(group)
+        to_queue        : list[TaskName_p|TaskSpec_i|DelayedSpec]
+        group_result    : ActRE
+        actions         : list[ActionSpec_i]
+        executed_count  : int
+        ##--|
+        actions  = task.get_action_group(group)
 
         if not bool(actions):
             return None
 
-        group_result              = ActRE.SUCCESS
-        to_queue : list[TaskSpec] = []
-        executed_count            = 0
+        group_result    = ActRE.SUCCESS
+        to_queue        =  []
+        executed_count  = 0
 
         for action in actions:
             if self._skip_relation_specs(action):
@@ -131,7 +138,7 @@ class _ActionExecution_m:
 
         return executed_count, group_result
 
-    def _skip_relation_specs(self, action:RelationSpec|ActionSpec) -> bool:
+    def _skip_relation_specs(self, action:RelationSpec_i|ActionSpec_i) -> bool:
         """ return of True signals the action is a relationspec, so is to be ignored """
         match action:
             case RelationSpec():
@@ -141,34 +148,7 @@ class _ActionExecution_m:
             case _:
                 raise doot.errors.TaskError("Task Failed: Bad Action: %s", repr(action))
 
-    def _maybe_queue_more_tasks(self, new_tasks:list, *, allowed:bool=False) -> Maybe[ActRE]:
-        """ When 'allowed', an action group can queue more tasks in the tracker,
-        can return a new ActRE to describe the result status of this group
-        """
-        if bool(new_tasks) and not allowed:
-            doot.report.error("Tried to Queue additional tasks from a bad action group")
-            return ActRE.FAIL
-
-        new_nodes = []
-        failures  = []
-        for spec in new_tasks:
-            match self.tracker.queue_entry(spec):
-                case None:
-                    failures.append(spec.name)
-                case TaskName() as x:
-                    new_nodes.append(x)
-
-        if bool(failures):
-            doot.report.error("Queuing a generated specs failed: %s", failures)
-            return ActRE.FAIL
-
-        if bool(new_nodes):
-            self.tracker.build_network(sources=new_nodes)
-            # doot.report.result([f"{len(new_nodes)} Tasks"], info="Queued")
-
-        return None
-
-    def _execute_action(self, count:int, action:ActionSpec, task:Task_p, group:Maybe[str]=None) -> ActRE|list:
+    def _execute_action(self, count:int, action:ActionSpec_i, task:Task_p, group:Maybe[str]=None) -> ActRE|list:
         """ Run the given action of a specific task.
 
           returns either a list of specs to (potentially) queue,
@@ -197,12 +177,39 @@ class _ActionExecution_m:
             case dict(): # update the task's state
                 task.state.update({str(k):v for k,v in result.items()})
                 result = ActRE.SUCCESS
-            case list() if all(isinstance(x, TaskName|TaskSpec) for x in result):
+            case list() if all(isinstance(x, TaskName_p|TaskSpec_i|DelayedSpec) for x in result):
                 pass
             case _:
                 raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
 
         return result
+
+    def _maybe_queue_more_tasks(self, new_tasks:list, *, allowed:bool=False) -> Maybe[ActRE]:
+        """ When 'allowed', an action group can queue more tasks in the tracker,
+        can return a new ActRE to describe the result status of this group
+        """
+        if bool(new_tasks) and not allowed:
+            doot.report.error("Tried to Queue additional tasks from a bad action group")
+            return ActRE.FAIL
+
+        new_nodes = []
+        failures  = []
+        for spec in new_tasks:
+            match self.tracker.queue_entry(spec):
+                case None:
+                    failures.append(spec.name)
+                case TaskName_p() as x:
+                    new_nodes.append(x)
+
+        if bool(failures):
+            doot.report.error("Queuing a generated specs failed: %s", failures)
+            return ActRE.FAIL
+
+        if bool(new_nodes):
+            self.tracker.build_network(sources=new_nodes)
+            # doot.report.result([f"{len(new_nodes)} Tasks"], info="Queued")  # noqa: ERA001
+
+        return None
 
 ##--|
 

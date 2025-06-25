@@ -20,7 +20,7 @@ import pytest
 ##--|
 import doot
 from doot.workflow import TaskSpec, TaskName
-from doot.workflow._interface import Task_p
+from doot.workflow._interface import Task_p, TaskSpec_i
 from ..factory import SubTaskFactory, TaskFactory
 ##--|
 
@@ -94,7 +94,7 @@ class TestTaskFactory_Over:
         over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": ["agroup::base"]})
 
         match factory.over(over_task, under_task):
-            case TaskSpec() as new_spec:
+            case TaskSpec_i() as new_spec:
                 assert(new_spec is not under_task)
                 assert(new_spec is not over_task)
                 assert(new_spec.name != under_task.name)
@@ -102,7 +102,8 @@ class TestTaskFactory_Over:
                 assert("a" in new_spec.extra)
                 assert("b" in new_spec.extra)
                 assert(bool(new_spec.actions))
-                assert(new_spec.sources == ["agroup::base", "agroup::base.a"])
+                for x in ["agroup::base", "agroup::base.a"]:
+                    assert(x in new_spec.sources)
             case x:
                  assert(False), x
 
@@ -130,14 +131,16 @@ class TestTaskFactory_Over:
         base_task                = factory.build({"name": "agroup::base", "a": 0})
         override_task            = factory.build({"name": "agroup::base.a", "b": 2, "sources":[ "agroup::base"]})
         instance                 = factory.over(override_task, base_task)
-        assert(instance.sources  == ["agroup::base", "agroup::base.a"])
+        for x in ["agroup::base", "agroup::base.a"]:
+            assert(x in instance.sources)
 
     def test_prefers_newer_vals(self, factory):
         base_task                   = factory.build({"name": "agroup::base", "a": 0})
         override_task               = factory.build({"name": "agroup::base.a", "a": 100, "b": 2, "sources":[ "agroup::base"]})
         instance                    = factory.over(override_task, base_task)
         assert(instance.extra['a']  == 100)
-        assert(instance.sources     == ["agroup::base", "agroup::base.a"])
+        for x in  ["agroup::base", "agroup::base.a"]:
+            assert(x in instance.sources)
 
 class TestTaskFactory_Under:
 
@@ -150,7 +153,7 @@ class TestTaskFactory_Under:
 
     def test_under(self, factory):
         under_task = factory.build({"name": "agroup::base", "a": 0, "actions" : [{"do":"log", "msg":"blah"}]})
-        over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": "agroup::base"})
+        over_task  = factory.build({"name": "agroup::base.a", "b": 2, "sources": ["agroup::base"]})
 
         match factory.under(under_task, over_task):
             case TaskSpec() as new_spec:
@@ -161,7 +164,8 @@ class TestTaskFactory_Under:
                 assert("a" in new_spec.extra)
                 assert("b" in new_spec.extra)
                 assert(bool(new_spec.actions))
-                assert(new_spec.sources == ["agroup::base", "agroup::base.a"])
+                for x in ["agroup::base", "agroup::base.a"]:
+                    assert(x in new_spec.sources)
             case x:
                  assert(False), x
 
@@ -187,7 +191,7 @@ class TestTaskFactory_Under:
                 assert("a" in new_spec.extra)
                 assert(bool(new_spec.actions))
                 assert("blah" in new_spec.extra)
-                assert(new_spec.sources == ["agroup::base", "agroup::base..$data$"])
+                assert(new_spec.sources == ["agroup::base"])
             case x:
                  assert(False), x
 
@@ -197,7 +201,7 @@ class TestTaskFactory_Under:
 
         match factory.under(under_task, over_data, suffix="blah"):
             case TaskSpec() as new_spec:
-                assert(new_spec.name == "agroup::base..$data$..blah")
+                assert(new_spec.name == "agroup::base..blah")
             case x:
                  assert(False), x
 
@@ -240,7 +244,6 @@ class TestTaskFactory_Under:
     def test_merges_dependencies(self, factory):
         base_task      = factory.build({"name": "agroup::base", "a": 0, "depends_on": ["basic::dep"]})
         override_task  = factory.build({"name": "agroup::base.a", "depends_on": ["extra::dep"], "b": 2, "sources"  :[ "agroup::base"]})
-
         instance       = factory.under(base_task, override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)

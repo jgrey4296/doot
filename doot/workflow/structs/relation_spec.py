@@ -126,7 +126,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case str() as x if TaskName.section(0).end in x: # type: ignore[operator]
                 target = TaskName(x)
                 result = cls(target=target, relation=relation)
-            case {"path":path} if "task" not in data:
+            case {"path": path} if "task" not in data:
                 return cls(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
                 assert(isinstance(data, dict))
@@ -136,6 +136,8 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                                   constraints=constraints,
                                   inject=inject,
                                   relation=relation)
+            case {"target": x}:
+                result = cls(**data)
             case _:
                 raise ValueError("Bad data used for relation spec", type(data), data)
 

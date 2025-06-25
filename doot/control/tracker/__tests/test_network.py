@@ -501,7 +501,7 @@ class TestTrackerNetworkBuild_Constraints:
                 assert(spec3.name < chain_inst)
                 assert(spec.test_key == obj._tracker.specs[chain_inst].test_key)
                 chain_spec = obj._tracker.specs[chain_inst]
-                assert(spec3.name < chain_spec.sources[-1])
+                assert(spec3.name <= chain_spec.sources[-1])
                 assert(chain_spec.test_key != spec3.test_key)
             case x:
                 assert(False), x

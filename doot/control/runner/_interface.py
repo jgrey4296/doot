@@ -42,11 +42,13 @@ if TYPE_CHECKING:
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
-    from typing import Self, Literal
+    from typing import Self, Literal, ContextManager
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from doot.control.tracker._interface import TaskTracker_p
+    from doot.workflow._interface import Artifact_i, Task_p
 ##--|
 
 # isort: on
@@ -64,13 +66,13 @@ class RunnerHandlers_p(Protocol):
 
     def run_next_task(self) -> None: ...
 
-    def handle_task_success[T:Maybe[Task_p|TaskArtifact]](self, task:T) -> T: ...
+    def handle_task_success[T:Maybe[Task_p|Artifact_i]](self, task:T) -> T: ...
 
     def handle_failure(self, failure:Exception) -> None: ...
 
-    def notify_artifact(self, art:TaskArtifact) -> None: ...
+    def notify_artifact(self, art:Artifact_i) -> None: ...
 
-    def sleep_after(self, task:Maybe[Task_p|TaskArtifact]) -> None: ...
+    def sleep_after(self, task:Maybe[Task_p|Artifact_i]) -> None: ...
 
 @runtime_checkable
 class TaskRunner_p(Protocol):

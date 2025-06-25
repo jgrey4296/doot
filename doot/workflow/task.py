@@ -37,8 +37,8 @@ from doot.errors import StructLoadError, TaskError
 # ##-- end 1st party imports
 
 # ##-| Local
-from ._interface import (Action_p, Job_p, QueueMeta_e, Task_p,
-                         TaskMeta_e, TaskStatus_e)
+from ._interface import (Action_p, Job_p, QueueMeta_e, Task_p, RelationSpec_i,
+                         TaskMeta_e, TaskStatus_e, TaskSpec_i, TaskName_p)
 from .structs import RelationSpec, TaskArtifact, ActionSpec, TaskName
 
 # # End of Imports.
@@ -212,11 +212,11 @@ class DootTask:
     _version         : str              = "0.1"
 
     def __init__(self, spec:TaskSpec, *, job:Any=None, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
-        self.spec                      = spec
-        self.priority                  = self.spec.priority
-        self.status                    = DootTask.INITIAL_STATE
         self.flags                     = TaskMeta_e.TASK
         self.state                     = dict(spec.extra)
+        self._spec                     = spec
+        self._priority                 = self.spec.priority
+        self._status                   = DootTask.INITIAL_STATE
         self._records                  = []
 
         self.state[STATE_TASK_NAME_K]  = self.spec.name
@@ -225,13 +225,15 @@ class DootTask:
         match action_ctor:
             case None:
                 from .actions import DootBaseAction
-                self.action_ctor  = DootBaseAction
+                self.action_ctor       = DootBaseAction
             case type() as x:
                 self.action_ctor  = x
             case x:
                 raise TypeError(type(x))
 
         self.prepare_actions()
+
+    ##--| dunders
 
     @override
     def __repr__(self) -> str:
@@ -245,14 +247,14 @@ class DootTask:
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def __lt__(self, other:TaskName|Task_p) -> bool:
+    def __lt__(self, other:TaskName_p|Task_p) -> bool:
         """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
         match other:
-            case TaskName():
+            case TaskName_p():
                 name = other.name
             case Task_p():
                 name = other.spec.name
-        return any(name in x.target for x in self.spec.depends_on)
+        return any(name in x.target for x in self.spec.depends_on if isinstance(x, RelationSpec_i))
 
     @override
     def __eq__(self, other:object) -> bool:
@@ -264,9 +266,34 @@ class DootTask:
             case _:
                 return False
 
+    ##--| properties
+
     @property
-    def name(self) -> TaskName:
+    def name(self) -> TaskName_p:
         return self.spec.name
+
+    @property
+    def spec(self) -> TaskSpec_i:
+        return self._spec
+
+    @property
+    def status(self) -> TaskStatus_e:
+        return self._status
+
+
+    @status.setter
+    def status(self, val:TaskStatus_e) -> None:
+        self._status = val
+
+    @property
+    def priority(self) -> int:
+        return self._priority
+
+    @priority.setter
+    def priority(self, val:int) -> None:
+        self._priority = val
+
+    ##--| methods
 
     def prepare_actions(self) -> None:
         """ if the task/action spec requires particular action ctors, load them.

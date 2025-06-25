@@ -247,6 +247,8 @@ class ActionSpec_i(Buildable_p, Protocol):
     kwargs     : ChainGuard
     fun        : Maybe[Func]
 
+    def __call__(self, *args:Any, **kwargs:Any) -> ActionReturn: ...
+
 @runtime_checkable
 class InjectSpec_i(Buildable_p, Protocol):
     from_spec    : dict
@@ -261,9 +263,9 @@ class InjectSpec_i(Buildable_p, Protocol):
 
     def apply_literal(self, val:Any) -> dict: ...
 
-    def validate(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> bool: ...
+    def validate(self, control:Task_p|TaskSpec_i, target:Task_p|TaskSpec_i, *, only_spec:bool=False) -> bool: ...
 
-    def validate_details(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i, *, only_spec:bool=False) -> dict: ...
+    def validate_details(self, control:Task_p|TaskSpec_i, target:Task_p|TaskSpec_i, *, only_spec:bool=False) -> dict: ...
 
 @runtime_checkable
 class RelationSpec_i(Protocol):
@@ -324,7 +326,7 @@ class Action_p(Protocol):
     holds individual action information and state, and executes it
     """
 
-    def __call__(self, spec:ActionSpec, task_state:dict) -> ActionReturn:
+    def __call__(self, spec:ActionSpec_i, task_state:dict) -> ActionReturn:
         pass
 
 @runtime_checkable
@@ -352,6 +354,8 @@ class Task_p(Protocol):
 
     def __init__(self, spec:SpecStruct_p) -> None: ...
 
+    ##--| dunders
+
     @override
     def __hash__(self): ...
 
@@ -361,8 +365,24 @@ class Task_p(Protocol):
     @override
     def __eq__(self, other:object) -> bool: ...
 
+    ##--| properties
+
     @property
     def name(self) -> TaskName_p: ...
+
+    @property
+    def spec(self) -> TaskSpec_i: ...
+
+    @property
+    def status(self) -> TaskStatus_e: ...
+
+    @status.setter
+    def status(self, val:TaskStatus_e) -> None: ...
+
+    @property
+    def priority(self) -> int: ...
+    @priority.setter
+    def priority(self, val:int) -> None: ...
 
     def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None: ...
     """ utility method to log a message, useful as tasks are running """
@@ -380,12 +400,12 @@ class Job_p(Task_p, Protocol):
 
 @runtime_checkable
 class Task_i(Task_p, Protocol):
+    """
+    Meta information for a task
+    """
     _default_flags : ClassVar[set[TaskMeta_e]]
 
     _version         : str
     _help            : tuple[str, ...]
     doc              : tuple[str, ...]
     state            : dict
-    spec             : TaskSpec_i
-    status           : TaskStatus_e
-    priority         : int

@@ -25,27 +25,35 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Proto, Mixin
-from jgdv._abstract.protocols import (Buildable_p, SpecStruct_p)
+import jgdv.structs.strang.errors as StrangErrs
+from jgdv import Mixin, Proto
+from jgdv._abstract.protocols import Buildable_p, SpecStruct_p
 from jgdv._abstract.pydantic_proto import ProtocolModelMeta
 from jgdv.cli import ParamSpec, ParamSpecMaker_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey
 from jgdv.structs.locator import Location
 from jgdv.structs.strang import CodeReference
-import jgdv.structs.strang.errors as StrangErrs
-import doot
-import doot.errors
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+import doot
+import doot.errors
+from doot.workflow import (ActionSpec, DootJob, DootTask, InjectSpec,
+                           RelationSpec, TaskArtifact, TaskName, TaskSpec)
+from doot.workflow import _interface as API
+from doot.workflow._interface import (ActionSpec_i, InjectSpec_i, Job_p,
+                                      RelationMeta_e, RelationSpec_i, Task_i,
+                                      Task_p, TaskMeta_e, TaskName_p,
+                                      TaskSpec_i)
 
 # ##-- end 1st party imports
 
-from ._interface import TaskFactory_p, SubTaskFactory_p
-from doot.workflow import _interface as API
-from doot.workflow._interface import TaskSpec_i, Task_p, Job_p, Task_i, TaskMeta_e, RelationMeta_e, TaskName_p
-from doot.workflow import ActionSpec, InjectSpec, TaskArtifact, RelationSpec, TaskName, TaskSpec, DootTask, DootJob
+# ##-| Local
+from ._interface import SubTaskFactory_p, TaskFactory_p, DelayedSpec
+
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -93,6 +101,15 @@ DEFAULT_RELATION   : Final[RelationMeta_e] = RelationMeta_e.default()
 class TaskFactory:
     """
     Factory to create task specs, instantiate them, and make tasks
+
+    build        : data          -> spec
+    delay        : data          -> delayed -> spec
+    instantiate  : spec          -> spec[uuid]
+    reify        : spec,partial  -> spec
+    over         : orig,plus     -> spec(plus<orig, name..<+>[uuid])
+    under        : orig,plus     -> spec(orig<plus, name..<+>[uuid])
+    make         : spec          -> task
+
     """
     spec_ctor : type[TaskSpec_i]
     task_ctor : type[Task_p]
@@ -132,9 +149,11 @@ class TaskFactory:
 
     ##--| Spec manipulation
 
-    def build(self, data:ChainGuard|dict|TaskName|str) -> TaskSpec_i:
+    def build(self, data:ChainGuard|dict|TaskName_p|str) -> TaskSpec_i:
         result : TaskSpec_i
         match data:
+            case TaskSpec_i():
+                result = data
             case ChainGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
             case ChainGuard() | dict():
@@ -148,27 +167,47 @@ class TaskFactory:
 
         return result
 
+    def delay(self, *, base:TaskName_p, target:TaskName_p, inject:Maybe[InjectSpec_i]=None, applied:Maybe[dict]=None, overrides:dict) -> DelayedSpec:
+        """
+        Build data structure that the registry will process into a full spec
+        """
+        result : DelayedSpec = DelayedSpec(base=TaskName(base),
+                                           target=TaskName(target),
+                                           inject=inject,
+                                           applied=applied,
+                                           overrides=overrides,
+                                           )
+
+        return result
+
     def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping|bool]=None) -> TaskSpec_i:
         """
         Return this spec, copied with a uniq name
         """
-        instance : TaskSpec_i
+        result    : TaskSpec_i
+        instance  : TaskSpec_i
         # TODO use model_copy(update={...})
         instance      = obj.model_copy()
         instance.generated_names.clear()
-        instance.name = obj.name.to_uniq()
         match extra:
             case None | True:
-                return instance
+                result = instance
             case dict():
-                extended = self.under(instance, extra)
-                return extended
+                result = self.under(instance, extra)
             case x:
                 raise TypeError(type(x))
 
+        result.name = result.name.to_uniq()
+        assert(result.name.uuid())
+        return result
 
     def reify_partial(self, obj:TaskSpec_i, actual:TaskSpec_i) -> TaskSpec_i:
-        """ Turn a partial spec into a full spec by applying it over an actual spec """
+        """ Turn a partial spec into a full spec by applying it over an actual spec
+
+        A Partial spec is one marked with $partial$,
+        and doesn't contain a full spec definition.
+        eg: no actions, just the data a full spec will use
+        """
         adjusted : dict
         if TaskName.Marks.partial not in obj.name:
             raise ValueError("Tried to reify a non-partial spec", obj.name)
@@ -181,60 +220,56 @@ class TaskFactory:
         adjusted['name']  = obj.name.pop(top=False)
         return self.under(actual, adjusted, suffix=False)
 
-    def over(self, obj:TaskSpec_i, data:TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:
-        """ data + obj -> TaskSpec """
-        result : TaskSpec_i
-        if data is obj:
-            raise doot.errors.TrackingError("Tried to apply a spec over itobj ", obj.name, data.name)
-        if not data.name < obj.name:
-            raise doot.errors.TrackingError("Tried to apply an unrelated spec over another", obj.name, data.name)
-        result = self._specialize_merge(data, obj) # type: ignore[arg-type]
-        match suffix:
-            case None:
-                result.name = cast("TaskName_p", obj.name.push(TaskName.Marks.customised))
-            case False:
-                pass
-            case str():
-                result.name = cast("TaskName_p", obj.name.push(suffix))
+    def over(self, top:dict|TaskSpec_i, bot:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:  # noqa: PLR0912
+        """ bot + top -> TaskSpec """
+        if bot is top:
+            raise doot.errors.TrackingError("Tried to apply a spec over itself", top, bot)
 
-        if not obj.name.uuid():
-            return result
-        if not result.name.uuid():
-            return result.instantiate()
-
-        return result
-
-    def under(self, obj:TaskSpec_i, data:dict|TaskSpec, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:
-        """ obj + data -> TaskSpec """
-        result : TaskSpec_i
-        match data:
-            case TaskSpec() if data is obj:
-                raise doot.errors.TrackingError("Tried to apply a spec under itobj ", obj.name, data.name)
-            case TaskSpec() if not obj.name < data.name:
-                raise doot.errors.TrackingError("Tried to apply an unrelated spec under another", obj.name, data.name)
-            case TaskSpec():
-                result = self._specialize_merge(obj, data)
+        result     : dict
+        base_name  : TaskName_p
+        name       : TaskName_p
+        top_data   : dict
+        bot_data   : dict
+        ##--| prepare
+        match bot:
             case dict():
-                data.setdefault('name', obj.name.push(TaskName.Marks.data))
-                basic = self.build(data)
-                result = self._specialize_merge(obj, basic) # type: ignore[arg-type]
-
+                bot_data = bot
+            case TaskSpec_i():
+                bot_data = bot.model_dump()
+        match top:
+            case dict():
+                top_data = top
+            case TaskSpec_i():
+                top_data = top.model_dump()
+        ##--|
+        match bot_data.get('name', None), top_data.get('name', None):
+            case TaskName_p() as x, TaskName_p() as y if not x < y:
+                raise doot.errors.TrackingError("Tried to apply an unrelated spec over another", x, y)
+            case TaskName_p() as x, TaskName_p() as y:
+                base_name = y
+            case TaskName_p() as x, None:
+                base_name = x
+            case None, TaskName_p() as y:
+                base_name = y
+            case z:
+                raise ValueError(z)
         match suffix:
             case None:
-                result.name = cast("TaskName_p", result.name.push(TaskName.Marks.customised))
+                name       = base_name.push(TaskName.Marks.customised)  # type: ignore[assignment]
             case False:
-                pass
+                name       = cast("TaskName_p", TaskName(base_name[:]))
             case str():
-                result.name = cast("TaskName_p", result.name.push(suffix))
+                name       = base_name.push(suffix)  # type: ignore[assignment]
+        ##--| merge
+        result = self._specialize_merge(bot=bot_data, top=top_data)
+        result['name'] = name
+        return self.build(result)
 
-        assert(isinstance(result, TaskSpec_i)), type(result)
-        if not obj.name.uuid():
-            return result
+    def under(self, bot:dict|TaskSpec_i, top:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:
+        """
 
-        if not result.name.uuid():
-            return self.instantiate(result)
-
-        return result
+        """
+        return self.over(top, bot, suffix=suffix)
 
     ##--| Task construction
 
@@ -301,52 +336,64 @@ class TaskFactory:
 
     ##--| utils
 
-    def get_source_names(self, obj:TaskSpec_i) -> list[TaskName]:
+    def get_source_names(self, obj:TaskSpec_i) -> list[TaskName_p]:
         """ Get from the spec's sources just its source tasks """
         val = [x for x in obj.sources if isinstance(x, TaskName)]
-        return cast("list[TaskName]", val)
-
-    def _specialize_merge(self, obj:TaskSpec_i, data:TaskSpec) -> TaskSpec_i:
-        """
-          Apply data over the top of obj
-
-        Combines, rather than overrides, particular values.
-
-        """
-        result : TaskSpec_i
-        specialized = dict(obj) # type: ignore[call-overload]
-        specialized |= dict(data)
-
-        # Then special updates
-        specialized['name']         = data.name
-        specialized['sources']      = obj.sources[:] + [obj.name, data.name]
-        specialized['actions']      = obj.actions      + data.actions
-        specialized["depends_on"]   = obj.depends_on   + data.depends_on
-        specialized["required_for"] = obj.required_for + data.required_for
-        specialized["cleanup"]      = obj.cleanup      + data.cleanup
-        specialized["on_fail"]      = obj.on_fail      + data.on_fail
-        specialized["setup"]        = obj.setup        + data.setup
-
-        # Internal is only for initial specs, to control listing
-        specialized[API.META_K]        = set()
-        specialized[API.META_K].update(obj.meta)
-        specialized[API.META_K].update(data.meta)
-        specialized[API.META_K].difference_update({TaskMeta_e.INTERNAL})
-
-        logging.debug("Specialized Task: %s on top of: %s", data.name[:], obj.name)
-        result = self.build(specialized)
-        assert(not bool(result.generated_names))
-        return result
+        return cast("list[TaskName_p]", val)
 
     def action_groups(self, obj:TaskSpec_i) -> list[list]:
         return [obj.depends_on, obj.setup, obj.actions, obj.cleanup, obj.on_fail]
 
-    def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec|RelationSpec]:
+    def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec_i|RelationSpec_i]:
         """ Get the elements of: depends_on, setup, actions, and require_for.
         """
         groups : list[list] = [obj.depends_on, obj.setup, obj.actions, obj.required_for]
         for group in groups:
             yield from group
+
+    def _specialize_merge(self, *, bot:dict, top:dict) -> dict:
+        """
+          Apply top over the top of bot
+
+        Combines, rather than overrides, particular values.
+
+        """
+        x            : Any
+        y            : Any
+        specialized  : dict
+        sources      : set   = set()
+        merge_keys   : list  = ["actions", "depends_on", "required_for", "cleanup", "on_fail", "setup"]
+
+        specialized          = dict(bot)
+        specialized |= dict(top)
+        if 'name' in specialized:
+            del specialized['name']
+
+        # Extend sources
+        match bot.get('sources', []), top.get('sources', []):
+            case x, y if len(x) < len(y):
+                sources.update(y)
+            case x, _:
+                sources.update(x)
+
+        if 'name' in bot:
+            sources.add(bot['name'])
+        if 'name' in top:
+            sources.add(top['name'])
+        specialized['sources'] = list(sources)
+        # Merge action groups
+        for x in merge_keys:
+            specialized[x] = [*bot.get(x, []), *top.get(x, [])]
+
+        # Internal is only for initial specs, to control listing
+        specialized[API.META_K] = set()
+        if 'meta' in bot:
+            specialized[API.META_K].update(bot['meta'])
+        if 'meta' in top:
+            specialized[API.META_K].update(top['meta'])
+        specialized[API.META_K].difference_update({TaskMeta_e.INTERNAL})
+
+        return specialized
 
 @Proto(SubTaskFactory_p)
 class SubTaskFactory:

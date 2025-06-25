@@ -27,7 +27,8 @@ import networkx as nx
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow._interface import TaskStatus_e
+from doot.workflow._interface import TaskStatus_e, TaskSpec_i
+from doot.util._interface import DelayedSpec
 from doot.util import mock_gen
 from ..tracker import Tracker
 from .. import _interface as API
@@ -484,3 +485,36 @@ class TestTrackingStates:
                 assert(task4.state["qqqq"] == "blah")
             case x:
                  assert(False), x
+
+
+class TestTracker_delayed:
+
+    @pytest.fixture(scope="function")
+    def tracker(self):
+        return Tracker()
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_make_delayed(self, tracker):
+        assert(isinstance(tracker, Tracker))
+
+        match tracker._factory.delay(base="blah::bloo", target="blah::bloo..custom", overrides={}):
+            case DelayedSpec() as obj:
+                assert(obj.base == "blah::bloo")
+                assert(obj.target == "blah::bloo..custom")
+            case x:
+                assert(False), x
+
+
+    def test_upgrade_delayed(self, tracker):
+        delayed = tracker._factory.delay(base="blah::bloo", target="blah::bloo..custom", overrides={})
+        base_spec = tracker._factory.build({"name":"blah::bloo", "value":25})
+        tracker.register(base_spec)
+        assert(len(tracker.specs) == 1)
+        match tracker._upgrade_delayed_to_actual(delayed):
+            case TaskSpec_i() as actual:
+                assert(delayed.target <= actual.name)
+                assert(actual.value == base_spec.value)
+            case x:
+                assert(False), x

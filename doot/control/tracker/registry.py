@@ -95,7 +95,7 @@ class _Registry_d:
     specs               : dict[TaskName_p, TaskSpec_i]
     concrete            : dict[Abstract[TaskName_p], list[Concrete[TaskName_p]]]
     implicit            : dict[Abstract[TaskName_p], TaskName_p]
-    tasks               : dict[Concrete[TaskName_p], Task_i]
+    tasks               : dict[Concrete[TaskName_p], Task_p]
     artifacts           : dict[TaskArtifact, set[Abstract[TaskName_p]]]
     # Artifact sets
     abstract_artifacts  : set[Abstract[TaskArtifact]]
@@ -311,13 +311,14 @@ class _Instantiation_m(_Registry_d):
         returns the concrete TaskName_p of the instanced target of the relation
         """
         x             : Any
-        control_obj   : Task_i|TaskSpec_i
+        control_obj   : Task_p|TaskSpec_i
         control_data  : TaskSpec_i
         instance      : Maybe[TaskName_p]
         existing      : TaskName_p
         injection     : bool|dict
         ##--|
         logging.debug("[Instance.Relation] : %s -> %s -> %s", control, rel.relation.name, rel.target)
+        ##--| guards
         if control not in self.specs:
             raise doot.errors.TrackingError("Unknown control used in relation", control, rel)
         if rel.target not in self.specs and rel.target not in self.concrete:
@@ -327,16 +328,17 @@ class _Instantiation_m(_Registry_d):
         if rel.target.uuid() and rel.target in self.specs:
             logging.debug("[Instance.Relation.Exists] : %s", rel.target)
             return rel.target
-
+        ##--|
         match self.tasks.get(control, None) or self.specs[control]:
             case Task_i() as x:
-                control_obj = x
-                control_data = x.spec
+                control_obj   = cast("Task_p", x)
+                control_data  = x.spec
             case TaskSpec_i() as x:
-                control_obj = x
-                control_data = x
+                control_obj   = x
+                control_data  = x
             case x:
                 raise TypeError(type(x))
+        ##--| reuse
         potentials  = self.concrete.get(rel.target, [])
         for existing in potentials:
             if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]): # type: ignore[arg-type]
@@ -347,25 +349,29 @@ class _Instantiation_m(_Registry_d):
             # make a new rel.target instance
             match rel.inject:
                 case InjectSpec_i() as inj:
-                    current = self.concrete.get(rel.target, [])[:]
-                    match inj.apply_from_spec(control_data):
-                        case dict() as x if not bool(x):
-                            injection = True
-                        case x:
-                            injection = x
-                    instance  = self.instantiate_spec(rel.target, extra=injection)
-                    if instance and not inj.validate(control_obj, self.specs[instance], only_spec=True):
-                        raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
-                    assert(instance is not None)
-                    assert(instance not in current)
-                    self._register_late_injection(instance, inj, control) # type: ignore[attr-defined]
-                    logging.debug("[Instance.Relation.Inject] : %s", instance)
-                    return instance
+                    pass
                 case _:
                     instance = self.instantiate_spec(rel.target, extra=True)
                     assert(instance is not None)
                     logging.debug("[Instance.Relation.Basic] : %s", instance)
                     return instance
+
+
+            current = self.concrete.get(rel.target, [])[:]
+            match inj.apply_from_spec(control_data):
+                case dict() as x if not bool(x):
+                    injection = True
+                case x:
+                    injection = x
+            instance  = self.instantiate_spec(rel.target, extra=injection)
+            if instance and not inj.validate(control_obj, self.specs[instance], only_spec=True):
+                raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
+            assert(instance is not None)
+            assert(instance not in current)
+            self._register_late_injection(instance, inj, control) # type: ignore[attr-defined]
+            logging.debug("[Instance.Relation.Inject] : %s", instance)
+            return instance
+
 
     def make_task(self, name:Concrete[TaskName_p], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName_p]]=None) -> Concrete[TaskName_p]:
         """ Build a Concrete Spec's Task object

@@ -19,34 +19,23 @@ from ._base import DootError, BackendError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
-    from doot.workflow._interface import Task_i
+    from doot.workflow._interface import Task_i, TaskName_p, Artifact_i
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 class TaskError(BackendError):
     """ An Error indicating a specific task failed  """
+    task : Maybe
+
     general_msg = "Doot Task Error:"
 
     def __init__(self, msg:str, *args:Any, task:Maybe[Task_i]=None):
         super().__init__(msg, *args)
         self.task = task
 
-    @property
-    def task_name(self):
-        if not self.task:
-            return ""
-        return self.task.name
-
-    @property
-    def task_source(self):
-        if not self.task:
-            return ""
-        return self.task.source
-
-class TaskFailed(TaskError):
+class TaskFailed(TaskError):  # noqa: N818
     """ A Task attempted to run, but failed in some way. """
     general_msg = "Doot Task Failure:"
     pass

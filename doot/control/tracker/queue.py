@@ -102,7 +102,7 @@ class TrackQueue:
         return self._queue.peek(default=None) is not None
 
     ##--| public
-    def queue_entry(self, target:str|Concrete[TaskName_p|TaskSpec_i]|Artifact_i, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: PLR0912
+    def queue_entry(self, target:str|TaskName_p|Artifact_i, *, from_user:bool=False, status:Maybe[Status]=None) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: PLR0912
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the _tracker._network
@@ -118,25 +118,21 @@ class TrackQueue:
         target_priority  : int  = self._tracker._declare_priority
         ##--|
         match target:
-            case TaskArtifact() as art:
+            case Artifact_i() as art:
                 assert(target in self._tracker.artifacts)
                 self._tracker._connect(art, None if from_user else False) # type: ignore[arg-type]
                 self.active_set.add(art) # type: ignore[arg-type]
-                self._queue.add(art, priority=art.priority)
+                self._queue.add(art, priority=target_priority)
                 if status:
                     assert(isinstance(status, TaskStatus_e))
                     self._tracker.set_status(art, status)
 
                 logging.debug("[Queue] %s : %s", self._tracker.get_status(art), art)
                 return cast("Artifact_i", art)
-            case TaskSpec_i() as spec:
-                self._tracker.register(spec) # type: ignore[attr-defined]
-                if TaskName.Marks.partial in spec.name: # type: ignore[attr-defined]
-                    abs_name = cast("TaskName_p", spec.name.pop(top=False))
-                else:
-                    abs_name = spec.name
             case TaskName_p() | str():
                 abs_name = self._queue_prep_name(target)
+            case x:
+                raise TypeError(type(x))
 
         match abs_name:
             case None:

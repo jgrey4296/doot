@@ -69,6 +69,26 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+class DelayedSpec:
+    __slots__ = ("applied", "base", "inject", "overrides", "target")
+
+    base    : TaskName_p
+    target  : TaskName_p
+    # For from_spec injection
+    inject   : Maybe[InjectSpec_i]
+    # injection values applied from the creator
+    applied  : Maybe[dict]
+    # Raw data applied over source
+    overrides  : dict
+
+    def __init__(self, **kwargs:Any) -> None:
+        self.base       = kwargs.pop("base")
+        self.target     = kwargs.pop("target")
+        self.overrides  = kwargs.pop("overrides")
+        self.inject     = kwargs.pop("inject")
+        self.applied    = kwargs.pop("applied")
+        assert(not bool(kwargs))
+##--|
 class TaskFactory_p(Protocol):
 
     def __init__(self, *, spec_ctor:Maybe[type]=None, task_ctor:Maybe[type]=None, job_ctor:Maybe[type]=None): ...

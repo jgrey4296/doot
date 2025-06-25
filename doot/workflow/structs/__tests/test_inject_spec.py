@@ -77,6 +77,16 @@ class TestInjectSpec:
             case x:
                 assert(False), x
 
+
+    def test_dump_repeat(self):
+        obj = InjectSpec()
+        dumped = obj.model_dump()
+        match InjectSpec.build(dumped):
+            case InjectSpec():
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_build_none(self):
         match InjectSpec.build({}):
             case None:

@@ -264,7 +264,7 @@ class InjectSpec(BaseModel):
             "literal"         : literals,
         }
 
-    def apply_from_spec(self, control:dict|TaskSpec_i|Task_i) -> dict:
+    def apply_from_spec(self, control:dict|TaskSpec_i|Task_p) -> dict:
         """ Apply values from the control's spec values.
 
         Fully expands keys in 'from_spec',

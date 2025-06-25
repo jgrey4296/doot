@@ -45,7 +45,8 @@ from .registry import TrackRegistry
 # ##-- end 1st party imports
 
 from doot.util.factory import TaskFactory, SubTaskFactory
-from doot.workflow._interface import RelationSpec_i, Task_i
+from doot.workflow._interface import RelationSpec_i, Task_i, TaskSpec_i, Artifact_i, TaskName_p, InjectSpec_i
+from doot.util._interface import DelayedSpec
 from . import _interface as API # noqa: N812
 
 # ##-- types
@@ -69,6 +70,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from networkx import DiGraph
 
+    from doot.util._interface import TaskFactory_p, SubTaskFactory_p
     type Abstract[T] = T
     type Concrete[T] = T
 
@@ -91,8 +93,8 @@ class Tracker_abs:
     _network           : the links between specs in the registry
     _queue             : the logic for determining what task to run next
     """
-    _factory           : API.TaskFactory_p
-    _subfactory        : API.SubTaskFactory_p
+    _factory           : TaskFactory_p
+    _subfactory        : SubTaskFactory_p
     _registry          : API.Registry_p
     _network           : API.Network_p
     _queue             : API.Queue_p
@@ -124,16 +126,17 @@ class Tracker_abs:
         return self._registry.specs # type: ignore[attr-defined]
 
     @property
-    def artifacts(self) -> dict[TaskArtifact, set[Abstract[TaskName]]]:
+    def artifacts(self) -> dict[Artifact_i, set[Abstract[TaskName_p]]]:
         return self._registry.artifacts # type: ignore[attr-defined]
 
     @property
-    def tasks(self) -> dict[Concrete[TaskName], Task_i]:
+    def tasks(self) -> dict[Concrete[TaskName_p], Task_i]:
         return self._registry.tasks # type: ignore[attr-defined]
 
     @property
     def concrete(self) -> Mapping:
         return self._registry.concrete # type: ignore[attr-defined]
+
     @property
     def artifact_builders(self) -> Mapping:
         return self._registry.artifact_builders # type: ignore[attr-defined]
@@ -159,40 +162,37 @@ class Tracker_abs:
     def __bool__(self) -> bool:
         return bool(self._queue)
 
-    ##--| internal
-
-    def _instantiate(self, target:TaskName|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName]:
-        match target:
-            case TaskName() as x if task:
-                return self._registry.make_task(x, *args, **kwargs) # type: ignore[return-value]
-            case TaskName() as x:
-                return self._registry.instantiate_spec(x, *args, **kwargs)
-            case RelationSpec_i() as x:
-                return self._registry.instantiate_relation(target, *args, **kwargs)
-            case x:
-                raise TypeError(type(x))
-
-    def _connect(self, left:Concrete[TaskName]|TaskArtifact, right:Maybe[Literal[False]|Concrete[TaskName]|TaskArtifact]=None, **kwargs:Any) -> None:
-        self._network.connect(left, right, **kwargs)
-
     ##--| public
 
-    def register(self, *specs:TaskSpec|TaskArtifact)-> None:
+    def register(self, *specs:TaskSpec_i|Artifact_i|DelayedSpec)-> None:
         for x in specs:
             match x:
-                case TaskSpec():
+                case DelayedSpec():
+                    actual : TaskSpec_i = self._upgrade_delayed_to_actual(x)
+                    self._registry.register_spec(actual)
+                case TaskSpec_i():
                     self._registry.register_spec(x)
-                case TaskArtifact():
+                case Artifact_i():
                     self._registry._register_artifact(x) # type: ignore[attr-defined]
                 case x:
                     raise TypeError(type(x))
 
-
-    def queue(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName|TaskArtifact]]:  # noqa: ARG002
+    def queue(self, name:str|TaskName_p|TaskSpec_i|Artifact_i|DelayedSpec, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: ARG002
+        match name:
+            case TaskName_p() | Artifact_i():
+                pass
+            case DelayedSpec():
+                self.register(name)
+                name = name.target
+            case TaskSpec_i():
+                self.register(name)
+                name = name.name
+            case x:
+                raise TypeError(type(x))
         queued = self._queue.queue_entry(name, from_user=from_user, status=status)
         return queued
 
-    def build(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName]|TaskArtifact]]=None) -> None:
+    def build(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|Artifact_i]]=None) -> None:
         self._network.build_network(sources=sources)
 
     def validate(self) -> None:
@@ -204,6 +204,43 @@ class Tracker_abs:
     def clear(self) -> None:
         self._queue.clear_queue()
 
+    ##--| internal
+
+    def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
+        match target:
+            case TaskName_p() as x if task:
+                return self._registry.make_task(x, *args, **kwargs) # type: ignore[return-value]
+            case TaskName_p() as x:
+                return self._registry.instantiate_spec(x, *args, **kwargs)
+            case RelationSpec_i() as x:
+                return self._registry.instantiate_relation(target, *args, **kwargs)
+            case x:
+                raise TypeError(type(x))
+
+    def _connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:
+        self._network.connect(left, right, **kwargs)
+
+    def _upgrade_delayed_to_actual(self, spec:DelayedSpec) -> TaskSpec_i:
+        result  : TaskSpec_i
+        base    : TaskSpec_i  = self.specs[spec.base]
+        data = {}
+        match spec.inject:
+            case None:
+                pass
+            case InjectSpec_i() as inj:
+                # apply_from_spec
+                data |= inj.apply_from_spec(base)
+
+        match spec.applied:
+            case None:
+                pass
+            case dict() as applied:
+                data |= applied
+
+        data |= spec.overrides
+        data['name'] = spec.target
+        result = self._factory.under(base, data)
+        return result
 ##--|
 
 @Proto(API.TaskTracker_p)
@@ -227,7 +264,7 @@ class Tracker(Tracker_abs):
 
         """
         x       : Any
-        focus   : str|TaskName|TaskArtifact
+        focus   : str|TaskName_p|Artifact_i
         count   : int
         result  : Maybe[Task_p|TaskArtifact]
         status  : TaskStatus_e
