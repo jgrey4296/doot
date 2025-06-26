@@ -121,6 +121,8 @@ class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
     def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult:  # noqa: A002, ARG002
         """ Remove 'tasks' as a prefix, and strip quotes  """
         match input:
+            case Strang():
+                cleaned = str(input).removeprefix(TASKS_PREFIX).replace('"', "")
             case str():
                 cleaned = input.removeprefix(TASKS_PREFIX).replace('"', "")
             case x if not strict:

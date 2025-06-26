@@ -95,6 +95,15 @@ class TestTaskName_UUID:
         assert(inst1 != inst2)
         assert(inst1.uuid() != inst2.uuid())
 
+
+    def test_uuid_is_preserved(self):
+        obj = TaskName("basic::a.b.c")
+        inst1 = obj.to_uniq()
+        inst2 = TaskName(inst1)
+        assert(inst1 is not inst2)
+        assert(inst1.uuid() == inst2.uuid())
+        assert(inst1 == inst2)
+
 class TestTaskName_Marks:
 
     def test_sanity(self):
