@@ -465,11 +465,11 @@ class Tracker(Tracker_abs):
         - cli params
         - instantiator state injection
         """
-        late_inject  : Maybe[tuple[InjectSpec_i, Task_p]]
         task : Task_p
         ##--|
         task        = self.tasks[name]
-        match parent:                                          # Get parent data (for cleanup tasks
+        ##--| Get parent data (for cleanup tasks
+        match parent:
             case None:
                 pass
             case TaskName_p() as x if x in self.tasks:
@@ -494,15 +494,15 @@ class Tracker(Tracker_abs):
         ##--| apply late injections
         match cast("API.Registry_d", self._registry).late_injections.get(name, None):
             case None:
-                late_inject = None
+                pass
             case _, TaskName_p() as x if x not in self.tasks:
                 raise ValueError("Late Injection source is not a task", str(x))
             case InjectSpec_i() as inj, TaskName_p() as c_name:
                 control = self.tasks[c_name]
-                task.state |= inj.apply_from_spec(control.spec)
                 task.state |= inj.apply_from_state(control)
                 if not inj.validate(cast("Task_i", control), task):
                     raise doot.errors.TrackingError("Late Injection Failed")
+                # TODO remvoe  the injection from the registry
 
         ##--| validate
         match task.spec.extra.on_fail([])[MUST_INJECT_K](): # type: ignore[attr-defined]

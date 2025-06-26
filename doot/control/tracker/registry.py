@@ -291,6 +291,7 @@ class _Instantiation_m(API.Registry_d):
                     logging.debug("[Instance.Relation.Basic] : %s", instance)
                     return instance
 
+            # Early injections applied here, so constrained relations can use them
             match inj.apply_from_spec(control_data):
                 case dict() as x if not bool(x):
                     instance  = self._tracker._instantiate(rel.target, force=True)
