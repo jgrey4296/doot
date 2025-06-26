@@ -80,46 +80,7 @@ logging.disabled = False
 
 ##--|
 
-class _Registry_d:
-    """
-    Data used in the registry
-
-    Invariants:
-    - every key in tasks has a matching key in specs.
-    - every concrete spec is in concrete under its abstract name
-    - every implicit task that hasn't been registered is in implicit, mapped to its declaring spec
-    """
-    _tracker            : API.TaskTracker_i
-
-    specs               : dict[TaskName_p, TaskSpec_i]
-    concrete            : dict[Abstract[TaskName_p], list[Concrete[TaskName_p]]]
-    implicit            : dict[Abstract[TaskName_p], TaskName_p]
-    tasks               : dict[Concrete[TaskName_p], Task_p]
-    artifacts           : dict[TaskArtifact, set[Abstract[TaskName_p]]]
-    # Artifact sets
-    abstract_artifacts  : set[Abstract[TaskArtifact]]
-    concrete_artifacts  : set[Concrete[TaskArtifact]]
-    # indirect blocking requirements:
-    blockers            : dict[Concrete[TaskName_p|TaskArtifact], list[RelationSpec_i]]
-    late_injections     : dict[Concrete[TaskName_p], tuple[InjectSpec_i, TaskName_p]]
-    artifact_builders   : dict[TaskArtifact, list[TaskName_p]]
-    artifact_consumers  : dict[TaskArtifact, list[TaskName_p]]
-
-    def __init__(self, *, tracker:Maybe[API.TaskTracker_p]=None) -> None:
-        self._tracker            = tracker # type: ignore[assignment]
-        self.specs               = {}
-        self.concrete            = defaultdict(list)
-        self.implicit            = {}
-        self.tasks               = {}
-        self.artifacts           = defaultdict(set)
-        self.abstract_artifacts  = set()
-        self.concrete_artifacts  = set()
-        self.artifact_builders   = defaultdict(list)
-        self.artifact_consumers  = defaultdict(list)
-        self.blockers            = defaultdict(list)
-        self.late_injections     = {}
-
-class _Registration_m(_Registry_d):
+class _Registration_m(API.Registry_d):
 
     def register_spec(self, *specs:TaskSpec_i) -> None:
         """ Register task specs, abstract or concrete
@@ -236,47 +197,39 @@ class _Registration_m(_Registry_d):
         using the state injection's from its parent
         """
         logging.info("[Injection] Registering: %s <- %s", task, parent)
-        if not bool(inject.from_state):
-            return
         assert(task not in self.late_injections), (task, parent)
         assert(parent in self.specs)
         self.late_injections[task] = (inject, parent)
 
-class _Instantiation_m(_Registry_d):
+class _Instantiation_m(API.Registry_d):
 
-    def instantiate_spec(self, name:Abstract[TaskName_p], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]:
+    def instantiate_spec(self, name:Abstract[TaskName_p], *, force:Maybe[bool]=None, extra:Maybe[dict|ChainGuard]=None) -> Maybe[Concrete[TaskName_p]]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
 
-        If extra=True, forces a new instance to be made
-        If extra=False, blocks new instances from being made
+        If force=True, forces a new instance to be made
+        if force=False, blocks new instances from being made
         """
-        match name:
-            case _ if extra is True:
-                name = name.de_uniq()
-            case x if extra is False and x.uuid() and x in self.specs:
+        match force:
+            case None|False if name.uuid() and name in self.specs: # Re-use existing instance
+                if bool(extra):
+                    raise ValueError("tried to instance a spec, while disallowing new specs, but providing extra values")
                 return name
-            case x if extra is False:
-                return None
-            case TaskName_p() as x if not x.uuid():
+            case _:
                 pass
-            case TaskName_p() as x if x in self.specs:
-                logging.info("[Instance.Uniq] %s", x)
-                return x
-            case TaskName_p() as x:
-                raise ValueError("Tried to instantiate a unique taskname", name)
 
-        match self.concrete.get(name, []):
-            case []:
+        assert(not name.uuid())
+        match self.concrete.get(name, []), force:
+            case _, True: # disallow reuse
                 pass
-            case _ if extra:
+            case _, None if extra: # extra data provided
                 pass
-            case [x, *xs]:
+            case [x, *xs], None|False: # reuse
                 logging.info("[Instance.Concrete] : %s", x)
                 return x
 
-        spec          = self.specs[name]
-        instance_spec = self._tracker._factory.instantiate(spec, extra=extra)
+        spec           = self.specs[name]
+        instance_spec  = self._tracker._factory.instantiate(spec, extra=extra)
         assert(instance_spec is not None)
         assert(instance_spec.name.uuid())
         logging.debug("[Instance.new] %s into %s", name, instance_spec.name)
@@ -303,7 +256,7 @@ class _Instantiation_m(_Registry_d):
         ##--| guards
         if control not in self.specs:
             raise doot.errors.TrackingError("Unknown control used in relation", control, rel)
-        if rel.target not in self.specs and rel.target not in self.concrete:
+        if rel.target not in self.specs and rel.target[:,:] not in self.concrete:
             raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
 
         assert(isinstance(rel.target, TaskName_p))
@@ -321,7 +274,7 @@ class _Instantiation_m(_Registry_d):
             case x:
                 raise TypeError(type(x))
         ##--| reuse
-        potentials  = self.concrete.get(rel.target, [])
+        potentials  = self.concrete.get(rel.target[:,:], [])[:]
         for existing in potentials:
             if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]): # type: ignore[arg-type]
                 continue
@@ -333,36 +286,34 @@ class _Instantiation_m(_Registry_d):
                 case InjectSpec_i() as inj:
                     pass
                 case _:
-                    instance = self.instantiate_spec(rel.target, extra=True)
+                    instance = self._tracker._instantiate(rel.target, force=True)
                     assert(instance is not None)
                     logging.debug("[Instance.Relation.Basic] : %s", instance)
                     return instance
 
-
-            current = self.concrete.get(rel.target, [])[:]
             match inj.apply_from_spec(control_data):
                 case dict() as x if not bool(x):
-                    injection = True
+                    instance  = self._tracker._instantiate(rel.target, force=True)
                 case x:
-                    injection = x
-            instance  = self.instantiate_spec(rel.target, extra=injection)
+                    instance  = self._tracker._instantiate(rel.target, extra=x)
+
+            assert(instance is not None)
+            assert(instance not in potentials), instance
             if instance and not inj.validate(control_obj, self.specs[instance], only_spec=True):
                 raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
-            assert(instance is not None)
-            assert(instance not in current)
+
             self._register_late_injection(instance, inj, control) # type: ignore[attr-defined]
             logging.debug("[Instance.Relation.Inject] : %s", instance)
             return instance
 
-
-    def make_task(self, name:Concrete[TaskName_p], *, task_obj:Maybe[Task_i]=None, parent:Maybe[Concrete[TaskName_p]]=None) -> Concrete[TaskName_p]:
-        """ Build a Concrete Spec's Task object
+    def make_task(self, name:Concrete[TaskName_p], *, task_obj:Maybe[Task_i]=None) -> Concrete[TaskName_p]:
+        """ Build a Concrete Spec's Task object, then register it
           if a task_obj is provided, store that instead
 
           return the name of the task
           """
         task : Task_i
-
+        ##--| guards
         match name, task_obj:
             case TaskName_p() as x, _ if not x.uuid():
                 raise doot.errors.TrackingError("Tried to build a task using a non-concrete spec", name)
@@ -380,27 +331,17 @@ class _Instantiation_m(_Registry_d):
             case name, _:
                 raise doot.errors.TrackingError("Tried to make a task from a not-task name", name, task_obj)
 
+        ##--| build
         logging.debug("[Instance] Task Object: %s", name)
         spec = self.specs[name]
-        match self.late_injections.get(name, None):
-            case None:
-                late_inject = None
-            case _, TaskName_p() as x if x not in self.tasks:
-                raise ValueError("Late Injection source is not a task", str(x))
-            case InjectSpec_i() as inj, TaskName_p() as control:
-                late_inject = (inj, self.tasks[control])
-
-        match parent:
-            case None:
-                task = self._tracker._factory.make(spec, ensure=Task_i, inject=late_inject)
-            case TaskName_p() as x:
-                task = self._tracker._factory.make(spec, ensure=Task_i, inject=late_inject, parent=self.tasks.get(x, None))
-
+        task = self._tracker._factory.make(spec, ensure=Task_i)
         # Store it
         self.tasks[name] = task
+        assert(name in self.tasks)
+        assert(name.uuid())
         return name
 
-class _Verification_m(_Registry_d):
+class _Verification_m(API.Registry_d):
 
     def verify(self, *, strict:bool=True) -> bool:
         failures = []
@@ -429,7 +370,7 @@ class _Verification_m(_Registry_d):
 ##--|
 
 @Mixin(_Registration_m, _Instantiation_m, _Verification_m)
-class TrackRegistry(_Registry_d):
+class TrackRegistry(API.Registry_d):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def get_status(self, task:Concrete[TaskName_p|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:

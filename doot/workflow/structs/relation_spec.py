@@ -245,7 +245,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         if not (target.name.uuid() and control.name.uuid()):
             # abstract specs can't satisfy a relation
             return False
-        if not (self.target < target.name):
+        if not (self.target <= target.name):
             # targets that are not extensions of the target don't satisfy
             return False
 

@@ -75,18 +75,25 @@ class DelayedSpec:
     base    : TaskName_p
     target  : TaskName_p
     # For from_spec injection
-    inject   : Maybe[InjectSpec_i]
+    inject   : list[InjectSpec_i]
     # injection values applied from the creator
-    applied  : Maybe[dict]
+    applied  : dict
     # Raw data applied over source
     overrides  : dict
 
     def __init__(self, **kwargs:Any) -> None:
         self.base       = kwargs.pop("base")
         self.target     = kwargs.pop("target")
-        self.inject     = kwargs.pop("inject", None)
-        self.applied    = kwargs.pop("applied", None)
+        self.inject     = []
+        self.applied    = kwargs.pop("applied", {})
         self.overrides  = kwargs.pop("overrides")
+        match kwargs.pop("inject", []):
+            case None:
+                pass
+            case [*xs]:
+                self.inject += xs
+            case x:
+                self.inject.append(x)
         assert(not bool(kwargs))
 ##--|
 class TaskFactory_p(Protocol):

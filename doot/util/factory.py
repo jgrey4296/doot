@@ -104,7 +104,7 @@ class TaskFactory:
 
     build        : data          -> spec
     delay        : data          -> delayed -> spec
-    instantiate  : spec          -> spec[uuid]
+    instantiate  : spec          -> spec(name=name[uuid])
     reify        : spec,partial  -> spec
     over         : orig,plus     -> spec(plus<orig, name..<+>[uuid])
     under        : orig,plus     -> spec(orig<plus, name..<+>[uuid])
@@ -180,7 +180,7 @@ class TaskFactory:
 
         return result
 
-    def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping|bool]=None) -> TaskSpec_i:
+    def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping]=None) -> TaskSpec_i:
         """
         Return this spec, copied with a uniq name
         """
@@ -190,27 +190,27 @@ class TaskFactory:
         instance      = obj.model_copy()
         instance.generated_names.clear()
         match extra:
-            case None | True:
+            case None:
                 result = instance
             case dict():
                 result = self.merge(bot=instance, top=extra)
             case x:
                 raise TypeError(type(x))
 
-        result.name = result.name.to_uniq()
+        result.name = self._prep_name(obj.name, suffix=False).to_uniq()
         assert(result.name.uuid())
         return result
 
-    def merge(self, top:dict|TaskSpec_i, bot:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i:  # noqa: PLR0912
+    def merge(self, top:dict|TaskSpec_i, bot:dict|TaskSpec_i, *, suffix:Maybe[str|Literal[False]]=None, name:Maybe[TaskName_p]=None) -> TaskSpec_i:
         """ bot + top -> TaskSpec """
+        result     : dict
+        base_name  : TaskName_p
+        top_data   : dict
+        bot_data   : dict
+        ##--|
         if bot is top:
             raise doot.errors.TrackingError("Tried to apply a spec over itself", top, bot)
 
-        result     : dict
-        base_name  : TaskName_p
-        name       : TaskName_p
-        top_data   : dict
-        bot_data   : dict
         ##--| prepare
         match bot:
             case dict():
@@ -223,41 +223,25 @@ class TaskFactory:
             case TaskSpec_i():
                 top_data = top.model_dump()
         ##--|
-        match bot_data.get('name', None), top_data.get('name', None):
-            case TaskName_p() as x, TaskName_p() as y if not x < y:
-                raise doot.errors.TrackingError("Tried to apply an unrelated spec over another", x, y)
-            case TaskName_p() as x, TaskName_p() as y:
-                base_name = y
-            case TaskName_p() as x, None:
-                base_name = x
-            case None, TaskName_p() as y:
-                base_name = y
-            case z:
-                raise ValueError(z)
-        match suffix:
-            case None:
-                name       = base_name.push(TaskName.Marks.customised)  # type: ignore[assignment]
-            case False:
-                name       = cast("TaskName_p", TaskName(base_name[:]))
-            case str():
-                name       = base_name.push(suffix)  # type: ignore[assignment]
-        ##--| merge
-        result = self._specialize_merge(bot=bot_data, top=top_data)
-        result['name'] = name
+        result          = self._specialize_merge(bot=bot_data, top=top_data)
+        match name:
+            case TaskName_p():
+                result['name']  = name
+            case _:
+                base_name       = top_data.get('name', None) or bot_data.get('name')
+                result['name']  = self._prep_name(base_name, suffix=suffix)
+        ##--|
         return self.build(result)
 
     ##--| Task construction
 
-    def make(self, obj:TaskSpec_i, **kwargs:Any) -> Task_p:  # noqa: PLR0912
+    def make(self, obj:TaskSpec_i, ensure:Any=None) -> Task_p:
         """ Create actual task instance
 
         if no spec_ctor has been specified, uses the default spec_ctor for job/task
         """
-        ensure = kwargs.pop("ensure", None)
-        inject = kwargs.pop("inject", None)
-        parent = kwargs.pop("parent", None)
-        # Late bind the spec_ctor if it is not explicit
-        match obj.ctor:
+        task : Task_p
+        match obj.ctor: # Get the ctor
             case None if TaskMeta_e.JOB in obj.meta:
                 ctor = self.job_ctor
             case None:
@@ -273,39 +257,6 @@ class TaskFactory:
 
         assert(ctor is not None)
         task = ctor(obj)
-        match parent: # Apply parent state (eg: for cleanup tasks)
-            case None:
-                pass
-            case Task_p():
-                task.state.update(parent.state)
-
-        match inject: # Apply state injections
-            case None:
-                pass
-            case InjectSpec() as inj, Task_p() as control:
-                task.state |= inj.apply_from_state(control)
-                if not inj.validate(cast("Task_i", control), task):
-                    raise doot.errors.TrackingError("Late Injection Failed")
-
-        match obj.param_specs(): # Apply CLI params
-            case []:
-                pass
-            case [*xs]:
-                # Apply CLI passed params, but only as the default
-                # So if override values have been injected, they are preferred
-                target     = obj.name.pop(top=True)[:,:]
-                task_args : dict = doot.args.on_fail({}).sub[target]()
-                for cli in xs:
-                    task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
-
-                if API.CLI_K in task.state:
-                    del task.state[API.CLI_K]
-
-        match obj.extra.on_fail([])[API.MUST_INJECT_K](): # Verify all required keys have values
-            case []:
-                pass
-            case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
-                raise doot.errors.TrackingError("Task did not receive required injections", obj.name, xs, task.state.keys())
 
         return task
 
@@ -362,13 +313,25 @@ class TaskFactory:
 
         # Internal is only for initial specs, to control listing
         specialized[API.META_K] = set()
-        if 'meta' in bot:
-            specialized[API.META_K].update(bot['meta'])
-        if 'meta' in top:
-            specialized[API.META_K].update(top['meta'])
+        specialized[API.META_K].update(bot.get('meta', set()))
+        specialized[API.META_K].update(top.get('meta', set()))
         specialized[API.META_K].difference_update({TaskMeta_e.INTERNAL})
 
         return specialized
+
+    def _prep_name(self, base:TaskName_p, *, suffix:Maybe[str|Literal[False]]=None) -> TaskName_p:
+        result : TaskName_p
+        match suffix:
+            case None:
+                result = base.push(TaskName.Marks.customised)  # type: ignore[assignment]
+            case False:
+                result = cast("TaskName_p", base)
+            case str():
+                result = base.push(suffix)  # type: ignore[assignment]
+            case x:
+                raise TypeError(type(x))
+        ##--|
+        return result.de_uniq()
 
 @Proto(SubTaskFactory_p)
 class SubTaskFactory:

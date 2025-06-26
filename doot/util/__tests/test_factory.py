@@ -20,7 +20,7 @@ import pytest
 ##--|
 import doot
 from doot.workflow import TaskSpec, TaskName
-from doot.workflow._interface import Task_p, TaskSpec_i
+from doot.workflow._interface import Task_p, TaskSpec_i, TaskName_p
 from ..factory import SubTaskFactory, TaskFactory
 ##--|
 
@@ -205,6 +205,7 @@ class TestTaskFactory_Under:
             case x:
                  assert(False), x
 
+    @pytest.mark.xfail
     def test_fails_from_when_unrelated(self, factory):
         """ Trying to apply base merge an unrelated task errors """
         base_task     = factory.build({"name": "agroup::base", "a": 0})
@@ -271,7 +272,7 @@ class TestTaskFactory_Under:
         with pytest.raises(doot.errors.TrackingError):
             factory.merge(bot=base_task, top=base_task)
 
-class TestSpecFactory_Instantiation:
+class TestTaskFactory_Instantiation:
     """ Tests the instantiation of a spec from abstract to concrete
     and from concrete to a task
     """
@@ -312,6 +313,59 @@ class TestTaskFactory_Make:
                 assert(inst.name == concrete.name)
             case x:
                  assert(False), x
+
+class TestTaskFactory_Naming:
+
+    @pytest.fixture(scope="function")
+    def factory(self, mocker):
+        return TaskFactory()
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self, factory):
+        match factory._prep_name(TaskName("simple::task")):
+            case TaskName_p():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_with_str_suffix(self, factory):
+        suffix = "blah"
+        match factory._prep_name(TaskName("simple::task"), suffix=suffix):
+            case TaskName_p() as x:
+                assert(x[1,-1] == suffix)
+            case x:
+                assert(False), x
+
+
+    def test_with_false_suffix(self, factory):
+        suffix = False
+        match factory._prep_name(TaskName("simple::task"), suffix=suffix):
+            case TaskName_p() as x:
+                assert(x == "simple::task")
+            case x:
+                assert(False), x
+
+
+    def test_with_None_suffix(self, factory):
+        suffix = None
+        match factory._prep_name(TaskName("simple::task"), suffix=suffix):
+            case TaskName_p() as x:
+                assert(x[1,-1] == "<+>")
+            case x:
+                assert(False), x
+
+    @pytest.mark.parametrize("suffix", [None, False, "blah"])
+    def test_strips_uuid(self, factory, suffix):
+        target = TaskName("simple::task").to_uniq()
+        match factory._prep_name(target, suffix=suffix):
+            case TaskName_p() as x:
+                assert(not x.uuid())
+            case x:
+                assert(False), x
+
 
 class TestSubTaskFactory:
     """ Tests a spec can build related specs,

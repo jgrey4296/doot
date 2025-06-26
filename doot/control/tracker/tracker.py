@@ -36,18 +36,24 @@ from jgdv import Proto
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow._interface import ArtifactStatus_e, TaskStatus_e
-from doot.workflow import ActionSpec, TaskArtifact, TaskName, TaskSpec, DootTask, RelationSpec, InjectSpec
+from doot.util._interface import DelayedSpec
+from doot.util.factory import SubTaskFactory, TaskFactory
+from doot.workflow import (ActionSpec, DootTask, InjectSpec, RelationSpec,
+                           TaskArtifact, TaskName, TaskSpec)
+from doot.workflow._interface import (CLI_K, Artifact_i, ArtifactStatus_e,
+                                      InjectSpec_i, RelationSpec_i, Task_i,
+                                      TaskName_p, TaskSpec_i, TaskStatus_e,
+                                      MUST_INJECT_K)
+
+# ##-- end 1st party imports
+
+# ##-| Local
+from . import _interface as API # noqa: N812
 from .network import TrackNetwork
 from .queue import TrackQueue
 from .registry import TrackRegistry
 
-# ##-- end 1st party imports
-
-from doot.util.factory import TaskFactory, SubTaskFactory
-from doot.workflow._interface import RelationSpec_i, Task_i, TaskSpec_i, Artifact_i, TaskName_p, InjectSpec_i
-from doot.util._interface import DelayedSpec
-from . import _interface as API # noqa: N812
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -225,6 +231,10 @@ class Tracker_abs:
         self._network.connect(left, right, **kwargs)
 
     def _upgrade_delayed_to_actual(self, spec:DelayedSpec) -> TaskSpec_i:
+        """
+        can't be in taskfactory, as it requires the registered specs
+        """
+        x       : Any
         result  : TaskSpec_i
         base    : TaskSpec_i
         data    : dict  = {}
@@ -233,18 +243,23 @@ class Tracker_abs:
                 base = x
             case None:
                 raise ValueError("The Base for a delayed spec was not found", spec.base)
-        match spec.inject:
-            case None:
-                pass
-            case InjectSpec_i() as inj:
-                # apply_from_spec
-                data |= inj.apply_from_spec(base)
 
         match spec.applied:
             case None:
                 pass
             case dict() as applied:
                 data |= applied
+
+        match spec.inject:
+            case None:
+                pass
+            case [*xs]:
+                assert(all(isinstance(x, InjectSpec_i) for x in xs)), xs
+                for inj in xs:
+                    # apply_from_spec
+                    data |= inj.apply_from_spec(base)
+            case x:
+                raise TypeError(type(x))
 
         data |= spec.overrides
         data['name'] = spec.target
@@ -256,6 +271,7 @@ class Tracker_abs:
         converts spec(name=group::task.a.b..$partial$, sources[*_, base], data)
         into spec(name=group::a.b, data)
         using base
+        can't be in the taskfactory, as it requires registered specs
 
         """
         x       : Any
@@ -358,7 +374,7 @@ class Tracker(Tracker_abs):
                             case TaskName() as x if x.is_cleanup():
                                 # make the cleanup task early, to apply shared state
                                 assert(isinstance(focus, TaskName))
-                                self._registry.make_task(x, parent=focus)
+                                self._instantiate(x, parent=focus, task=True)
                             case _:
                                 pass
                     else:
@@ -417,7 +433,7 @@ class Tracker(Tracker_abs):
                     self.queue(focus, status=TaskStatus_e.HALTED)
                 case TaskStatus_e.DECLARED:
                     assert(isinstance(focus, TaskName))
-                    self._registry.make_task(focus)
+                    self._instantiate(focus, task=True)
                     self.queue(focus)
                 case TaskStatus_e.NAMED:
                     logging.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
@@ -427,3 +443,70 @@ class Tracker(Tracker_abs):
         else:
             logging.info("[Next.For] <- %s", result)
             return result
+
+    @override
+    def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
+        """ extends base instantiation to add late injection for tasks """
+        parent : TaskName_p
+        result : Maybe[TaskName_p]
+        ##--|
+        parent  = kwargs.pop("parent", None)
+        result  = super()._instantiate(target, *args, task=task, **kwargs)
+        if task and result:
+            self._late_inject(result, parent=parent)
+        return result
+
+    ##--| internal
+
+    def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:
+        """ After a task is created, values can be injected into it.
+        these include, in order:
+        - parent state,
+        - cli params
+        - instantiator state injection
+        """
+        late_inject  : Maybe[tuple[InjectSpec_i, Task_p]]
+        task : Task_p
+        ##--|
+        task        = self.tasks[name]
+        match parent:                                          # Get parent data (for cleanup tasks
+            case None:
+                pass
+            case TaskName_p() as x if x in self.tasks:
+                task.state.update(self.tasks[x].state)
+
+        ##--| apply CLI params
+        assert(hasattr(task, "param_specs"))
+        match task.param_specs():
+            case []:
+                pass
+            case [*xs]:
+                # Apply CLI passed params, but only as the default
+                # So if override values have been injected, they are preferred
+                target     = task.name.pop(top=True)[:,:]
+                task_args : dict = doot.args.on_fail({}).sub[target]()
+                for cli in xs:
+                    task.state.setdefault(cli.name, task_args.get(cli.name, cli.default))
+
+                if CLI_K in task.state:
+                    del task.state[CLI_K]
+
+        ##--| apply late injections
+        match cast("API.Registry_d", self._registry).late_injections.get(name, None):
+            case None:
+                late_inject = None
+            case _, TaskName_p() as x if x not in self.tasks:
+                raise ValueError("Late Injection source is not a task", str(x))
+            case InjectSpec_i() as inj, TaskName_p() as c_name:
+                control = self.tasks[c_name]
+                task.state |= inj.apply_from_spec(control.spec)
+                task.state |= inj.apply_from_state(control)
+                if not inj.validate(cast("Task_i", control), task):
+                    raise doot.errors.TrackingError("Late Injection Failed")
+
+        ##--| validate
+        match task.spec.extra.on_fail([])[MUST_INJECT_K](): # type: ignore[attr-defined]
+            case []:
+                pass
+            case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
+                raise doot.errors.TrackingError("Task did not receive required injections", task.name, xs, task.state.keys())

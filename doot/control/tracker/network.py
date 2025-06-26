@@ -458,12 +458,10 @@ class TrackNetwork:
     _tracker           : API.TaskTracker_p
     _graph             : nx.DiGraph[Concrete[TaskName_p]|TaskArtifact]
 
-    def __init__(self, *, tracker:Maybe[API.TaskTracker_p]=None) -> None:
+    def __init__(self, *, tracker:API.TaskTracker_p) -> None:
         match tracker:
             case API.TaskTracker_p():
                 self._tracker = tracker
-            case None:
-                self._tracker = None # type: ignore[assignment]
             case x:
                 raise TypeError(type(x))
         self._graph            = nx.DiGraph()

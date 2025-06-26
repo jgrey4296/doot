@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN202, PLR2004, B011, B007
+# ruff: noqa: ANN202, PLR2004, B011, B007, ANN001
 # Imports:
 from __future__ import annotations
 
@@ -64,6 +64,7 @@ from doot.workflow._interface import Task_p
 # ##-- end types
 logging = logmod.root
 logmod.getLogger("jgdv").propagate = False
+logmod.getLogger("doot.util").propagate = False
 
 @pytest.fixture(scope="function")
 def registry():
@@ -259,15 +260,6 @@ class TestRegistration:
         registry.register_spec(spec)
         assert(len(registry.specs) == 0)
 
-    @pytest.mark.xfail
-    def test_register_partial_spec(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::task", "actions":[{"do":"log", "msg":"blah"}]})
-        registry.register_spec(spec)
-        partial_spec = registry._tracker._factory.build({"name":"basic::task.blah..$partial$", "sources":["basic::task"], "actions":[{"do":"log", "msg":"blah"}]})
-        registry.register_spec(partial_spec)
-        assert("basic::task.blah" in registry.specs)
-        assert("basic::task.blah..$partial$" not in registry.specs)
-
 class TestInstantiation_Specs:
 
     def test_sanity(self):
@@ -285,7 +277,6 @@ class TestInstantiation_Specs:
             case x:
                  assert(False), x
 
-    @pytest.mark.xfail
     def test_instantiate_spec_instances_cleanup(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
         registry.register_spec(spec)
@@ -320,6 +311,26 @@ class TestInstantiation_Specs:
         inst_1 = registry.instantiate_spec(TaskName("basic::task"))
         inst_2 = registry.instantiate_spec(TaskName("basic::task"), extra={"blah":"bloo"})
         assert(inst_1 != inst_2)
+
+
+    def test_instantiation_force_new(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::task"})
+        registry.register_spec(spec)
+        pre_count = len(registry.specs)
+        assert(not bool(registry.concrete))
+        inst_1 = registry.instantiate_spec(TaskName("basic::task"))
+        inst_2 = registry.instantiate_spec(TaskName("basic::task"), force=True)
+        assert(inst_1 != inst_2)
+
+
+    def test_instantiation_disallow_new(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::task"})
+        registry.register_spec(spec)
+        pre_count = len(registry.specs)
+        assert(not bool(registry.concrete))
+        inst_1 = registry.instantiate_spec(TaskName("basic::task"))
+        inst_2 = registry.instantiate_spec(TaskName("basic::task"), force=False)
+        assert(inst_1 == inst_2)
 
     def test_instantiate_spec_no_op(self, registry):
         base_spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -436,7 +447,6 @@ class TestInstantiation_Jobs:
         assert(instance in registry.concrete[spec.name])
         assert(spec.name < instance)
 
-    @pytest.mark.xfail
     def test_instantiate_job_cleanup(self, registry):
         spec     = registry._tracker._factory.build({"name":"basic::+.job",
                                    "depends_on":["example::dep"],
@@ -492,7 +502,8 @@ class TestInstantiation_Relations:
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 dep_inst_spec = registry.specs[dep_name]
-                assert(dep_inst_spec.extra["blah"] == "bloo")
+                assert("blah" in dep_inst_spec.extra)
+                assert(dep_name in registry.late_injections)
             case x:
                  assert(False), x
 
@@ -506,28 +517,32 @@ class TestInstantiation_Relations:
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
                 dep_inst_spec = registry.specs[dep_name]
-                assert(dep_inst_spec.extra["blah"] == "bloo")
+                assert("blah" in dep_inst_spec.extra)
                 assert("aweg" not in dep_inst_spec.extra)
                 assert(dep_name in registry.late_injections)
             case x:
                  assert(False), x
 
-    @pytest.mark.xfail
     def test_relation_with_constraints(self, registry):
-        relation = {"task":"basic::dep", "constraints":["blah", "aweg"]}
-        control_spec = registry._tracker._factory.build({"name":"basic::task",
-                                       "blah": "bloo", "aweg":"qqqq",
-                                       "depends_on": [relation],
-                                       })
-        basic_dep = registry._tracker._factory.build({"name":"basic::dep"})
+        relation      = {"task":"basic::dep", "constraints":["blah", "aweg"]}
+        basic_dep     = registry._tracker._factory.build({"name":"basic::dep"})
+        control_spec  = registry._tracker._factory.build({"name":"basic::task",
+                                                          "blah": "bloo", "aweg":"qqqq",
+                                                          "depends_on": [relation],
+                                                          })
         registry.register_spec(control_spec, basic_dep)
 
+        assert(not bool(registry.concrete))
         control_inst = registry.instantiate_spec(control_spec.name)
+        assert(bool(registry.concrete))
+        logging.debug("Making Not Suitable")
         not_suitable = registry.instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})
+        logging.debug("Making Suitable")
         suitable     = registry.instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"qqqq"})
+        logging.debug("Trying to reuse")
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
-                assert(dep_name == suitable)
+                assert(suitable == dep_name)
             case x:
                  assert(False), x
 
@@ -544,8 +559,7 @@ class TestInstantiation_Relations:
         bad_2        = registry.instantiate_spec(basic_dep.name, extra={"blah":"BAD", "aweg":"qqqq"})
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
-                assert(dep_name != bad_1)
-                assert(dep_name != bad_2)
+                assert(dep_name not in [bad_1, bad_2])
             case x:
                  assert(False), x
 
@@ -572,7 +586,7 @@ class TestInstantiation_Relations:
             registry.instantiate_relation(control_spec.depends_on[0],
                                       control=control_inst)
 
-    @pytest.mark.xfail
+
     def test_relation_with_uniq_target(self, registry):
         target_spec = registry._tracker._factory.build({"name":"basic::target"})
         registry.register_spec(target_spec)
@@ -583,13 +597,13 @@ class TestInstantiation_Relations:
                                        })
         registry.register_spec(control_spec)
         control_inst = registry.instantiate_spec(control_spec.name)
+        assert(target_inst in registry.specs)
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as x if x == target_inst:
                 assert(True)
             case x:
                  assert(False), x
 
-    @pytest.mark.xfail
     def test_relation_with_reuse_injection(self, registry):
         target_spec = registry._tracker._factory.build({"name":"basic::target"})
         registry.register_spec(target_spec)

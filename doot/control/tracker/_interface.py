@@ -56,7 +56,7 @@ if TYPE_CHECKING:
 
     from jgdv import Maybe, Ident
     from jgdv.structs.chainguard import ChainGuard
-    from doot.workflow._interface import Task_i, TaskName_p, Artifact_i
+    from doot.workflow._interface import Task_i, TaskName_p, Artifact_i, Task_p
     from doot.util.factory._interface import TaskFactory_p, SubTaskFactory_p, DelayedSpec
 
     type Abstract[T] = T
@@ -116,6 +116,51 @@ class ExecutionPolicy_e(enum.Enum):
     BREADTH  = enum.auto() # Breadth First Search
 
     default = PRIORITY
+
+
+##--| Data
+class Registry_d:
+    """
+    Data used in the registry
+
+    Invariants:
+    - every key in tasks has a matching key in specs.
+    - every concrete spec is in concrete under its abstract name
+    - every implicit task that hasn't been registered is in implicit, mapped to its declaring spec
+    """
+    type AbsName = Abstract[TaskName_p]
+    type ConcName = Concrete[TaskName_p]
+
+    _tracker            : TaskTracker_p
+
+    specs               : dict[TaskName_p, TaskSpec_i]
+    concrete            : dict[AbsName, Iterable[ConcName]]
+    implicit            : dict[AbsName, TaskName_p]
+    tasks               : dict[ConcName, Task_p]
+    artifacts           : dict[Artifact_i, set[AbsName]]
+    # Artifact sets
+    abstract_artifacts  : set[Artifact_i]
+    concrete_artifacts  : set[Artifact_i]
+    # indirect blocking requirements:
+    blockers            : dict[ConcName|Artifact_i, Iterable[RelationSpec_i]]
+    late_injections     : dict[ConcName, tuple[InjectSpec_i, TaskName_p]]
+    artifact_builders   : dict[Artifact_i, Iterable[TaskName_p]]
+    artifact_consumers  : dict[Artifact_i, Iterable[TaskName_p]]
+
+    def __init__(self, *, tracker:TaskTracker_p) -> None:
+        self._tracker            = tracker
+        self.specs               = {}
+        self.concrete            = collections.defaultdict(list)
+        self.implicit            = {}
+        self.tasks               = {}
+        self.artifacts           = collections.defaultdict(set)
+        self.abstract_artifacts  = set()
+        self.concrete_artifacts  = set()
+        self.artifact_builders   = collections.defaultdict(list)
+        self.artifact_consumers  = collections.defaultdict(list)
+        self.blockers            = collections.defaultdict(list)
+        self.late_injections     = {}
+
 
 ##--| components
 
@@ -189,7 +234,7 @@ class TaskTracker_p(Protocol):
     def get_status(self, task:Concrete[TaskName_p|Ident]|Artifact_i) -> TaskStatus_e: ...
 
     @overload
-    def get_status(self, *_, default:bool=False) -> TaskStatus_e: ...
+    def get_status(self, *_:Any, default:bool=False) -> TaskStatus_e: ...
 
     @overload
     def get_priority(self, *, target:Concrete[TaskName_p|Artifact_i]) -> int: ...

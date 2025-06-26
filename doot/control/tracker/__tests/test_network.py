@@ -328,7 +328,6 @@ class TestTrackerNetworkBuild:
             case x:
                 assert(False), x
 
-    @pytest.mark.xfail
     def test_build_separate_dependencies_from_spec(self, network):
         """
         For a task, T, with dependency D,
@@ -456,8 +455,8 @@ class TestTrackerNetworkBuild_Constraints:
         obj = network
         relation = {"task":"basic::dep", "inject":{"from_spec":{"inj_key":"{bad_key}"}}}
         spec  = network._tracker._factory.build({"name":"basic::task",
-                                "depends_on":[relation],
-                                "test_key": "bloo"})
+                                                 "depends_on":[relation],
+                                                 "test_key": "bloo"})
         spec2 = network._tracker._factory.build({"name":"basic::dep"})
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
