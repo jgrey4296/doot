@@ -510,3 +510,6 @@ class Tracker(Tracker_abs):
                 pass
             case [*xs] if bool(missing:=[x for x in xs if x not in task.state]):
                 raise doot.errors.TrackingError("Task did not receive required injections", task.name, xs, task.state.keys())
+
+        ##--| prep actions
+        task.prepare_actions()

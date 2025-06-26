@@ -71,6 +71,7 @@ class TestBaseTask:
         spec = factory.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case API.Task_p() as task:
+                task.prepare_actions()
                 actions = list(task.get_action_group("actions"))
                 result = actions[0]({"example": "state"})
                 assert(result == {"count": 1})
@@ -83,6 +84,7 @@ class TestBaseTask:
         spec = factory.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.workflow.actions:DootBaseAction", "args":["blah"]}]})
         match DootTask(spec, job=None):
             case API.Task_p() as task:
+                task.prepare_actions()
                 actions      = task.get_action_group("actions")
                 result       = actions[0]({"example": "state"})
                 assert(result == {"count" : 1})

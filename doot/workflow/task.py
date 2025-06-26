@@ -231,7 +231,6 @@ class DootTask:
             case x:
                 raise TypeError(type(x))
 
-        self.prepare_actions()
 
     ##--| dunders
 
