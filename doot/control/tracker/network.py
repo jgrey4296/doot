@@ -404,28 +404,6 @@ class _Validation_m:
             "root" : self._tracker._root_node in succ,
             })
 
-    def incomplete_dependencies(self, focus:Concrete[TaskName_p]|TaskArtifact) -> list[Concrete[TaskName_p]|Artifact_i]:
-        """ Get all predecessors of a node that don't evaluate as complete """
-        status     : TaskStatus_e | ArtifactStatus_e
-        is_success : bool
-        incomplete : list[TaskName_p|Artifact_i]
-        assert(focus in self.nodes)
-        incomplete = []
-        for x in self.pred[focus]:
-            status     = self._tracker.get_status(target=x)
-            is_success = status in API.SUCCESS_STATUSES
-            match x:
-                case _ if is_success:
-                    pass
-                case TaskName() if API.CLEANUP in self.edges[x, focus]:
-                    pass
-                case TaskName():
-                    incomplete.append(x)
-                case TaskArtifact() if not bool(x):
-                    incomplete.append(x)
-        else:
-            return incomplete
-
     def report_tree(self) -> None:
         mapping : dict[TaskName_p|Artifact_i, str]
         if not show_graph:

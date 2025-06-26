@@ -305,6 +305,50 @@ class Tracker_abs:
 @Proto(API.TaskTracker_p)
 class Tracker(Tracker_abs):
 
+    def next_for(self, target:Maybe[str|TaskName_p]=None) -> Maybe[Task_p|Artifact_i]:
+        """ ask for the next task that can be performed
+
+          Returns a Task or Artifact that needs to be executed or created
+          Returns None if it loops too many times trying to find a target,
+          or if theres nothing left in the queue
+
+        """
+        x       : Any
+        focus   : TaskName_p|Artifact_i
+        count   : int
+        result  : Maybe[Task_p|Artifact_i]
+        status  : TaskStatus_e
+
+        logging.info("[Next.For] (Active: %s)", len(self.active))
+        if not self.is_valid:
+            raise doot.errors.TrackingError("Network is in an invalid state")
+
+        if target and target not in self.active:
+            self.queue(target, silent=True)
+
+        count  = API.MAX_LOOP
+        result = None
+        while (result is None) and bool(self._queue) and 0 < (count:=count-1):
+            focus   = self._deque()
+            status  = self.get_status(target=focus) # type: ignore[attr-defined]
+            logging.debug("[Next.For.Head]: %s : %s", status, focus)
+
+            match focus:
+                case x if x not in self.active:
+                    continue
+                case TaskName_p():
+                    result = self._next_for_task(focus)
+                case Artifact_i():
+                    result = self._next_for_artifact(focus)
+                case x: # Error otherwise
+                    raise doot.errors.TrackingError("Unknown task focus", x)
+
+        else:
+            logging.info("[Next.For] <- %s", result)
+            return result
+
+    ##--|
+
     def get_priority(self, *, target:Maybe[Concrete[TaskName_p|Artifact_i]]=None, default:bool=False) -> int:
         match target, default:
             case None, True:
@@ -327,122 +371,8 @@ class Tracker(Tracker_abs):
             case x:
                 raise TypeError(type(x))
 
-    def set_status(self, task:Concrete[TaskName]|TaskArtifact|Task_p, state:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[TaskName_p]|Artifact_i|Task_p, state:TaskStatus_e) -> bool:
         return self._registry.set_status(task, state) # type: ignore[attr-defined]
-
-    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_p|TaskArtifact]:  # noqa: PLR0912, PLR0915
-        """ ask for the next task that can be performed
-
-          Returns a Task or Artifact that needs to be executed or created
-          Returns None if it loops too many times trying to find a target,
-          or if theres nothing left in the queue
-
-        """
-        x       : Any
-        focus   : str|TaskName_p|Artifact_i
-        count   : int
-        result  : Maybe[Task_p|TaskArtifact]
-        status  : TaskStatus_e
-
-        logging.info("[Next.For] (Active: %s)", len(self._queue.active_set))
-        if not self.is_valid:
-            raise doot.errors.TrackingError("Network is in an invalid state")
-
-        if target and target not in self._queue.active_set:
-            self.queue(target, silent=True)
-
-        count  = API.MAX_LOOP
-        result = None
-        while (result is None) and bool(self._queue) and 0 < (count:=count-1):
-            focus   = self._queue.deque_entry()
-            status  = self._registry.get_status(focus) # type: ignore[attr-defined]
-            if focus not in self._queue.active_set:
-                continue
-
-            logging.debug("[Next.For.Head]: %s : %s", status, focus)
-
-            match status:
-                case TaskStatus_e.DEAD:
-                    # Clear state
-                    del self._registry.tasks[focus]
-                    self._queue.active_set.remove(focus)
-                case TaskStatus_e.DISABLED:
-                    self._queue.active_set.remove(focus)
-                case TaskStatus_e.TEARDOWN:
-                    for succ in self._network.succ[focus]:
-                        match self.queue(succ):
-                            case TaskName() as x if x.is_cleanup():
-                                # make the cleanup task early, to apply shared state
-                                assert(isinstance(focus, TaskName))
-                                self._instantiate(x, parent=focus, task=True)
-                            case _:
-                                pass
-                    else:
-                        # TODO for cleanup succ, move focus.state -> succ.state
-                        self._registry.set_status(focus, TaskStatus_e.DEAD) # type: ignore[attr-defined]
-                case ArtifactStatus_e.EXISTS:
-                    # TODO artifact Exists, queue its dependents and *don't* add the artifact back in
-                    self._queue.execution_trace.append(focus)
-                case TaskStatus_e.SUCCESS:
-                    self._queue.execution_trace.append(focus) # type: ignore[attr-defined]
-                    self.queue(focus, status=TaskStatus_e.TEARDOWN)
-                case TaskStatus_e.FAILED:  # propagate failure
-                    self.queue(focus, status=TaskStatus_e.TEARDOWN)
-                case TaskStatus_e.HALTED:  # remove and propagate halted status
-                    self.queue(focus, status=TaskStatus_e.TEARDOWN)
-                case TaskStatus_e.SKIPPED:
-                    self.queue(focus, status=TaskStatus_e.DEAD)
-                case TaskStatus_e.RUNNING:
-                    self.queue(focus)
-                case TaskStatus_e.READY:   # return the task if its ready
-                    self.queue(focus, status=TaskStatus_e.RUNNING)
-                    result = self._registry.tasks[focus]
-                case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
-                    match self._network.incomplete_dependencies(focus): # type: ignore[attr-defined]
-                        case []:
-                            self.queue(focus, status=TaskStatus_e.READY)
-                        case [*xs]:
-                            logging.debug("Task Blocked: %s on : %s", focus, xs)
-                            self.queue(focus)
-                            for x in xs:
-                                self.queue(x)
-                case TaskStatus_e.INIT:
-                    task_name = self.queue(focus, status=TaskStatus_e.WAIT)
-                case ArtifactStatus_e.STALE:
-                    for pred in self._network.pred[focus]:
-                        self.queue(pred)
-                case ArtifactStatus_e.DECLARED if bool(focus):
-                    self.queue(focus, status=ArtifactStatus_e.EXISTS)
-                case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
-                    match self._network.incomplete_dependencies(focus):
-                        case [] if not focus.is_concrete():
-                            self.queue(focus, status=ArtifactStatus_e.EXISTS)
-                        case []:
-                            assert(not bool(focus))
-                            path = focus.expand()
-                            self.queue(focus)
-                            # Returns the artifact, the runner can try to create
-                            # it, then override the halt
-                            result = focus
-                        case [*xs]:
-                            logging.info("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
-                            self.queue(focus)
-                            for x in xs:
-                                self.queue(x)
-                case TaskStatus_e.DEFINED:
-                    self.queue(focus, status=TaskStatus_e.HALTED)
-                case TaskStatus_e.DECLARED:
-                    assert(isinstance(focus, TaskName))
-                    self._instantiate(focus, task=True)
-                    self.queue(focus)
-                case TaskStatus_e.NAMED:
-                    logging.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
-                case x: # Error otherwise
-                    raise doot.errors.TrackingError("Unknown task state", x)
-
-        else:
-            logging.info("[Next.For] <- %s", result)
-            return result
 
     @override
     def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
@@ -457,6 +387,117 @@ class Tracker(Tracker_abs):
         return result
 
     ##--| internal
+
+    def _next_for_task(self, focus:TaskName_p) -> Maybe[Task_p]:  # noqa: PLR0912, PLR0915
+        """ logic for handling a dequed task """
+        x : Any
+        status  = self.get_status(target=focus) # type: ignore[attr-defined]
+        match status:
+            case TaskStatus_e.DEAD:
+                # Clear state
+                del self.tasks[focus]
+                self.active.remove(focus)
+                assert(focus not in self.tasks)
+                assert(focus not in self.active)
+            case TaskStatus_e.DISABLED:
+                self.active.remove(focus)
+            case TaskStatus_e.TEARDOWN:
+                for succ, _ in self._successor_states_of(focus):
+                    match self.queue(succ):
+                        case TaskName() as x if x.is_cleanup():
+                            # make the cleanup task early, to apply shared state
+                            assert(isinstance(focus, TaskName))
+                            self._instantiate(x, parent=focus, task=True)
+                        case _:
+                            pass
+                else:
+                    # TODO for cleanup succ, move focus.state -> succ.state
+                    self.set_status(focus, TaskStatus_e.DEAD) # type: ignore[attr-defined]
+            case TaskStatus_e.SUCCESS:
+                self.queue(focus, status=TaskStatus_e.TEARDOWN)
+            case TaskStatus_e.FAILED:  # propagate failure
+                self.queue(focus, status=TaskStatus_e.TEARDOWN)
+            case TaskStatus_e.HALTED:  # remove and propagate halted status
+                self.queue(focus, status=TaskStatus_e.TEARDOWN)
+            case TaskStatus_e.SKIPPED:
+                self.queue(focus, status=TaskStatus_e.DEAD)
+            case TaskStatus_e.RUNNING:
+                self.queue(focus)
+            case TaskStatus_e.READY:   # return the task if its ready
+                self.queue(focus, status=TaskStatus_e.RUNNING)
+                return self.tasks[focus]
+            case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
+                waiting  : bool  = False
+                deps_of_focus    = self._dependency_states_of(focus)
+                logging.debug("Task Blocked: %s on : %s", focus, deps_of_focus)
+                for dep, dep_status in deps_of_focus:
+                    if dep_status in API.SUCCESS_STATUSES:
+                        continue
+                    self.queue(dep)
+                    waiting = True
+                else:
+                    match waiting:
+                        case False:
+                            self.queue(focus, status=TaskStatus_e.READY)
+                        case True:
+                            self.queue(focus)
+            case TaskStatus_e.INIT:
+                self.queue(focus, status=TaskStatus_e.WAIT)
+            case TaskStatus_e.DEFINED:
+                self.queue(focus, status=TaskStatus_e.HALTED)
+            case TaskStatus_e.DECLARED:
+                assert(isinstance(focus, TaskName_p))
+                self._instantiate(focus, task=True)
+                self.queue(focus)
+            case TaskStatus_e.NAMED:
+                logging.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
+            case x: # Error otherwise
+                raise doot.errors.TrackingError("Unknown task state", x)
+        ##--|
+        return None
+
+    def _next_for_artifact(self, focus:Artifact_i) -> Maybe[Artifact_i]:  # noqa: PLR0912
+        """ logic for handling a dequed artifact """
+        status  = self.get_status(target=focus) # type: ignore[attr-defined]
+        match status:
+            case ArtifactStatus_e.EXISTS:
+                # TODO artifact Exists, queue its dependents and *don't* add the artifact back in
+                pass
+            case ArtifactStatus_e.STALE:
+                for pred, _ in self._dependency_states_of(focus):
+                    self.queue(pred)
+
+            case ArtifactStatus_e.DECLARED if bool(focus):
+                self.queue(focus, status=ArtifactStatus_e.EXISTS)
+            case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
+                deps : list[tuple] = self._dependency_states_of(focus)
+                match deps:
+                    case [] if not focus.is_concrete():
+                        self.queue(focus, status=ArtifactStatus_e.EXISTS)
+                    case []:
+                        assert(not bool(focus))
+                        path = focus.expand()
+                        self.queue(focus)
+                        # Returns the artifact, the runner can try to create
+                        # it, then override the halt
+                        return focus
+                    case [*xs]:
+                        logging.info("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
+                    case x:
+                        raise TypeError(type(x))
+
+                for dep, dep_state in deps:
+                    if dep_state in API.SUCCESS_STATUSES:
+                        continue
+                    self.queue(dep)
+                else:
+                    self.queue(focus)
+
+            case x: # Error otherwise
+                raise doot.errors.TrackingError("Unknown task state", x)
+
+        ##--|
+        return None
 
     def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:
         """ After a task is created, values can be injected into it.
@@ -513,3 +554,12 @@ class Tracker(Tracker_abs):
 
         ##--| prep actions
         task.prepare_actions()
+
+    def _dependency_states_of(self, focus:TaskName_p) -> list[tuple]:
+        return [(x, self.get_status(target=x)) for x in self._network.pred[focus]]
+
+    def _successor_states_of(self, focus:TaskName_p) -> list[tuple]:
+        return [(x, self.get_status(target=x)) for x in self._network.succ[focus]]
+
+    def _deque(self) -> TaskName_p|Artifact_i:
+        return self._queue.deque_entry()

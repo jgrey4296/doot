@@ -191,8 +191,6 @@ class Network_p(Protocol):
 
     def validate_network(self, *, strict:bool=True) -> bool:  ...
 
-    def incomplete_dependencies(self, focus:Concrete[TaskName_p]|Artifact_i) -> list[Concrete[TaskName_p]|Artifact_i]: ...
-
 class Queue_p(Protocol):
     active_set : set[TaskName_p|Artifact_i]
 
@@ -214,6 +212,7 @@ class TaskTracker_p(Protocol):
 
     ##--| public
 
+    @property
     def active(self) -> set[TaskName_p]: ...
 
     def register(self, *specs:TaskSpec_i|Artifact_i|DelayedSpec)-> None: ...
@@ -228,22 +227,7 @@ class TaskTracker_p(Protocol):
 
     ##--| inspection. TODO to remove
 
-    def set_status(self, task:Concrete[TaskName_p|Ident]|Task_i|Artifact_i, state:TaskStatus_e) -> bool: ...
-
-    @overload
-    def get_status(self, task:Concrete[TaskName_p|Ident]|Artifact_i) -> TaskStatus_e: ...
-
-    @overload
-    def get_status(self, *_:Any, default:bool=False) -> TaskStatus_e: ...
-
-    @overload
-    def get_priority(self, *, target:Concrete[TaskName_p|Artifact_i]) -> int: ...
-
-    @overload
-    def get_priority(self, *, default:bool=False) -> int: ...
-
     ##--| internal
-
     @overload
     def _instantiate(self, name:Abstract[TaskName_p], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]: ...
 
@@ -255,6 +239,8 @@ class TaskTracker_p(Protocol):
 
     def _connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:  ...
 
+    def _dependency_states_of(self, focus:TaskName_p) -> list[tuple]: ...
+    def _successor_states_of(self, focus:TaskName_p) -> list[tuple]: ...
 @runtime_checkable
 class TaskTracker_i(TaskTracker_p, Protocol):
     _factory            : TaskFactory_p
