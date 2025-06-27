@@ -27,7 +27,7 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 from doot.control.runner.runner import DootRunner
-from doot.control.tracker import Tracker
+from doot.control.tracker import NaiveTracker
 from doot.util.factory import TaskFactory
 from doot.util.dkey import DKey
 from doot.workflow import ActionSpec, DootJob, DootTask, TaskName, TaskSpec
@@ -75,7 +75,7 @@ class _MockObjs_m:
 
     @pytest.fixture(scope="function")
     def runner(self, ctor, mocker):
-        tracker  = Tracker()
+        tracker  = NaiveTracker()
         runner   = ctor(tracker=tracker)
         return runner
 

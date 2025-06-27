@@ -34,7 +34,7 @@ from doot.workflow import TaskName, TaskSpec, InjectSpec
 # ##-- end 1st party imports
 
 # ##-| Local
-from ..tracker import Tracker
+from ..naive_tracker import NaiveTracker
 from ..registry import TrackRegistry
 # # End of Imports.
 
@@ -68,7 +68,7 @@ logmod.getLogger("doot.util").propagate = False
 
 @pytest.fixture(scope="function")
 def registry():
-    tracker = Tracker()
+    tracker = NaiveTracker()
     return tracker._registry
 
 class TestRegistry:
@@ -220,7 +220,7 @@ class TestRegistration:
         assert(len(registry.specs) == 0)
         for _ in range(5):
             registry.register_spec(ispec)
-            assert(len(registry.specs) == 2) # just the spec and its cleanup
+            assert(len(registry.specs) == 1)
             assert(len(registry.concrete[ispec.name.de_uniq()]) == 1) # no concrete
 
     def test_register_spec_with_artifacts(self, registry):
@@ -244,7 +244,7 @@ class TestRegistration:
         assert("basic::sub.1" not in registry.specs)
         assert("basic::super.1" not in registry.specs)
 
-    def test_register_concrete_spec_adds_subtasks(self, registry):
+    def test_register_concrete_spec_adds_no_subtasks(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task",
                                "depends_on":["basic::sub.1", "basic::sub.2"],
                                "required_for": ["basic::super.1"]})
@@ -252,7 +252,7 @@ class TestRegistration:
         assert(not bool(registry.specs))
         registry.register_spec(ispec)
         assert(bool(registry.specs))
-        assert(len(registry.specs) == 2)
+        assert(len(registry.specs) == 1)
 
     def test_register_spec_ignores_disabled(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task", "disabled":True})
@@ -276,15 +276,6 @@ class TestInstantiation_Specs:
                 assert(bool(registry.concrete))
             case x:
                  assert(False), x
-
-    def test_instantiate_spec_instances_cleanup(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::task"})
-        registry.register_spec(spec)
-        pre_count = len(registry.specs)
-        assert(not bool(registry.concrete))
-        instance = registry.instantiate_spec(TaskName("basic::task"))
-        assert(instance in registry.specs)
-        assert(bool(registry.concrete[spec.name.with_cleanup()]))
 
     def test_instantiate_spec_fail(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -335,7 +326,8 @@ class TestInstantiation_Specs:
     def test_instantiate_spec_no_op(self, registry):
         base_spec = registry._tracker._factory.build({"name":"basic::task"})
         spec      = registry._tracker._factory.build({"name":"test::spec"})
-        registry.register_spec(base_spec, spec)
+        registry.register_spec(base_spec)
+        registry.register_spec(spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec is not special)
         assert(spec is not base_spec)
@@ -360,7 +352,9 @@ class TestInstantiation_Specs:
         base_spec = registry._tracker._factory.build({"name":"basic::task", "blah": 2, "bloo": 5})
         dep_spec  = registry._tracker._factory.build({"name": "example::dep", "sources": ["basic::task"], "bloo":10, "aweg":15 })
         spec      = registry._tracker._factory.build({"name":"test::spec", "sources": ["example::dep"], "aweg": 20})
-        registry.register_spec(base_spec, dep_spec, spec)
+        registry.register_spec(base_spec)
+        registry.register_spec(dep_spec)
+        registry.register_spec(spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -373,7 +367,9 @@ class TestInstantiation_Specs:
                                     "depends_on":["example::dep"],
                                     "blah": 2, "bloo": 5})
         dep_spec  = registry._tracker._factory.build({"name": "example::dep"})
-        registry.register_spec(base_spec, dep_spec, spec)
+        registry.register_spec(base_spec)
+        registry.register_spec(dep_spec)
+        registry.register_spec(spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -390,7 +386,9 @@ class TestInstantiation_Specs:
                                         "sources": ["basic::task"],
                                         "bloo": 15, "aweg": "aweg"})
         spec          = registry._tracker._factory.merge(top=abs_spec, bot=base_spec)
-        registry.register_spec(base_spec, dep_spec, spec)
+        registry.register_spec(base_spec)
+        registry.register_spec(dep_spec)
+        registry.register_spec(spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -404,7 +402,10 @@ class TestInstantiation_Specs:
         dep_spec  = registry._tracker._factory.build({"name": "example::dep"})
         dep_spec2 = registry._tracker._factory.build({"name": "another::dep"})
         spec      = registry._tracker._factory.merge(bot=base_spec, top={"depends_on":["another::dep"]})
-        registry.register_spec(base_spec, dep_spec, dep_spec2, spec)
+        registry.register_spec(base_spec)
+        registry.register_spec(dep_spec)
+        registry.register_spec(dep_spec2)
+        registry.register_spec(spec)
         special = registry.instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -420,9 +421,10 @@ class TestInstantiation_Jobs:
         assert(True is not False) # noqa: PLR0133
 
     def test_instantiate_job(self, registry):
+        """ registry instantiation  """
         spec     = registry._tracker._factory.build({"name":"basic::+.job",
-                                   "depends_on":["example::dep"],
-                                   "blah": 2, "bloo": 5})
+                                                     "depends_on":["example::dep"],
+                                                     "blah": 2, "bloo": 5})
         abs_head = spec.name.with_head()
         registry.register_spec(spec)
         assert(abs_head not in registry.concrete)
@@ -479,7 +481,8 @@ class TestInstantiation_Relations:
     def test_relation(self, registry):
         control_spec = registry._tracker._factory.build({"name":"basic::task", "depends_on": ["basic::dep"]})
         dep_spec = registry._tracker._factory.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
-        registry.register_spec(control_spec, dep_spec)
+        registry.register_spec(control_spec)
+        registry.register_spec(dep_spec)
 
         control_inst = registry.instantiate_spec(control_spec.name)
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
@@ -496,7 +499,8 @@ class TestInstantiation_Relations:
         dependency = {"task":"basic::dep", "inject":{"from_spec":["blah"]}}
         control_spec = registry._tracker._factory.build({"name":"basic::task", "depends_on": [dependency], "blah": "bloo"})
         dep_spec = registry._tracker._factory.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
-        registry.register_spec(control_spec, dep_spec)
+        registry.register_spec(control_spec)
+        registry.register_spec(dep_spec)
 
         control_inst = registry.instantiate_spec(control_spec.name)
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
@@ -511,7 +515,8 @@ class TestInstantiation_Relations:
         dependency = {"task":"basic::dep", "inject":{"from_spec":["blah"], "from_state":["aweg"]}}
         control_spec = registry._tracker._factory.build({"name":"basic::task", "depends_on": [dependency], "blah": "bloo", "aweg":"qqqq"})
         dep_spec = registry._tracker._factory.build({"name":"basic::dep", "actions":[{"do":"log", "msg":"blah"}]})
-        registry.register_spec(control_spec, dep_spec)
+        registry.register_spec(control_spec)
+        registry.register_spec(dep_spec)
 
         control_inst = registry.instantiate_spec(control_spec.name)
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
@@ -530,7 +535,8 @@ class TestInstantiation_Relations:
                                                           "blah": "bloo", "aweg":"qqqq",
                                                           "depends_on": [relation],
                                                           })
-        registry.register_spec(control_spec, basic_dep)
+        registry.register_spec(control_spec)
+        registry.register_spec(basic_dep)
 
         assert(not bool(registry.concrete))
         control_inst = registry.instantiate_spec(control_spec.name)
@@ -552,7 +558,8 @@ class TestInstantiation_Relations:
                                        "depends_on": [{"task":"basic::dep", "constraints":["blah", "aweg"]}],
                                        })
         basic_dep = registry._tracker._factory.build({"name":"basic::dep"})
-        registry.register_spec(control_spec, basic_dep)
+        registry.register_spec(control_spec)
+        registry.register_spec(basic_dep)
 
         control_inst = registry.instantiate_spec(control_spec.name)
         bad_1        = registry.instantiate_spec(basic_dep.name, extra={"blah":"bloo", "aweg":"BAD"})

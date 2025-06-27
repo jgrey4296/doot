@@ -14,15 +14,19 @@ default = "doot.reporters:BasicReporter"
 
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
-basic    = "doot.control.tracker:Tracker"
+default  = "doot.control.tracker:NaiveTracker"
+naive    =  "doot.control.tracker:NaiveTracker"
 factory  = "doot.util.factory:TaskFactory"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String
-basic = "doot.control.runner:DootRunner"
+default  = "doot.control.runner:DootRunner"
+basic    = "doot.control.runner:DootRunner"
+
 
 [[doot.aliases.parser]]
 # Map {alias} -> CodeRef String
+default  =   "jgdv.cli.arg_parser:CLIParser"
 basic    =   "jgdv.cli.arg_parser:CLIParser"
 
 [[doot.aliases.action]] # basic actions

@@ -46,13 +46,12 @@ from doot.workflow import _interface as API
 from doot.workflow._interface import (ActionSpec_i, InjectSpec_i, Job_p,
                                       RelationMeta_e, RelationSpec_i, Task_i,
                                       Task_p, TaskMeta_e, TaskName_p,
-                                      TaskSpec_i)
+                                      TaskSpec_i, Artifact_i)
 
 # ##-- end 1st party imports
 
 # ##-| Local
 from ._interface import SubTaskFactory_p, TaskFactory_p, DelayedSpec
-
 # # End of Imports.
 
 # ##-- types
@@ -228,7 +227,7 @@ class TaskFactory:
             case TaskName_p():
                 result['name']  = name
             case _:
-                base_name       = top_data.get('name', None) or bot_data.get('name')
+                base_name       = top_data.get('name', None) or bot_data['name']
                 result['name']  = self._prep_name(base_name, suffix=suffix)
         ##--|
         return self.build(result)
@@ -267,13 +266,13 @@ class TaskFactory:
         val = [x for x in obj.sources if isinstance(x, TaskName)]
         return cast("list[TaskName_p]", val)
 
-    def action_groups(self, obj:TaskSpec_i) -> list[list]:
+    def action_groups(self, obj:TaskSpec_i) -> Iterable[Iterable]:
         return [obj.depends_on, obj.setup, obj.actions, obj.cleanup, obj.on_fail]
 
     def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec_i|RelationSpec_i]:
         """ Get the elements of: depends_on, setup, actions, and require_for.
         """
-        groups : list[list] = [obj.depends_on, obj.setup, obj.actions, obj.required_for]
+        groups : Iterable[Iterable] = [obj.depends_on, obj.setup, obj.actions, obj.required_for]
         for group in groups:
             yield from group
 
@@ -340,13 +339,15 @@ class SubTaskFactory:
     def generate_names(self, obj:TaskSpec_i) -> list[TaskName]:
         return list(obj.generated_names)
 
-    def generate_specs(self, obj:TaskSpec_i) -> list[dict]:
-        logging.debug("[Generate] : %s (%s)", obj.name, len(obj.generated_names))
+    def generate_specs(self, obj:TaskSpec_i|Artifact_i|DelayedSpec) -> list[dict]:
         result : list[dict] = []
+        if not isinstance(obj, TaskSpec_i):
+            return result
         if not obj.name.uuid():
             # Non-instanced specs don't generate subspecs
             return result
 
+        logging.debug("[Generate] : %s (%s)", obj.name, len(obj.generated_names))
         needs_job_head = TaskMeta_e.JOB in obj.meta and not obj.name.is_head()
         if needs_job_head:
             # Jobs generate their head

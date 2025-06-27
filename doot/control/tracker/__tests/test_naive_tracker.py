@@ -30,7 +30,7 @@ import doot.errors
 from doot.workflow._interface import TaskStatus_e, TaskSpec_i
 from doot.util._interface import DelayedSpec
 from doot.util import mock_gen
-from ..tracker import Tracker
+from ..naive_tracker import NaiveTracker
 from .. import _interface as API
 from doot.workflow.structs.task_spec import TaskSpec
 from doot.workflow.structs.task_name import TaskName
@@ -63,24 +63,26 @@ from doot.workflow._interface import Task_p
 # ##-- end types
 logging = logmod.root
 logmod.getLogger("jgdv").propagate = False
-logmod.getLogger("doot.control.tracker.registry").propagate = False
 logmod.getLogger("doot.util.factory").propagate = False
+logmod.getLogger("doot.control.tracker.registry").propagate = False
+logmod.getLogger("doot.control.tracker.queue").propagate = False
+logmod.getLogger("doot.control.tracker.network").propagate = False
 
 class TestTracker:
 
     @pytest.fixture(scope="function")
     def tracker(self):
-        return Tracker()
+        return NaiveTracker()
 
     def test_sanity(self):
         assert(True)
         assert(not False)
 
     def test_ctor(self):
-        assert(isinstance(Tracker, API.TaskTracker_p))
+        assert(isinstance(NaiveTracker, API.TaskTracker_p))
 
     def test_basic(self, tracker):
-        assert(isinstance(tracker, Tracker))
+        assert(isinstance(tracker, NaiveTracker))
 
     def test_next_for_fails_with_unbuilt_network(self, tracker):
         with pytest.raises(doot.errors.TrackingError) as ctx:
@@ -157,7 +159,56 @@ class TestTracker:
                 assert(False)
         assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
 
+class TestTracker_failing:
+
+    @pytest.fixture(scope="function")
+    def tracker(self):
+        return NaiveTracker()
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_next_fail(self, tracker):
+        """
+        fail all tasks, and only cleanups will be run
+        """
+        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = tracker._factory.build({"name":"basic::dep"})
+        tracker.register(spec, dep)
+        t_name   = tracker.queue(spec.name, from_user=True)
+        dep_inst = tracker.queue(dep.name)
+        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
+        logging.info("--------------------------------------------------")
+        tracker.build()
+        logging.info("--------------------------------------------------")
+        # Force the dependency to success without getting it from next_for:
+        tracker._instantiate(t_name, task=True)
+        tracker._instantiate(dep_inst, task=True)
+        tracker.set_status(t_name, TaskStatus_e.FAILED)
+        tracker.set_status(dep_inst, TaskStatus_e.FAILED)
+        logging.info("--------------------------------------------------")
+        match (current:=tracker.next_for()):
+            case Task_p() as task:
+                assert(task.name.is_cleanup())
+            case x:
+                assert(False), x
+
+        for x in tracker.tasks.values():
+            if x.name.is_cleanup():
+                continue
+            assert(x.status in [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
+
+class TestTracker_halting:
+
+    @pytest.fixture(scope="function")
+    def tracker(self):
+        return NaiveTracker()
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_next_halt(self, tracker):
+        """ halting all tasks should """
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
@@ -184,32 +235,14 @@ class TestTracker:
                 continue
             assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
 
-    def test_next_fail(self, tracker):
-        spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = tracker._factory.build({"name":"basic::dep"})
-        tracker.register(spec, dep)
-        t_name   = tracker.queue(spec.name, from_user=True)
-        dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
-        logging.info("--------------------------------------------------")
-        tracker.build()
-        logging.info("--------------------------------------------------")
-        # Force the dependency to success without getting it from next_for:
-        tracker._instantiate(t_name, task=True)
-        tracker._instantiate(dep_inst, task=True)
-        tracker.set_status(t_name, TaskStatus_e.FAILED)
-        tracker.set_status(dep_inst, TaskStatus_e.FAILED)
-        logging.info("--------------------------------------------------")
-        match (current:=tracker.next_for()):
-            case Task_p() as task:
-                assert(task.name.is_cleanup())
-            case x:
-                assert(False), x
+class TestTracker_jobs:
 
-        for x in tracker.tasks.values():
-            if x.name.is_cleanup():
-                continue
-            assert(x.status in [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
+    @pytest.fixture(scope="function")
+    def tracker(self):
+        return NaiveTracker()
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_next_job_head(self, tracker):
         job_spec  = tracker._factory.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
@@ -274,17 +307,17 @@ class TestTracker:
         # Next task is one of the new subtasks
         assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
 
-class TestTrackingStates:
+class TestTracker_cleanup:
 
     @pytest.fixture(scope="function")
     def tracker(self):
-        return Tracker()
+        return NaiveTracker()
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
     def test_cleanup_shares_spec(self, tracker):
-        tracker       = Tracker()
+        tracker       = NaiveTracker()
         spec      = tracker._factory.build({"name":"basic::task", "cleanup":[{"do":"log", "msg":"{blah}"}], "blah":"aweg"})
         tracker.register(spec)
         tracker.queue(spec, from_user=True)
@@ -486,18 +519,17 @@ class TestTrackingStates:
             case x:
                  assert(False), x
 
-
 class TestTracker_delayed:
 
     @pytest.fixture(scope="function")
     def tracker(self):
-        return Tracker()
+        return NaiveTracker()
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
     def test_make_delayed(self, tracker):
-        assert(isinstance(tracker, Tracker))
+        assert(isinstance(tracker, NaiveTracker))
 
         match tracker._factory.delay(base="blah::bloo", target="blah::bloo..custom", overrides={}):
             case DelayedSpec() as obj:
@@ -505,7 +537,6 @@ class TestTracker_delayed:
                 assert(obj.target == "blah::bloo..custom")
             case x:
                 assert(False), x
-
 
     def test_upgrade_delayed(self, tracker):
         delayed = tracker._factory.delay(base="blah::bloo", target="blah::bloo..custom", overrides={})

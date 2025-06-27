@@ -35,7 +35,7 @@ from doot.util import mock_gen
 
 from ..registry import TrackRegistry
 from ..network import TrackNetwork
-from ...tracker import Tracker
+from ..naive_tracker import NaiveTracker
 from doot.workflow import TaskSpec, TaskArtifact
 
 # ##-- types
@@ -70,7 +70,7 @@ def expected_spec_count(*args:Any) -> int:
 
 @pytest.fixture(scope="function")
 def network(mocker):
-    tracker = Tracker()
+    tracker = NaiveTracker()
     return tracker._network
 
 ##--|

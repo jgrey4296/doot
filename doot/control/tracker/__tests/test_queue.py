@@ -39,7 +39,7 @@ from doot.util import mock_gen
 
 # ##-- end 1st party imports
 
-from ..tracker import Tracker
+from ..naive_tracker import NaiveTracker
 from ..network import TrackNetwork
 from ..queue import TrackQueue
 from ..registry import TrackRegistry
@@ -72,7 +72,7 @@ logging = logmod.root
 
 @pytest.fixture(scope="function")
 def queue():
-    tracker = Tracker()
+    tracker = NaiveTracker()
     return tracker._queue
 
 ##--|

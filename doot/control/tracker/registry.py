@@ -34,7 +34,7 @@ from doot.workflow import DootTask, TaskArtifact, TaskName
 from doot.workflow import _interface as S_API#  noqa: N812
 from doot.workflow._interface import (ActionSpec_i, ArtifactStatus_e, RelationMeta_e,
                                       InjectSpec_i, RelationSpec_i, TaskMeta_e,
-                                      TaskName_p, TaskSpec_i, TaskStatus_e, Task_p)
+                                      TaskName_p, TaskSpec_i, TaskStatus_e, Task_p, Artifact_i)
 # ##-- end 1st party imports
 
 # ##-| Local
@@ -82,7 +82,7 @@ logging.disabled = False
 
 class _Registration_m(API.Registry_d):
 
-    def register_spec(self, *specs:TaskSpec_i) -> None:
+    def register_spec(self, spec:TaskSpec_i) -> None:
         """ Register task specs, abstract or concrete
 
         An initial concrete instance will be created for any abstract spec.
@@ -92,44 +92,30 @@ class _Registration_m(API.Registry_d):
         That predecessor can not be partial itself
         """
         x           : Any
-        registered  : int
         queue       : list[TaskSpec_i]
+        ##--|
+        if TaskMeta_e.DISABLED in spec.meta:
+            logging.info("[Disabled] task: %s", spec.name[:])
+            return
 
-        registered  = 0
-        queue       = list(specs)
-        while bool(queue):
-            spec = queue.pop(0)
-            if TaskMeta_e.DISABLED in spec.meta:
-                logging.info("[Disabled] task: %s", spec.name[:])
-                continue
-
-            match spec.name:
-                case TaskName_p() as x if x in self.specs:
-                    if self.specs[x] is not spec:
-                        raise ValueError("Tried to overwrite a spec", spec.name)
-                    continue
-                case TaskName_p() as x if TaskName.Marks.partial in x:
-                    raise ValueError("By this point a partial spec should have been reified", x)
-                case TaskName_p() if x.uuid(): # type: ignore
-                    logging.info("[+.Concrete] : %s", spec.name)
-                case TaskName_p():
-                    logging.info("[+.Abstract] : %s", spec.name)
-
-            self.specs[spec.name] = spec
-            self._register_spec_artifacts(spec)
-            if spec.name.uuid():
+        match spec.name:
+            case TaskName_p() as x if x in self.specs:
+                if self.specs[x] is not spec:
+                    raise ValueError("Tried to overwrite a spec", spec.name)
+                return
+            case TaskName_p() as x if TaskName.Marks.partial in x:
+                raise ValueError("By this point a partial spec should have been reified", x)
+            case TaskName_p() if x.uuid(): # type: ignore
+                logging.info("[+.Concrete] : %s", spec.name)
                 self.concrete[spec.name.de_uniq()].append(spec.name)
-                # Only concrete specs generate extra
-                raw_data : list[dict] = self._tracker._subfactory.generate_specs(spec)
-                queue += [self._tracker._factory.build(x) for x in raw_data]
-            else:
+            case TaskName_p():
+                logging.info("[+.Abstract] : %s", spec.name)
                 self._register_blocking_relations(spec)
                 self._register_implicit_spec_names(spec)
 
-            registered += 1
-        else:
-            logging.debug("[+] %s new", registered)
-            pass
+        self.specs[spec.name] = spec
+        self._register_spec_artifacts(spec)
+
 
     def _register_spec_artifacts(self, spec:TaskSpec_i) -> None:
         """ Register the artifacts a spec produces """
@@ -234,7 +220,7 @@ class _Instantiation_m(API.Registry_d):
         assert(instance_spec.name.uuid())
         logging.debug("[Instance.new] %s into %s", name, instance_spec.name)
         # register the actual concrete spec
-        self.register_spec(instance_spec) # type: ignore[attr-defined]
+        self._tracker.register(instance_spec) # type: ignore[attr-defined]
 
         assert(instance_spec.name in self.specs)
         return instance_spec.name
@@ -250,7 +236,6 @@ class _Instantiation_m(API.Registry_d):
         control_data  : TaskSpec_i
         instance      : Maybe[TaskName_p]
         existing      : TaskName_p
-        injection     : bool|dict
         ##--|
         logging.debug("[Instance.Relation] : %s -> %s -> %s", control, rel.relation.name, rel.target)
         ##--| guards
@@ -377,7 +362,7 @@ class TrackRegistry(API.Registry_d):
     def get_status(self, task:Concrete[TaskName_p|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
         match task:
-            case TaskArtifact():
+            case Artifact_i():
                 return task.get_status()
             case TaskName_p() if task in self.tasks:
                return self.tasks[task].status

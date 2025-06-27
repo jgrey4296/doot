@@ -306,12 +306,12 @@ class TaskSpec_i(Protocol):
     sources  : list[Maybe[TaskName_p|pl.Path]]
 
     ##--| Default Action Groups
-    actions       : Iterable[ActionSpec_i]
-    required_for  : Iterable[ActionSpec_i|RelationSpec_i]
-    depends_on    : Iterable[ActionSpec_i|RelationSpec_i]
-    setup         : Iterable[ActionSpec_i|RelationSpec_i]
-    cleanup       : Iterable[ActionSpec_i|RelationSpec_i]
-    on_fail       : Iterable[ActionSpec_i|RelationSpec_i]
+    actions       : list[ActionSpec_i]
+    required_for  : list[ActionSpec_i|RelationSpec_i]
+    depends_on    : list[ActionSpec_i|RelationSpec_i]
+    setup         : list[ActionSpec_i|RelationSpec_i]
+    cleanup       : list[ActionSpec_i|RelationSpec_i]
+    on_fail       : list[ActionSpec_i|RelationSpec_i]
 
     ##--| Any additional information:
     version          : str

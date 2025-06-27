@@ -81,7 +81,7 @@ class EdgeType_e(enum.Enum):
 
     default           = TASK
 
-    @classmethod # type: ignore
+    @classmethod
     def artifact_edge_set[T](cls:type) -> set[T]:
         return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS} # type: ignore[attr-defined]
 
@@ -117,8 +117,8 @@ class ExecutionPolicy_e(enum.Enum):
 
     default = PRIORITY
 
-
 ##--| Data
+
 class Registry_d:
     """
     Data used in the registry
@@ -134,7 +134,7 @@ class Registry_d:
     _tracker            : TaskTracker_p
 
     specs               : dict[TaskName_p, TaskSpec_i]
-    concrete            : dict[AbsName, Iterable[ConcName]]
+    concrete            : dict[AbsName, list[ConcName]]
     implicit            : dict[AbsName, TaskName_p]
     tasks               : dict[ConcName, Task_p]
     artifacts           : dict[Artifact_i, set[AbsName]]
@@ -160,7 +160,6 @@ class Registry_d:
         self.artifact_consumers  = collections.defaultdict(list)
         self.blockers            = collections.defaultdict(list)
         self.late_injections     = {}
-
 
 ##--| components
 
@@ -210,10 +209,45 @@ class TaskTracker_p(Protocol):
     Does not execute anything itself
     """
 
-    ##--| public
+    ##--| properties
 
     @property
     def active(self) -> set[TaskName_p]: ...
+
+    @property
+    def specs(self) -> dict[TaskName_p, TaskSpec_i]: ...
+
+    @property
+    def artifacts(self) -> dict[Artifact_i, set[Abstract[TaskName_p]]]: ...
+
+    @property
+    def tasks(self) -> dict[Concrete[TaskName_p], Task_i]: ...
+
+    @property
+    def concrete(self) -> Mapping[Abstract[TaskName_p], list[Concrete[TaskName_p]]]: ...
+
+    @property
+    def artifact_builders(self) -> Mapping: ...
+
+    @property
+    def abstract_artifacts(self) -> Mapping: ...
+
+    @property
+    def concrete_artifacts(self) -> Mapping: ...
+
+    @property
+    def network(self) -> Mapping: ...
+
+    @property
+    def is_valid(self) -> bool: ...
+
+    @is_valid.setter
+    def is_valid(self, val:bool) -> None: ...
+
+    @property
+    def injections_remaining(self) -> Mapping: ...
+
+    ##--| public
 
     def register(self, *specs:TaskSpec_i|Artifact_i|DelayedSpec)-> None: ...
 
@@ -228,6 +262,7 @@ class TaskTracker_p(Protocol):
     ##--| inspection. TODO to remove
 
     ##--| internal
+
     @overload
     def _instantiate(self, name:Abstract[TaskName_p], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]: ...
 
@@ -240,7 +275,9 @@ class TaskTracker_p(Protocol):
     def _connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:  ...
 
     def _dependency_states_of(self, focus:TaskName_p) -> list[tuple]: ...
+
     def _successor_states_of(self, focus:TaskName_p) -> list[tuple]: ...
+
 @runtime_checkable
 class TaskTracker_i(TaskTracker_p, Protocol):
     _factory            : TaskFactory_p
@@ -248,11 +285,3 @@ class TaskTracker_i(TaskTracker_p, Protocol):
     _root_node          : TaskName_p
     _declare_priority   : int
     _min_priority       : int
-    is_valid            : bool
-    specs               : dict[TaskName_p, TaskSpec_i]
-    artifacts           : dict[Artifact_i, set[Abstract[TaskName_p]]]
-    tasks               : dict[Concrete[TaskName_p], Task_i]
-    artifact_builders   : Mapping
-    abstract_artifacts  : Mapping
-    concrete_artifacts  : Mapping
-    network             : Mapping

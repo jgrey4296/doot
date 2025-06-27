@@ -49,6 +49,7 @@ from doot.workflow._interface import (CLI_K, Artifact_i, ArtifactStatus_e,
 
 # ##-| Local
 from . import _interface as API # noqa: N812
+from ._base import Tracker_abs
 from .network import TrackNetwork
 from .queue import TrackQueue
 from .registry import TrackRegistry
@@ -92,218 +93,9 @@ logging    = logmod.getLogger(__name__)
 
 ##--|
 
-class Tracker_abs:
-    """ A public base implementation of most of a tracker
-    Has three components:
-    _registry          : db for specs and tasks
-    _network           : the links between specs in the registry
-    _queue             : the logic for determining what task to run next
-    """
-    _factory           : TaskFactory_p
-    _subfactory        : SubTaskFactory_p
-    _registry          : API.Registry_p
-    _network           : API.Network_p
-    _queue             : API.Queue_p
-
-    _declare_priority  : int
-    _min_priority      : int
-    is_valid           : bool
-
-    def __init__(self, **kwargs:Any) -> None:
-        factory                 = kwargs.pop("factory", TaskFactory)
-        subfactory              = kwargs.pop("subfactory", SubTaskFactory)
-        registry                = kwargs.pop("registry", TrackRegistry)
-        network                 = kwargs.pop("network", TrackNetwork)
-        queue                   = kwargs.pop("queue", TrackQueue)
-        self._declare_priority  = API.DECLARE_PRIORITY
-        self._min_priority      = API.MIN_PRIORITY
-        self._root_node         = TaskName(API.ROOT)
-        self.is_valid           = False
-        self._factory           = factory()
-        self._subfactory        = subfactory()
-        self._registry          = registry(tracker=self)
-        self._network           = network(tracker=self)
-        self._queue             = queue(tracker=self)
-
-    ##--| properties
-
-    @property
-    def specs(self) -> dict[TaskName_p, TaskSpec_i]:
-        return self._registry.specs # type: ignore[attr-defined]
-
-    @property
-    def artifacts(self) -> dict[Artifact_i, set[Abstract[TaskName_p]]]:
-        return self._registry.artifacts # type: ignore[attr-defined]
-
-    @property
-    def tasks(self) -> dict[Concrete[TaskName_p], Task_i]:
-        return self._registry.tasks # type: ignore[attr-defined]
-
-    @property
-    def concrete(self) -> Mapping:
-        return self._registry.concrete # type: ignore[attr-defined]
-
-    @property
-    def artifact_builders(self) -> Mapping:
-        return self._registry.artifact_builders # type: ignore[attr-defined]
-
-    @property
-    def abstract_artifacts(self) -> Mapping:
-        return self._registry.abstract_artifacts # type: ignore[attr-defined]
-
-    @property
-    def concrete_artifacts(self) -> Mapping:
-        return self._registry.concrete_artifacts # type: ignore[attr-defined]
-
-    @property
-    def network(self) -> Mapping:
-        return self._network._graph # type: ignore[attr-defined]
-
-    @property
-    def active(self) -> set:
-            return self._queue.active_set
-
-    ##--| dunders
-
-    def __bool__(self) -> bool:
-        return bool(self._queue)
-
-    ##--| public
-
-    def register(self, *specs:TaskSpec_i|Artifact_i|DelayedSpec)-> None:
-        actual : TaskSpec_i
-        for x in specs:
-            match x:
-                case DelayedSpec():
-                    actual = self._upgrade_delayed_to_actual(x)
-                    self._registry.register_spec(actual)
-                case TaskSpec_i() if TaskName.Marks.partial in x.name:
-                    actual = self._reify_partial_spec(x)
-                    self._registry.register_spec(actual)
-                case TaskSpec_i():
-                    self._registry.register_spec(x)
-                case Artifact_i():
-                    self._registry._register_artifact(x) # type: ignore[attr-defined]
-                case x:
-                    raise TypeError(type(x))
-
-    def queue(self, name:str|TaskName_p|TaskSpec_i|Artifact_i|DelayedSpec, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: ARG002
-        match name:
-            case TaskName_p() | Artifact_i():
-                pass
-            case DelayedSpec():
-                self.register(name)
-                name = name.target
-            case TaskSpec_i():
-                self.register(name)
-                name = name.name
-            case x:
-                raise TypeError(type(x))
-        queued = self._queue.queue_entry(name, from_user=from_user, status=status)
-        return queued
-
-    def build(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|Artifact_i]]=None) -> None:
-        self._network.build_network(sources=sources)
-
-    def validate(self) -> None:
-        self._network.validate_network()
-
-    def plan(self, *args:Any) -> list:
-        raise NotImplementedError()
-
-    def clear(self) -> None:
-        self._queue.clear_queue()
-
-    ##--| internal
-
-    def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
-        match target:
-            case TaskName_p() as x if task:
-                return self._registry.make_task(x, *args, **kwargs) # type: ignore[return-value]
-            case TaskName_p() as x:
-                return self._registry.instantiate_spec(x, *args, **kwargs)
-            case RelationSpec_i() as x:
-                return self._registry.instantiate_relation(target, *args, **kwargs)
-            case x:
-                raise TypeError(type(x))
-
-    def _connect(self, left:Concrete[TaskName_p]|Artifact_i, right:Maybe[Literal[False]|Concrete[TaskName_p]|Artifact_i]=None, **kwargs:Any) -> None:
-        self._network.connect(left, right, **kwargs)
-
-    def _upgrade_delayed_to_actual(self, spec:DelayedSpec) -> TaskSpec_i:
-        """
-        can't be in taskfactory, as it requires the registered specs
-        """
-        x       : Any
-        result  : TaskSpec_i
-        base    : TaskSpec_i
-        data    : dict  = {}
-        match self.specs.get(spec.base, None):
-            case TaskSpec_i() as x:
-                base = x
-            case None:
-                raise ValueError("The Base for a delayed spec was not found", spec.base)
-
-        match spec.applied:
-            case None:
-                pass
-            case dict() as applied:
-                data |= applied
-
-        match spec.inject:
-            case None:
-                pass
-            case [*xs]:
-                assert(all(isinstance(x, InjectSpec_i) for x in xs)), xs
-                for inj in xs:
-                    # apply_from_spec
-                    data |= inj.apply_from_spec(base)
-            case x:
-                raise TypeError(type(x))
-
-        data |= spec.overrides
-        data['name'] = spec.target
-        result = self._factory.merge(bot=base, top=data)
-        return result
-
-    def _reify_partial_spec(self, spec:TaskSpec_i) -> TaskSpec_i:
-        """
-        converts spec(name=group::task.a.b..$partial$, sources[*_, base], data)
-        into spec(name=group::a.b, data)
-        using base
-        can't be in the taskfactory, as it requires registered specs
-
-        """
-        x       : Any
-        result  : TaskSpec_i
-        base    : TaskSpec_i
-        target  : TaskName_p
-        ##--|
-        assert(TaskName.Marks.partial in spec.name)
-        match spec.sources[-1]:
-            case TaskName_p() as x if x not in self.specs:
-                raise ValueError("Could not find a partial spec's source", x)
-            case TaskName_p() as x:
-                base = self.specs[x]
-            case x:
-                raise TypeError(type(x))
-
-        match spec.name.pop(top=False):
-            case TaskName_p() as adjusted if adjusted in self.specs:
-                raise doot.errors.TrackingError("Tried to reify a partial spec into one that already is registered", spec.name, adjusted)
-            case TaskName_p() as x:
-                target = x
-            case x:
-                raise TypeError(type(x))
-
-        result = self._factory.merge(bot=base, top=spec, suffix=False)
-        result.name = target
-        return result
-
-##--|
-
 @Proto(API.TaskTracker_p)
-class Tracker(Tracker_abs):
+class NaiveTracker(Tracker_abs):
+    """ Specific implementations for the default naive tracker """
 
     def next_for(self, target:Maybe[str|TaskName_p]=None) -> Maybe[Task_p|Artifact_i]:
         """ ask for the next task that can be performed
@@ -347,46 +139,6 @@ class Tracker(Tracker_abs):
             logging.info("[Next.For] <- %s", result)
             return result
 
-    ##--|
-
-    def get_priority(self, *, target:Maybe[Concrete[TaskName_p|Artifact_i]]=None, default:bool=False) -> int:
-        match target, default:
-            case None, True:
-                return self._declare_priority
-            case None, False:
-                raise ValueError()
-            case x, _:
-                return self._registry.get_priority(target) # type: ignore[attr-defined]
-            case x:
-                raise TypeError(type(x))
-
-    def get_status(self, *, target:Maybe[Concrete[TaskName_p]|Artifact_i]=None, default:bool=False) -> TaskStatus_e:
-        match target, default:
-            case None, True:
-                return TaskStatus_e.NAMED
-            case None, False:
-                raise ValueError()
-            case x, _:
-                return self._registry.get_status(target) # type: ignore[attr-defined]
-            case x:
-                raise TypeError(type(x))
-
-    def set_status(self, task:Concrete[TaskName_p]|Artifact_i|Task_p, state:TaskStatus_e) -> bool:
-        return self._registry.set_status(task, state) # type: ignore[attr-defined]
-
-    @override
-    def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
-        """ extends base instantiation to add late injection for tasks """
-        parent : TaskName_p
-        result : Maybe[TaskName_p]
-        ##--|
-        parent  = kwargs.pop("parent", None)
-        result  = super()._instantiate(target, *args, task=task, **kwargs)
-        if task and result:
-            self._late_inject(result, parent=parent)
-        return result
-
-    ##--| internal
 
     def _next_for_task(self, focus:TaskName_p) -> Maybe[Task_p]:  # noqa: PLR0912, PLR0915
         """ logic for handling a dequed task """
@@ -402,6 +154,7 @@ class Tracker(Tracker_abs):
             case TaskStatus_e.DISABLED:
                 self.active.remove(focus)
             case TaskStatus_e.TEARDOWN:
+                # Queue cleanup tasks
                 for succ, _ in self._successor_states_of(focus):
                     match self.queue(succ):
                         case TaskName() as x if x.is_cleanup():
@@ -499,6 +252,23 @@ class Tracker(Tracker_abs):
         ##--|
         return None
 
+    @override
+    def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
+        """ extends base instantiation to add late injection for tasks """
+        parent : TaskName_p
+        result : Maybe[TaskName_p]
+        ##--|
+        parent  = kwargs.pop("parent", None)
+        match super()._instantiate(target, *args, task=task, **kwargs):
+            case TaskName_p() as result if task:
+                self._late_inject(result, parent=parent)
+            case result:
+                pass
+
+        return result
+
+    ##--| internal
+
     def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:
         """ After a task is created, values can be injected into it.
         these include, in order:
@@ -533,7 +303,7 @@ class Tracker(Tracker_abs):
                     del task.state[CLI_K]
 
         ##--| apply late injections
-        match cast("API.Registry_d", self._registry).late_injections.get(name, None):
+        match self.injections_remaining.get(name, None):
             case None:
                 pass
             case _, TaskName_p() as x if x not in self.tasks:
@@ -563,3 +333,34 @@ class Tracker(Tracker_abs):
 
     def _deque(self) -> TaskName_p|Artifact_i:
         return self._queue.deque_entry()
+
+
+    ##--| utils
+    @property
+    def injections_remaining(self) -> Mapping:
+        return cast("API.Registry_d", self._registry).late_injections
+
+    def get_priority(self, *, target:Maybe[Concrete[TaskName_p|Artifact_i]]=None, default:bool=False) -> int:
+        match target, default:
+            case None, True:
+                return self._declare_priority
+            case None, False:
+                raise ValueError()
+            case x, _:
+                return self._registry.get_priority(target) # type: ignore[attr-defined]
+            case x:
+                raise TypeError(type(x))
+
+    def get_status(self, *, target:Maybe[Concrete[TaskName_p]|Artifact_i]=None, default:bool=False) -> TaskStatus_e:
+        match target, default:
+            case None, True:
+                return TaskStatus_e.NAMED
+            case None, False:
+                raise ValueError()
+            case x, _:
+                return self._registry.get_status(target) # type: ignore[attr-defined]
+            case x:
+                raise TypeError(type(x))
+
+    def set_status(self, task:Concrete[TaskName_p]|Artifact_i|Task_p, state:TaskStatus_e) -> bool:
+        return self._registry.set_status(task, state) # type: ignore[attr-defined]
