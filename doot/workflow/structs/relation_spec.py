@@ -106,6 +106,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         """ Create a new relation, defaulting to a requirement.
 
         """
+        d_data : dict
         result : Any
         target : Any
         relation = relation or cls.Marks.needs
@@ -136,8 +137,8 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                                   constraints=constraints,
                                   inject=inject,
                                   relation=relation)
-            case {"target": x}:
-                result = cls(**data)
+            case dict() as d_data if "target" in d_data:
+                result = cls(**d_data)
             case _:
                 raise ValueError("Bad data used for relation spec", type(data), data)
 

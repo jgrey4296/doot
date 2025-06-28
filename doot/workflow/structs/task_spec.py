@@ -49,6 +49,7 @@ from .inject_spec import InjectSpec
 from .artifact import TaskArtifact
 from .relation_spec import RelationMeta_e, RelationSpec
 from .task_name import TaskName
+from .._interface import Job_p, Artifact_i, RelationSpec_i, ActionSpec_i
 
 # ##-- types
 # isort: off
@@ -64,9 +65,8 @@ from dataclasses import _MISSING_TYPE, InitVar, dataclass, field, fields
 from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler, ConfigDict,
                       WrapValidator, field_validator, model_validator)
+# need to be outside of TYPE_CHECKING for pydantic
 from jgdv import Maybe
-from .._interface import TaskSpec_i, Task_p, Job_p, Task_i
-
 if TYPE_CHECKING:
     import enum
     from typing import Final
@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from .._interface import TaskSpec_i, Task_p, Task_i
     type SpecialType = _SpecialType
 
 # isort: on
@@ -86,18 +87,18 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Consts
-DEFAULT_ALIAS     : Final[str]             = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS # type: ignore
+DEFAULT_ALIAS     : Final[str]             = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
 DEFAULT_BLOCKING  : Final[tuple[str, ...]] = tuple(["required_for", "on_fail"])
 DEFAULT_RELATION   : Final[RelationMeta_e] = RelationMeta_e.default()
 ##--| Utils
 
-def _action_group_sort_key(val:ActionSpec|RelationSpec) -> Any:
+def _action_group_sort_key(val:ActionSpec_i|RelationSpec_i) -> Any:
     match val:
-        case ActionSpec(): # Don't change ActionSpec ordering
+        case ActionSpec_i(): # Don't change ActionSpec ordering
             return (1,)
-        case RelationSpec(target=TaskArtifact() as target):
+        case RelationSpec_i(target=Artifact_i() as target):
             return (-1,)
-        case RelationSpec(target=TaskName() as target):
+        case RelationSpec_i(target=TaskName_p() as target):
             return (0, target)
         case x:
             raise TypeError(type(x))
@@ -127,7 +128,8 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
 
       # TODO handle callables?
     """
-    rel_root : TaskName
+    results   : list
+    rel_root  : TaskName
     match group: # Build initial Relation/Action Specs
         case None | []:
             return []
@@ -162,7 +164,7 @@ ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_ac
 class _TransformerUtils_m:
     """Utilities for artifact transformers"""
 
-    def instantiate_transformer(self:TaskSpec_i, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> Maybe[TaskSpec]:
+    def instantiate_transformer(self:TaskSpec_i, target:Artifact_i|tuple[Artifact_i, Artifact_i]) -> Maybe[TaskSpec_i]:
         """ Create an instantiated transformer spec.
           ie     : ?.txt -> spec -> ?.blah
           becomes: a.txt -> spec -> a.blah
@@ -172,10 +174,12 @@ class _TransformerUtils_m:
 
           TODO: handle ?/?.txt, */?.txt, blah/*/?.txt, path/blah.?
         """
+        pre   : Artifact_i
+        post  : Artifact_i
         match target:
-            case TaskArtifact():
+            case Artifact_i():
                 pre, post = target, target
-            case (TaskArtifact() as pre, TaskArtifact() as post):
+            case (Artifact_i() as pre, Artifact_i() as post):
                 pass
 
         assert(pre.is_concrete() or post.is_concrete())
@@ -196,7 +200,7 @@ class _TransformerUtils_m:
 
         return instance
 
-    def transformer_of(self:TaskSpec_i) -> Maybe[tuple[RelationSpec, RelationSpec]]:  # noqa: PLR0911, PLR0912
+    def transformer_of(self:TaskSpec_i) -> Maybe[tuple[RelationSpec_i, RelationSpec_i]]:  # noqa: PLR0911, PLR0912
         """ If this spec can transform an artifact,
           return those relations.
 

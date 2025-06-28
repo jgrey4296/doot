@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -17,14 +16,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import weakref
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -42,10 +34,31 @@ import doot.errors
 from .. import _interface as API  # noqa: N812
 from .._interface import ArtifactStatus_e
 
-if TYPE_CHECKING:
+# ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+# General
+import abc
+import collections.abc
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+from typing import no_type_check, final, override, overload
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+if typing.TYPE_CHECKING:
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
     from jgdv import Maybe, TimeDelta
 
-# ##-- end 1st party imports
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -88,7 +101,7 @@ class TaskArtifact(Location):
             case _:
                 raise NotImplementedError()
 
-    def reify(self, other:pl.Path|Location) -> Maybe[TaskArtifact]:
+    def reify(self, other:pl.Path|Location) -> Maybe[TaskArtifact]:  # noqa: PLR0912, PLR0915
         """
         Apply a more concrete path onto this location
         """
@@ -175,11 +188,12 @@ class TaskArtifact(Location):
         expanded = doot.locs[as_path] # type: ignore[attr-defined]
         return expanded.exists()
 
+    @override
     def is_concrete(self) -> bool:
         if self.Marks.abstract in self:
             return False
         try:
-            _ = doot.locs.expand(self) # type: ignore[attr-defined]
+            _ = doot.locs.expand(self)
         except KeyError:
             return False
         else:

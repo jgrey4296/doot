@@ -47,8 +47,8 @@ from typing import Generic, NewType, Never, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, overload, override
-from jgdv import Func
-
+# outside of type_checking for pydantic
+from jgdv import Func  # noqa: TC002
 if TYPE_CHECKING:
     from .. import _interface as API  # noqa: N812
     from jgdv import Maybe
@@ -68,7 +68,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-ALIASES = doot.aliases.on_fail([]).action # type: ignore
+ALIASES = doot.aliases.on_fail([]).action
 
 ##--| body
 class ActionSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
@@ -88,7 +88,7 @@ class ActionSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_
 
     @override
     @classmethod
-    def build(cls, data:dict|list|ChainGuard|ActionSpec, *, fun:Maybe[Callable]=None) -> ActionSpec: # type: ignore
+    def build(cls, data:dict|list|ChainGuard|ActionSpec, *, fun:Maybe[Callable]=None) -> ActionSpec: # type: ignore[override]
         match data:
             case ActionSpec():
                 return data
@@ -114,21 +114,23 @@ class ActionSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_
 
     @field_validator("do", mode="before")
     def _validate_do(cls, val:Maybe[str|CodeReference|Callable]) -> Maybe[CodeReference]:
+        aliases : dict[str, str]
         match val:
             case None:
                 return None
             case CodeReference():
                 return val
-            case str() if val in ALIASES():
-                alias = ALIASES()[val]
-                return CodeReference(alias) # type: ignore
+            case str() if (aliases:=ALIASES()) and val in aliases:
+                alias = aliases[val]
+                return CodeReference(alias)
             case str():
-                return CodeReference(val) # type: ignore
+                return CodeReference(val)
             case x if callable(x):
                 return CodeReference(x)
             case _:
                 raise TypeError("Unrecognized action spec do type", val)
 
+    @override
     def __str__(self) -> str:
         result = []
         if isinstance(self.do, str):

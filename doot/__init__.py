@@ -38,7 +38,7 @@ match getattr(__main__, "doot_setup", False):
     case False:
         sys.modules[__name__].__class__ = OverlordFacade
         # Initialise the module manually
-        sys.modules[__name__].__init__(__name__) # type: ignore
+        OverlordFacade.__init__(sys.modules[__name__], __name__) # type: ignore[arg-type]
         __main__.doot_setup = True
     case True:
         # Nothing to do

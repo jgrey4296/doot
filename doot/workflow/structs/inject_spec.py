@@ -317,7 +317,7 @@ class InjectSpec(BaseModel):
         """
         logging.info("Applying literal injection: %s", val)
         data = {}
-        for x,_y in self.literal.items(): # type: ignore
+        for x,_y in self.literal.items():
             data[str(x)] = val or _y
         else:
             return data

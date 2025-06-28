@@ -334,7 +334,8 @@ class Action_p(Protocol):
 
 @runtime_checkable
 class Artifact_i(Location_p, Protocol):
-    pass
+
+    def get_status(self) -> ArtifactStatus_e: ...
 ##--|
 
 @runtime_checkable

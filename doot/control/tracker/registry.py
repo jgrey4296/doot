@@ -92,7 +92,6 @@ class _Registration_m(API.Registry_d):
         That predecessor can not be partial itself
         """
         x           : Any
-        queue       : list[TaskSpec_i]
         ##--|
         if TaskMeta_e.DISABLED in spec.meta:
             logging.info("[Disabled] task: %s", spec.name[:])
@@ -105,7 +104,7 @@ class _Registration_m(API.Registry_d):
                 return
             case TaskName_p() as x if TaskName.Marks.partial in x:
                 raise ValueError("By this point a partial spec should have been reified", x)
-            case TaskName_p() if x.uuid(): # type: ignore
+            case TaskName_p() if x.uuid():
                 logging.info("[+.Concrete] : %s", spec.name)
                 self.concrete[spec.name.de_uniq()].append(spec.name)
             case TaskName_p():
@@ -119,6 +118,7 @@ class _Registration_m(API.Registry_d):
 
     def _register_spec_artifacts(self, spec:TaskSpec_i) -> None:
         """ Register the artifacts a spec produces """
+        assert(hasattr(self._tracker, "_factory"))
         for rel in self._tracker._factory.action_group_elements(spec):
             match rel:
                 case RelationSpec_i(target=TaskArtifact() as art, relation=reltype):
@@ -126,7 +126,7 @@ class _Registration_m(API.Registry_d):
                 case _:
                     pass
 
-    def _register_artifact(self, art:TaskArtifact, *tasks:TaskName_p, relation:Maybe[S_API.RelationMeta_e]=None) -> None:
+    def _register_artifact(self, art:Artifact_i, *tasks:TaskName_p, relation:Maybe[S_API.RelationMeta_e]=None) -> None:
         logging.info("[+] Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
         # Add it to the relevant abstract/concrete set
@@ -138,9 +138,9 @@ class _Registration_m(API.Registry_d):
             case None:
                 pass
             case S_API.RelationMeta_e.needs:
-                self.artifact_consumers[art] += tasks
+                self.artifact_consumers[art].update(tasks)
             case S_API.RelationMeta_e.blocks:
-                self.artifact_builders[art] += tasks
+                self.artifact_builders[art].update(tasks)
 
     def _register_blocking_relations(self, spec:TaskSpec_i) -> None:
         """ a Task[required_for=[x,y,z] blocks x,y,z,
@@ -149,7 +149,7 @@ class _Registration_m(API.Registry_d):
 
         """
         assert(not spec.name.uuid())
-
+        assert(hasattr(self._tracker, "_factory"))
         # Register Indirect dependencies:
         # So if spec blocks target,
         # record that target needs spec
@@ -196,6 +196,7 @@ class _Instantiation_m(API.Registry_d):
         If force=True, forces a new instance to be made
         if force=False, blocks new instances from being made
         """
+        assert(hasattr(self._tracker, "_factory"))
         match force:
             case None|False if name.uuid() and name in self.specs: # Re-use existing instance
                 if bool(extra):
@@ -259,7 +260,7 @@ class _Instantiation_m(API.Registry_d):
             case x:
                 raise TypeError(type(x))
         ##--| reuse
-        potentials  = self.concrete.get(rel.target[:,:], [])[:]
+        potentials : list = self.concrete.get(rel.target[:,:], [])[:] # type: ignore[call-overload]
         for existing in potentials:
             if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]): # type: ignore[arg-type]
                 continue
@@ -298,6 +299,7 @@ class _Instantiation_m(API.Registry_d):
 
           return the name of the task
           """
+        assert(hasattr(self._tracker, "_factory"))
         task : Task_i
         ##--| guards
         match name, task_obj:
@@ -359,7 +361,7 @@ class _Verification_m(API.Registry_d):
 class TrackRegistry(API.Registry_d):
     """ Stores and manipulates specs, tasks, and artifacts """
 
-    def get_status(self, task:Concrete[TaskName_p|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
+    def get_status(self, task:Concrete[TaskName_p|Artifact_i]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
         match task:
             case Artifact_i():
@@ -371,15 +373,15 @@ class TrackRegistry(API.Registry_d):
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, target:Concrete[TaskName_p|TaskArtifact]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+    def set_status(self, target:Concrete[TaskName_p|Artifact_i]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
         """
         match target, status:
             case Task_i() as task, TaskStatus_e() if task.name in self.tasks:
-                logging.info("[%s] %s -> %s", task.name[:], self.get_status(task.name), status) # type: ignore
-                self.tasks[task.name].status = status # type: ignore
+                logging.info("[%s] %s -> %s", task.name[:], self.get_status(task.name), status)
+                self.tasks[task.name].status = status
             case TaskName_p() as task, TaskStatus_e() if task in self.tasks:
                 logging.info("[%s] %s -> %s", task[:], self.get_status(task), status)
                 self.tasks[task].status = status
@@ -393,7 +395,7 @@ class TrackRegistry(API.Registry_d):
 
         return True
 
-    def get_priority(self, target:Concrete[TaskName_p|TaskArtifact]) -> int:
+    def get_priority(self, target:Concrete[TaskName_p|Artifact_i]) -> int:
         match target:
             case TaskName_p() if target in self.tasks:
                 return self.tasks[target].priority

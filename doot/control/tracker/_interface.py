@@ -142,10 +142,10 @@ class Registry_d:
     abstract_artifacts  : set[Artifact_i]
     concrete_artifacts  : set[Artifact_i]
     # indirect blocking requirements:
-    blockers            : dict[ConcName|Artifact_i, Iterable[RelationSpec_i]]
+    blockers            : dict[ConcName|Artifact_i, list[RelationSpec_i]]
     late_injections     : dict[ConcName, tuple[InjectSpec_i, TaskName_p]]
-    artifact_builders   : dict[Artifact_i, Iterable[TaskName_p]]
-    artifact_consumers  : dict[Artifact_i, Iterable[TaskName_p]]
+    artifact_builders   : dict[Artifact_i, set[TaskName_p]]
+    artifact_consumers  : dict[Artifact_i, set[TaskName_p]]
 
     def __init__(self, *, tracker:TaskTracker_p) -> None:
         self._tracker            = tracker
@@ -156,8 +156,8 @@ class Registry_d:
         self.artifacts           = collections.defaultdict(set)
         self.abstract_artifacts  = set()
         self.concrete_artifacts  = set()
-        self.artifact_builders   = collections.defaultdict(list)
-        self.artifact_consumers  = collections.defaultdict(list)
+        self.artifact_builders   = collections.defaultdict(set)
+        self.artifact_consumers  = collections.defaultdict(set)
         self.blockers            = collections.defaultdict(list)
         self.late_injections     = {}
 
@@ -208,9 +208,7 @@ class TaskTracker_p(Protocol):
     and have failed.
     Does not execute anything itself
     """
-
     ##--| properties
-
     @property
     def active(self) -> set[TaskName_p]: ...
 
@@ -280,8 +278,8 @@ class TaskTracker_p(Protocol):
 
 @runtime_checkable
 class TaskTracker_i(TaskTracker_p, Protocol):
+    _root_node          : TaskName_p
     _factory            : TaskFactory_p
     _subfactory         : SubTaskFactory_p
-    _root_node          : TaskName_p
     _declare_priority   : int
     _min_priority       : int

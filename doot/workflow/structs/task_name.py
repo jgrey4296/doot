@@ -69,7 +69,7 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-DEFAULT_SEP   : Final[str] = doot.constants.patterns.TASK_SEP # type: ignore
+DEFAULT_SEP   : Final[str] = doot.constants.patterns.TASK_SEP # type: ignore[attr-defined]
 TASKS_PREFIX  : Final[str] = "tasks."
 
 ##--|
@@ -89,21 +89,25 @@ class TaskNameBodyMarks_e(StrangAPI.StrangMarkAbstract_e):
     extend      = "+"
     customised  = "<+>"
 
+    @override
     @classmethod
-    def default(cls) -> str:
+    def default(cls) -> Maybe[str]:
         """ The mark used if no mark is found"""
         return None
 
+    @override
     @classmethod
     def implicit(cls) -> set[str]:
         """ Marks that arent in the form $mark$ """
         return {cls.hide, cls.empty}
 
+    @override
     @classmethod
     def skip(cls) -> Maybe[str]:
         """ The mark placed in empty words """
         return cls.empty
 
+    @override
     @classmethod
     def idempotent(cls) -> set[str]:
         """ marks you can't have more than one of """
@@ -118,7 +122,8 @@ TASKSECTIONS : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
 
 class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
 
-    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult:  # noqa: A002, ARG002
+    @override
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult:
         """ Remove 'tasks' as a prefix, and strip quotes  """
         match input:
             case Strang():
@@ -134,7 +139,8 @@ class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
 
 
 
-    def _implicit_mark(self, val:str, *, sec:StrangAPI.Sec_d, data:dict, index:int, maxcount:int) -> Maybe[API.StrangMarkAbstract_e]:  # noqa: ARG002
+    @override
+    def _implicit_mark(self, val:str, *, sec:StrangAPI.Sec_d, data:dict, index:int, maxcount:int) -> Maybe[StrangAPI.StrangMarkAbstract_e]:
         """ Builds certain marks that are not in the form $mark$.
 
         In particular, pass marks that are empty words between two case chars: group::a.b..c
@@ -151,7 +157,7 @@ class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
             case x if val == x.value:
                 return x
 
-        if not val in marks:
+        if val not in marks:
             return None
         return marks(val)
 

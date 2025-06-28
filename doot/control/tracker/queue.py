@@ -123,8 +123,10 @@ class TrackQueue:
                 self._queue.add(art, priority=target_priority)
                 if status:
                     assert(isinstance(status, TaskStatus_e))
+                    assert(hasattr(self._tracker, "set_status"))
                     self._tracker.set_status(art, status)
 
+                assert(hasattr(self._tracker, "get_status"))
                 logging.debug("[Queue] %s : %s", self._tracker.get_status(target=art), art)
                 return cast("Artifact_i", art)
             case TaskName_p() | str():
@@ -154,8 +156,10 @@ class TrackQueue:
         # Apply the override status if necessary:
         match status:
             case TaskStatus_e():
+                assert(hasattr(self._tracker, "set_status"))
                 self._tracker.set_status(inst_name, status)
             case None:
+                assert(hasattr(self._tracker, "get_status"))
                 status = self._tracker.get_status(target=inst_name)
 
         logging.debug("[Queue] %s (P:%s) : %s", status, target_priority, inst_name[:])
@@ -166,6 +170,8 @@ class TrackQueue:
           decrements the priority when popped.
         """
         focus : TaskName_p|Artifact_i
+        assert(hasattr(self._tracker, "get_priority"))
+        assert(hasattr(self._tracker, "set_status"))
         if peek:
             return self._queue.peek()
 
