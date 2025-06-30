@@ -85,7 +85,7 @@ class DelayedSpec:
         self.base       = kwargs.pop("base")
         self.target     = kwargs.pop("target")
         self.inject     = []
-        self.applied    = kwargs.pop("applied", {})
+        self.applied    = kwargs.pop("applied", None) or {}
         self.overrides  = kwargs.pop("overrides")
         match kwargs.pop("inject", []):
             case None:

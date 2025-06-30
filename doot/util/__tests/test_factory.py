@@ -20,7 +20,7 @@ import pytest
 ##--|
 import doot
 from doot.workflow import TaskSpec, TaskName
-from doot.workflow._interface import Task_p, TaskSpec_i, TaskName_p
+from doot.workflow._interface import Task_p, TaskSpec_i, TaskName_p, RelationSpec_i
 from ..factory import SubTaskFactory, TaskFactory
 ##--|
 
@@ -353,7 +353,7 @@ class TestTaskFactory_Naming:
         suffix = None
         match factory._prep_name(TaskName("simple::task"), suffix=suffix):
             case TaskName_p() as x:
-                assert(x[1,-1] == "<+>")
+                assert(x[1,-1] == TaskName.Marks.customised)
             case x:
                 assert(False), x
 
@@ -396,7 +396,7 @@ class TestSubTaskFactory:
             case []:
                 assert(True)
             case x:
-                 assert(False), x
+                assert(False), x
 
     def test_empty_cleanup_gen(self, factory, subfactory):
         base_spec = factory.build({"name": "agroup::base", "a": 0})

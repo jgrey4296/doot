@@ -69,6 +69,9 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 logging = logmod.root
+logmod.getLogger("jgdv").propagate = False
+logmod.getLogger("doot.control.tracker.registry").propagate = False
+logmod.getLogger("doot.util").propagate = False
 
 @pytest.fixture(scope="function")
 def queue():

@@ -73,6 +73,7 @@ DEFAULT_SEP   : Final[str] = doot.constants.patterns.TASK_SEP # type: ignore[att
 TASKS_PREFIX  : Final[str] = "tasks."
 
 ##--|
+
 class TaskNameHeadMarks_e(StrangAPI.StrangMarkAbstract_e):
     """ Markers used in a Strang's head """
     basic = "$basic$"
@@ -87,7 +88,7 @@ class TaskNameBodyMarks_e(StrangAPI.StrangMarkAbstract_e):
     empty       = ""
     hide        = "_"
     extend      = "+"
-    customised  = "<+>"
+    customised  = "$+$"
 
     @override
     @classmethod
@@ -113,6 +114,10 @@ class TaskNameBodyMarks_e(StrangAPI.StrangMarkAbstract_e):
         """ marks you can't have more than one of """
         return {cls.head, cls.hide}
 
+
+    @classmethod
+    def generated(cls) -> set[str]:
+        return { cls.cleanup, cls.head }
 ##--|
 TASKSECTIONS : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
     StrangAPI.Sec_d("group", ".", "::", str, TaskNameHeadMarks_e, True),  # noqa: FBT003
@@ -136,8 +141,6 @@ class TaskNameProcessor[T:API.TaskName_p](StrangBasicProcessor):
                 raise TypeError(type(x))
 
         return super().pre_process(cls, cleaned, *args, strict=strict, **kwargs)
-
-
 
     @override
     def _implicit_mark(self, val:str, *, sec:StrangAPI.Sec_d, data:dict, index:int, maxcount:int) -> Maybe[StrangAPI.StrangMarkAbstract_e]:
@@ -172,17 +175,35 @@ class TaskName(Strang):
     _sections  : ClassVar  = TASKSECTIONS
 
     def with_cleanup(self) -> Self:
+        """
+        Generate a $cleanup$ task name. the UUID of the source is carried with it
+        """
         if self.is_cleanup():
             return self
-        return self.push(TaskNameBodyMarks_e.cleanup)
+        if not self.uuid():
+            raise ValueError("adding $cleanup$ to a task name requires a uuid in the base")
+
+        return self.push(TaskNameBodyMarks_e.cleanup, uuid=self.uuid())
 
     def with_head(self) -> Self:
+        """ generate a $head$ task name, carrying the uuid along with it """
         if self.is_head():
             return self
-        return self.push(TaskNameBodyMarks_e.head)
+        if not self.uuid():
+            raise ValueError("Adding $head$ to a task name requires a uuid in the base")
+
+        return self.push(TaskNameBodyMarks_e.head, uuid=self.uuid())
 
     def is_cleanup(self) -> bool:
         return TaskNameBodyMarks_e.cleanup in self
 
     def is_head(self) -> bool:
         return TaskNameBodyMarks_e.head in self
+
+    def pop_generated(self) -> Self:
+        if not (self.is_head() or self.is_cleanup()):
+            return self
+
+        assert(self.uuid())
+        base = self.pop(top=False)
+        return type(self)(f"{base}[<uuid>]", uuid=self.uuid())

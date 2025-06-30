@@ -95,65 +95,51 @@ logging    = logmod.getLogger(__name__)
 class Tracker_abs:
     """ A public base implementation of most of a tracker
     Has three components:
-    _registry          : db for specs and tasks
-    _network           : the links between specs in the registry
-    _queue             : the logic for determining what task to run next
+    _registry                : db for specs and tasks
+    _network                 : the links between specs in the registry
+    _queue                   : the logic for determining what task to run next
     """
-    _factory           : TaskFactory_p
-    _subfactory        : SubTaskFactory_p
-    _registry          : API.Registry_p
-    _network           : API.Network_p
-    _queue             : API.Queue_p
+    _factory                 : TaskFactory_p
+    _subfactory              : SubTaskFactory_p
+    _registry                : API.Registry_p
+    _network                 : API.Network_p
+    _queue                   : API.Queue_p
 
-    _declare_priority  : int
-    _min_priority      : int
-    _is_valid           : bool
+    _declare_priority        : int
+    _min_priority            : int
 
     def __init__(self, **kwargs:Any) -> None:
-        factory                 = kwargs.pop("factory", TaskFactory)
-        subfactory              = kwargs.pop("subfactory", SubTaskFactory)
-        registry                = kwargs.pop("registry", TrackRegistry)
-        network                 = kwargs.pop("network", TrackNetwork)
-        queue                   = kwargs.pop("queue", TrackQueue)
-        self._declare_priority  = API.DECLARE_PRIORITY
-        self._min_priority      = API.MIN_PRIORITY
-        self._root_node         = TaskName(API.ROOT)
-        self._is_valid          = False
-        self._factory           = factory()
-        self._subfactory        = subfactory()
-        self._registry          = registry(tracker=self)
-        self._network           = network(tracker=self)
-        self._queue             = queue(tracker=self)
+        factory                       = kwargs.pop("factory", TaskFactory)
+        subfactory                    = kwargs.pop("subfactory", SubTaskFactory)
+        registry                      = kwargs.pop("registry", TrackRegistry)
+        network                       = kwargs.pop("network", TrackNetwork)
+        queue                         = kwargs.pop("queue", TrackQueue)
+        self._declare_priority        = API.DECLARE_PRIORITY
+        self._min_priority            = API.MIN_PRIORITY
+        self._root_node               = TaskName(API.ROOT)
+        self._factory                 = factory()
+        self._subfactory              = subfactory()
+        self._registry                = registry(tracker=self)
+        self._network                 = network(tracker=self)
+        self._queue                   = queue(tracker=self)
 
     ##--| properties
 
     @property
-    def specs(self) -> dict[TaskName_p, TaskSpec_i]:
+    def specs(self) -> dict[TaskName_p, API.SpecMeta_d]:
         return self._registry.specs # type: ignore[attr-defined]
 
     @property
-    def artifacts(self) -> dict[Artifact_i, set[Abstract[TaskName_p]]]:
+    def artifacts(self) -> dict[Artifact_i, API.ArtifactMeta_d]:
         return self._registry.artifacts # type: ignore[attr-defined]
 
     @property
-    def tasks(self) -> dict[Concrete[TaskName_p], Task_i]:
-        return self._registry.tasks # type: ignore[attr-defined]
-
-    @property
-    def concrete(self) -> Mapping:
+    def concrete(self) -> set:
         return self._registry.concrete # type: ignore[attr-defined]
 
     @property
-    def artifact_builders(self) -> Mapping:
-        return self._registry.artifact_builders # type: ignore[attr-defined]
-
-    @property
-    def abstract_artifacts(self) -> Mapping:
-        return self._registry.abstract_artifacts # type: ignore[attr-defined]
-
-    @property
-    def concrete_artifacts(self) -> Mapping:
-        return self._registry.concrete_artifacts # type: ignore[attr-defined]
+    def abstract(self) -> set:
+        return self._registry.abstract
 
     @property
     def network(self) -> Mapping:
@@ -165,13 +151,7 @@ class Tracker_abs:
 
     @property
     def is_valid(self) -> bool:
-        return self._is_valid
-
-    ##--| setters
-
-    @is_valid.setter
-    def is_valid(self, val:bool) -> None:
-        self._is_valid = val
+        return not bool(self._network.non_expanded)
 
     ##--| dunders
 
@@ -192,9 +172,6 @@ class Tracker_abs:
                 case TaskSpec_i() if TaskName.Marks.partial in x.name:
                     actual = self._reify_partial_spec(x)
                     self._registry.register_spec(actual)
-                case TaskSpec_i() if x.name.uuid():
-                    self._registry.register_spec(x)
-                    queue += self._generate_implicit_tasks(x)
                 case TaskSpec_i():
                     self._registry.register_spec(x)
                 case Artifact_i():
@@ -203,6 +180,7 @@ class Tracker_abs:
                     raise TypeError(type(x))
 
     def queue(self, name:str|TaskName_p|TaskSpec_i|Artifact_i|DelayedSpec, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: ARG002
+        queued : TaskName_p|Artifact_i
         match name:
             case str() | TaskName_p() | Artifact_i():
                 pass
@@ -214,7 +192,18 @@ class Tracker_abs:
                 name = name.name
             case x:
                 raise TypeError(type(x))
-        queued = self._queue.queue_entry(name, from_user=from_user, status=status)
+        match self._queue.queue_entry(name, from_user=from_user), status:
+            case None, _:
+                return None
+            case TaskName_p()|Artifact_i() as queued, None:
+                pass
+            case TaskName_p()|Artifact_i() as queued, TaskStatus_e() as _status:
+                assert(hasattr(self, "set_status"))
+                self.set_status(queued, _status)
+        ##--|
+        assert(hasattr(self, "get_status"))
+        status, priority = self.get_status(target=queued)
+        logging.debug("[Tracker.Queue] : %s (S:%s, P:%s)", queued[:,:], status.name, priority)
         return queued
 
     def build(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|Artifact_i]]=None) -> None:
@@ -229,6 +218,19 @@ class Tracker_abs:
     def clear(self) -> None:
         self._queue.clear_queue()
 
+    def report(self, target:TaskName_p) -> dict:
+        result : dict
+        ##--|
+        result                       = {}
+        abstract                     = target.de_uniq() if target.uuid() else target
+        related  : list[TaskName_p]  = [abstract]
+        while bool(related):
+            curr = related.pop()
+            related += self.specs[curr].related
+            result[str(curr)]  = {str(x) for x in self.specs[curr].related}
+        else:
+            assert(str(target) in result)
+            return result
     ##--| internal
 
     def _instantiate(self, target:TaskName_p|RelationSpec_i, *args:Any, task:bool=False, **kwargs:Any) -> Maybe[TaskName_p]:
@@ -253,33 +255,32 @@ class Tracker_abs:
         result  : TaskSpec_i
         base    : TaskSpec_i
         data    : dict  = {}
-        match self.specs.get(spec.base, None):
-            case TaskSpec_i() as x:
-                base = x
-            case None:
-                raise ValueError("The Base for a delayed spec was not found", spec.base)
-
-        match spec.applied:
-            case None:
+        match spec:
+            case DelayedSpec(base=TaskName_p() as base_name,
+                             applied=dict() as applied,
+                             inject=list() as injections,
+                             overrides=dict() as overrides,
+                             ):
                 pass
-            case dict() as applied:
-                data |= applied
-
-        match spec.inject:
-            case None:
-                pass
-            case [*xs]:
-                assert(all(isinstance(x, InjectSpec_i) for x in xs)), xs
-                for inj in xs:
-                    # apply_from_spec
-                    data |= inj.apply_from_spec(base)
             case x:
                 raise TypeError(type(x))
 
-        data |= spec.overrides
-        data['name'] = spec.target
-        result = self._factory.merge(bot=base, top=data)
-        return result
+        match self.specs.get(base_name, None):
+            case API.SpecMeta_d(spec=TaskSpec_i() as base):
+                pass
+            case _:
+                raise ValueError("The Base for a delayed spec was not found", spec.base)
+
+        data |= applied
+        for inj in injections:
+            assert(isinstance(inj, InjectSpec_i))
+            # apply_from_spec
+            data |= inj.apply_from_spec(base)
+        else:
+            data |= spec.overrides
+            data['name'] = spec.target
+            result = self._factory.merge(bot=base, top=data)
+            return result
 
     def _reify_partial_spec(self, spec:TaskSpec_i) -> TaskSpec_i:
         """
@@ -299,7 +300,7 @@ class Tracker_abs:
             case TaskName_p() as x if x not in self.specs:
                 raise ValueError("Could not find a partial spec's source", x)
             case TaskName_p() as x:
-                base = self.specs[x]
+                base = self.specs[x].spec
             case x:
                 raise TypeError(type(x))
 

@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, ANN001, B011
 # Imports:
 from __future__ import annotations
 
@@ -27,11 +28,11 @@ import networkx as nx
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow._interface import TaskStatus_e, TaskSpec_i
+from doot.workflow._interface import TaskStatus_e, TaskSpec_i, TaskMeta_e
 from doot.util._interface import DelayedSpec
 from doot.util import mock_gen
 from ..naive_tracker import NaiveTracker
-from .. import _interface as API
+from .. import _interface as API  # noqa: N812
 from doot.workflow.structs.task_spec import TaskSpec
 from doot.workflow.structs.task_name import TaskName
 
@@ -61,12 +62,15 @@ if TYPE_CHECKING:
 from doot.workflow._interface import Task_p
 # isort: on
 # ##-- end types
-logging = logmod.root
-logmod.getLogger("jgdv").propagate = False
-logmod.getLogger("doot.util.factory").propagate = False
-logmod.getLogger("doot.control.tracker.registry").propagate = False
-logmod.getLogger("doot.control.tracker.queue").propagate = False
-logmod.getLogger("doot.control.tracker.network").propagate = False
+logging                                                      = logmod.root
+logmod.getLogger("jgdv").propagate                           = False
+logmod.getLogger("doot.util.factory").propagate              = False
+logmod.getLogger("doot.control.tracker.registry").propagate  = False
+logmod.getLogger("doot.control.tracker.queue").propagate     = False
+logmod.getLogger("doot.control.tracker.network").propagate   = False
+logmod.getLogger("doot.control.tracker._base").propagate     = False
+logmod.getLogger("doot.workflow.task").propagate             = False
+
 
 class TestTracker:
 
@@ -84,51 +88,60 @@ class TestTracker:
     def test_basic(self, tracker):
         assert(isinstance(tracker, NaiveTracker))
 
-    def test_next_for_fails_with_unbuilt_network(self, tracker):
-        with pytest.raises(doot.errors.TrackingError) as ctx:
-            tracker.next_for()
-
-        assert(ctx.value.args[0] == "Network is in an invalid state")
-
     def test_next_for_empty(self, tracker):
         tracker.build()
         assert(tracker.next_for() is None)
 
-    def test_next_for_no_connections(self, tracker):
+    def test_queued_with_no_connections_errors(self, tracker):
         spec = tracker._factory.build({"name":"basic::Task"})
         tracker.register(spec)
-        t_name = tracker.queue(spec.name)
-        assert(t_name.uuid())
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
+        instance = tracker.queue(spec.name)
+        assert(instance.uuid())
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.DECLARED)
         tracker.build()
-        match tracker.next_for():
-            case Task_p():
-                assert(True)
-            case x:
-                 assert(False), x
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
+        with pytest.raises(doot.errors.TrackingError):
+            tracker.validate()
 
-    def test_next_simple_dependendency(self, tracker):
+    def test_next_simple(self, tracker):
+        spec = tracker._factory.build({"name":"basic::alpha"})
+        tracker.register(spec)
+        instance = tracker.queue(spec.name, from_user=True)
+        assert(bool(tracker._queue))
+        assert(instance.uuid())
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.DECLARED)
+        tracker.build()
+        tracker.validate()
+        match tracker.next_for():
+            case Task_p() as result:
+                assert(spec.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.RUNNING)
+
+
+    def test_next_simple_dependency(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
-        t_name = tracker.queue(spec.name, from_user=True)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
+        instance = tracker.queue(spec.name, from_user=True)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.DECLARED)
         tracker.build()
+        tracker.validate()
         match tracker.next_for():
             case Task_p() as result:
                 assert(dep.name < result.name)
                 assert(True)
             case _:
                 assert(False)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.WAIT)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.WAIT)
 
     def test_next_dependency_success_produces_ready_state_(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
-        t_name = tracker.queue(spec.name, from_user=True)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
+        instance = tracker.queue(spec.name, from_user=True)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.DECLARED)
         tracker.build()
         dep_inst = tracker.next_for()
         assert(dep.name < dep_inst.name)
@@ -139,25 +152,27 @@ class TestTracker:
                 assert(True)
             case _:
                 assert(False)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.RUNNING)
 
     def test_next_artificial_success(self, tracker):
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
-        t_name   = tracker.queue(spec.name)
+        instance = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
         tracker.build()
+        assert(dep_inst in tracker._network.pred[instance])
+        tracker._instantiate(dep_inst, task=True)
         # Force the dependency to success without getting it from next_for:
         tracker.set_status(dep_inst, TaskStatus_e.SUCCESS)
+        assert(tracker.get_status(target=dep_inst)[0] is TaskStatus_e.SUCCESS)
         match tracker.next_for():
             case Task_p() as result:
                 assert(spec.name < result.name)
                 assert(True)
             case _:
                 assert(False)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.RUNNING)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.RUNNING)
 
 class TestTracker_failing:
 
@@ -175,28 +190,35 @@ class TestTracker_failing:
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
-        t_name   = tracker.queue(spec.name, from_user=True)
+        instance   = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.DECLARED)
         logging.info("--------------------------------------------------")
         tracker.build()
         logging.info("--------------------------------------------------")
-        # Force the dependency to success without getting it from next_for:
-        tracker._instantiate(t_name, task=True)
+        # Instatiate the tasks so they can have status
+        tracker._instantiate(instance, task=True)
         tracker._instantiate(dep_inst, task=True)
-        tracker.set_status(t_name, TaskStatus_e.FAILED)
+        # Force the dependency to fail without getting it from next_for:
+        tracker.set_status(instance, TaskStatus_e.FAILED)
         tracker.set_status(dep_inst, TaskStatus_e.FAILED)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.FAILED)
+        assert(tracker.get_status(target=dep_inst)[0] is TaskStatus_e.FAILED)
         logging.info("--------------------------------------------------")
         match (current:=tracker.next_for()):
             case Task_p() as task:
                 assert(task.name.is_cleanup())
             case x:
                 assert(False), x
-
-        for x in tracker.tasks.values():
-            if x.name.is_cleanup():
+        ##--|
+        accept_states = [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN]
+        for name, _meta in tracker.specs.items():
+            if name.uuid() or name.is_cleanup():
                 continue
-            assert(x.status in [TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
+            if tracker.get_status(target=instance)[0] not in accept_states:
+                # breakpoint()
+                # pass
+                assert(False)
 
 class TestTracker_halting:
 
@@ -212,16 +234,16 @@ class TestTracker_halting:
         spec = tracker._factory.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = tracker._factory.build({"name":"basic::dep"})
         tracker.register(spec, dep)
-        t_name   = tracker.queue(spec.name, from_user=True)
+        instance   = tracker.queue(spec.name, from_user=True)
         dep_inst = tracker.queue(dep.name)
-        assert(tracker.get_status(target=t_name) is TaskStatus_e.DECLARED)
+        assert(tracker.get_status(target=instance)[0] is TaskStatus_e.DECLARED)
         logging.info("--------------------------------------------------")
         tracker.build()
         logging.info("--------------------------------------------------")
         # Force the dependency to success without getting it from next_for:
-        tracker._instantiate(t_name, task=True)
+        tracker._instantiate(instance, task=True)
         tracker._instantiate(dep_inst, task=True)
-        tracker.set_status(t_name, TaskStatus_e.HALTED)
+        tracker.set_status(instance, TaskStatus_e.HALTED)
         tracker.set_status(dep_inst, TaskStatus_e.HALTED)
         logging.info("--------------------------------------------------")
         match tracker.next_for():
@@ -229,11 +251,20 @@ class TestTracker_halting:
                 assert(task.name.is_cleanup())
             case x:
                 assert(False), x
-
-        for x in tracker.tasks.values():
-            if x.name.is_cleanup():
+        ##--|
+        accept_states = [TaskStatus_e.HALTED, TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN]
+        for name, _meta in tracker.specs.items():
+            if not name.uuid() or name.is_cleanup():
+                # Every abstract spec and cleanup is good
                 continue
-            assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD, TaskStatus_e.TEARDOWN])
+            # everything else should be finished
+            match _meta.task:
+                case TaskStatus_e() as x if x in accept_states:
+                    assert(True)
+                case Task_p() as t if t.status in accept_states:
+                    assert(True)
+                case x:
+                    assert(False), x
 
 class TestTracker_jobs:
 
@@ -249,7 +280,7 @@ class TestTracker_jobs:
         task_spec = tracker._factory.build({"name":"basic::task", "test_key": "bloo"})
         tracker.register(job_spec)
         tracker.register(task_spec)
-        tracker.queue(job_spec, from_user=True)
+        instance = tracker.queue(job_spec, from_user=True)
         assert(job_spec.name in tracker.concrete)
         tracker.build()
         assert(bool(tracker._queue.active_set))
@@ -265,12 +296,13 @@ class TestTracker_jobs:
 
         match tracker.next_for():
             case Task_p() as task:
-                assert(job_spec.name.with_head() < task.name)
+                assert(job_spec.name < task.name)
+                assert(instance < task.name)
                 assert(task.name.is_head())
                 tracker.set_status(task.name, TaskStatus_e.SUCCESS)
                 assert(tracker.is_valid)
                 # A new job head hasn't been built
-                assert(len(tracker.concrete[job_spec.name.with_head()]) == 1)
+                assert(len(tracker.specs[job_spec.name].related) == 1)
             case x:
                 assert(False), x
 
@@ -281,31 +313,36 @@ class TestTracker_jobs:
                 assert(False), x
 
     def test_next_job_head_with_subtasks(self, tracker):
-        job_spec  = tracker._factory.build({"name":"basic::job", "meta": ["JOB"]})
-        sub_spec1 = tracker._factory.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
-        sub_spec2 = tracker._factory.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
+        """ artificially run a job """
+        logmod.getLogger("doot.control.tracker.network").propagate   = True
+        job_spec  = tracker._factory.build({"name":"basic::+.job"})
+        assert(TaskMeta_e.JOB in job_spec.meta)
         tracker.register(job_spec)
-        tracker.queue(job_spec, from_user=True)
+        instance = tracker.queue(job_spec, from_user=True)
         assert(job_spec.name in tracker.concrete)
-        conc_job_body = tracker.concrete[job_spec.name][-1]
         tracker.build()
-        # assert(conc_job_head in tracker.network.nodes)
         assert(bool(tracker._queue.active_set))
         job_body = tracker.next_for()
-        assert(job_body.name == conc_job_body)
-        # Check head hasn't been added to network:
-        # assert(conc_job_head in tracker.network.nodes)
+        assert(job_body.name == instance)
+        logging.debug("-------------------------")
         # Add Tasks that the body generates:
-        tracker.queue(sub_spec1)
-        tracker.queue(sub_spec2)
-        tracker.build()
+        sub_spec1 = tracker._factory.build({"name":"basic::task.1", "test_key": "bloo", "required_for": [instance.with_head()]})
+        sub_spec2 = tracker._factory.build({"name":"basic::task.2", "test_key": "blah", "required_for": [instance.with_head()]})
+        ss1_inst = tracker.queue(sub_spec1)
+        ss2_inst = tracker.queue(sub_spec2)
+        tracker.build(sources=True)
+        tracker.validate()
         # Artificially set priority of job body to force handling its success
         job_body.priority = 11
         tracker._queue._queue.add(job_body.name, priority=job_body.priority)
-        tracker.set_status(conc_job_body, TaskStatus_e.SUCCESS)
-        result = tracker.next_for()
-        # Next task is one of the new subtasks
-        assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
+        tracker.set_status(instance, TaskStatus_e.SUCCESS)
+        match tracker.next_for():
+            case Task_p() as result:
+                # Next task is one of the new subtasks
+                assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
+            case x:
+                assert(False), x
+
 
 class TestTracker_cleanup:
 
@@ -326,7 +363,7 @@ class TestTracker_cleanup:
             case Task_p() as task:
                 assert("basic::task" < task.name)
                 assert(task.state["blah"] == "aweg")
-                tracker.set_status(task, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -340,14 +377,14 @@ class TestTracker_cleanup:
     def test_cleanup_shares_state(self, tracker):
         spec      = tracker._factory.build({"name":"basic::task", "cleanup":[]})
         tracker.register(spec)
-        tracker.queue(spec, from_user=True)
+        instance = tracker.queue(spec, from_user=True)
         tracker.build()
         match tracker.next_for():
             case Task_p() as task:
-                assert("basic::task" < task.name)
+                assert(spec.name < task.name)
                 assert("blah" not in task.state)
                 task.state["blah"] = "aweg"
-                tracker.set_status(task, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -369,7 +406,7 @@ class TestTracker_cleanup:
                 assert("basic::task" < task.name)
                 assert("blah" not in task.state)
                 task.state["blah"] = "aweg"
-                tracker.set_status(task, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -377,7 +414,7 @@ class TestTracker_cleanup:
             case Task_p() as task2:
                 assert(dep.name < task2.name)
                 assert(task2.state["blah"] == "aweg")
-                tracker.set_status(task2, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -399,7 +436,7 @@ class TestTracker_cleanup:
                 assert("basic::task" < task.name)
                 assert("blah" not in task.state)
                 task.state["blah"] = "aweg"
-                tracker.set_status(task, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -408,7 +445,7 @@ class TestTracker_cleanup:
                 assert(dep.name < task2.name)
                 assert(task2.state["blah"] == "aweg")
                 task2.state['aweg'] = "qqqq"
-                tracker.set_status(task2, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -440,7 +477,7 @@ class TestTracker_cleanup:
                 assert("basic::task" < task.name)
                 assert("blah" not in task.state)
                 task.state["blah"] = "aweg"
-                tracker.set_status(task, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -450,7 +487,7 @@ class TestTracker_cleanup:
                 assert(task2.state["blah"] == "aweg")
                 task2.state['aweg'] = "qqqq"
                 task2.state["qqqq"] = "blah"
-                tracker.set_status(task2, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -485,7 +522,7 @@ class TestTracker_cleanup:
                 assert("basic::task" < task.name)
                 assert("blah" not in task.state)
                 task.state["blah"] = "aweg"
-                tracker.set_status(task, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -495,7 +532,7 @@ class TestTracker_cleanup:
                 assert(task2.state["blah"] == "aweg")
                 task2.state['aweg'] = "qqqq"
                 task2.state["qqqq"] = "blah"
-                tracker.set_status(task2, state=TaskStatus_e.SUCCESS)
+                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 

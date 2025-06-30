@@ -16,13 +16,24 @@ import pytest
 logging = logmod.root
 
 import doot
+from ..._interface import Artifact_i
 from ..artifact import TaskArtifact
 
 class TestTaskArtifact:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_initial(self):
         basic = TaskArtifact(pl.Path("a/b/c"))
         assert(basic is not None)
+
+    def test_protocol_match(self):
+        match TaskArtifact(pl.Path("a/b/c")):
+            case Artifact_i():
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_priority(self):
         basic = TaskArtifact(pl.Path("a/b/c"))

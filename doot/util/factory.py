@@ -240,6 +240,7 @@ class TaskFactory:
         if no spec_ctor has been specified, uses the default spec_ctor for job/task
         """
         task : Task_p
+        ctor : type
         match obj.ctor: # Get the ctor
             case None if TaskMeta_e.JOB in obj.meta:
                 ctor = self.job_ctor
@@ -334,29 +335,24 @@ class TaskFactory:
 
 @Proto(SubTaskFactory_p)
 class SubTaskFactory:
-    """Additional utilities mixin for job based task specs"""
+    """ Additional factory for generating related tasks of an instantiated spec """
 
-    def generate_names(self, obj:TaskSpec_i) -> list[TaskName]:
-        return list(obj.generated_names)
+    def generate_names(self, obj:TaskSpec_i) -> list[TaskName_p]:
+        result : list[Maybe[TaskName_p]] = [
+            self._job_head_p(obj),
+            self._cleanup_p(obj),
+        ]
+        return [x for x in result if x is not None]
 
     def generate_specs(self, obj:TaskSpec_i|Artifact_i|DelayedSpec) -> list[dict]:
         result : list[dict] = []
         if not isinstance(obj, TaskSpec_i):
             return result
-        if not obj.name.uuid():
-            # Non-instanced specs don't generate subspecs
-            return result
 
         logging.debug("[Generate] : %s (%s)", obj.name, len(obj.generated_names))
-        needs_job_head = TaskMeta_e.JOB in obj.meta and not obj.name.is_head()
-        if needs_job_head:
-            # Jobs generate their head
-            result += self._gen_job_head(obj)
-
-        if not (needs_job_head or obj.name.is_cleanup()):
-            # Normal tasks generate their cleanup
-            # TODO shift to just executing the cleanup?
-            result += self._gen_cleanup_task(obj)
+        # Jobs generate their head
+        result += self._gen_job_head(obj)
+        result += self._gen_cleanup_task(obj)
 
         obj.generated_names.update([x['name']  for x in result])
         return result
@@ -376,11 +372,17 @@ class SubTaskFactory:
           job.head()
           await job.cleanup()
         """
-        job_head           = obj.name.de_uniq().with_head().to_uniq()
+        job_head : TaskName_p
+        match self._job_head_p(obj):
+            case None:
+                return []
+            case TaskName_p() as job_head:
+                pass
+
         tasks              = []
         head_section       = self._raw_data_to_specs(obj.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
-        head_dependencies  = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]
-        head_actions       = [x for x in head_section if not isinstance(x, RelationSpec)]
+        head_dependencies  = [x for x in head_section if isinstance(x, RelationSpec_i) and x.target != job_head]
+        head_actions       = [x for x in head_section if not isinstance(x, RelationSpec_i)]
         ctor               = obj.extra.on_fail(None).sub_ctor()
 
         # build $head$
@@ -404,9 +406,15 @@ class SubTaskFactory:
         """ Generate a cleanup task, shifting the 'cleanup' actions and dependencies
           to 'depends_on' and 'actions'
         """
-        cleanup_name       = obj.name.de_uniq().with_cleanup().to_uniq()
-        base_deps          = [obj.name] + [x for x in obj.cleanup if isinstance(x, RelationSpec) and x.target != cleanup_name]
-        actions            = [x for x in obj.cleanup if isinstance(x, ActionSpec)]
+        cleanup_name : TaskName_p
+        match self._cleanup_p(obj):
+            case None:
+                return []
+            case TaskName_p() as cleanup_name:
+                pass
+
+        base_deps          = [obj.name] + [x for x in obj.cleanup if isinstance(x, RelationSpec_i) and x.target != cleanup_name]
+        actions            = [x for x in obj.cleanup if isinstance(x, ActionSpec_i)]
         sources            = [obj.name]
 
         cleanup : dict = {
@@ -422,12 +430,12 @@ class SubTaskFactory:
         assert(not bool(cleanup['cleanup']))
         return [cleanup]
 
-    def _raw_data_to_specs(self, deps:list[str|dict], *, relation:RelationMeta_e=DEFAULT_RELATION) -> list[ActionSpec|RelationSpec]:
+    def _raw_data_to_specs(self, deps:list[str|dict], *, relation:RelationMeta_e=DEFAULT_RELATION) -> list[ActionSpec_i|RelationSpec_i]:
         """ Convert toml provided raw data (str's, dicts) of specs into ActionSpec and RelationSpec object"""
-        results = []
+        results : list[ActionSpec_i|RelationSpec_i] = []
         for x in deps:
             match x:
-                case ActionSpec() | RelationSpec():
+                case ActionSpec_i() | RelationSpec_i():
                     results.append(x)
                 case { "do": action  } as d:
                     assert(isinstance(d, dict))
@@ -436,3 +444,22 @@ class SubTaskFactory:
                     results.append(RelationSpec.build(x, relation=relation))
 
         return results
+
+    def _job_head_p(self, obj:TaskSpec_i) -> Maybe[TaskName_p]:
+        if not obj.name.uuid():
+            return None
+        if TaskMeta_e.JOB not in obj.meta:
+            return None
+        if obj.name.is_head():
+            return None
+
+        return obj.name.with_head()
+
+
+    def _cleanup_p(self, obj:TaskSpec_i) -> Maybe[TaskName_p]:
+        if not obj.name.uuid():
+            return None
+        if self._job_head_p(obj) or obj.name.is_cleanup():
+            return None
+
+        return obj.name.with_cleanup()

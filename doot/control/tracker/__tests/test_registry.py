@@ -28,12 +28,13 @@ import pytest
 import doot
 import doot.errors
 from doot.util import mock_gen
-from doot.workflow._interface import TaskStatus_e
+from doot.workflow._interface import TaskStatus_e, TaskName_p
 from doot.workflow import TaskName, TaskSpec, InjectSpec
 
 # ##-- end 1st party imports
 
 # ##-| Local
+from .. import _interface as API # noqa: N812
 from ..naive_tracker import NaiveTracker
 from ..registry import TrackRegistry
 # # End of Imports.
@@ -71,54 +72,6 @@ def registry():
     tracker = NaiveTracker()
     return tracker._registry
 
-class TestRegistry:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_task_retrieval(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::task"})
-        name = spec.name
-        registry.register_spec(spec)
-        instance  = registry.instantiate_spec(name)
-        result    = registry.make_task(instance)
-        retrieved = registry.tasks[result]
-        assert(isinstance(retrieved, Task_p))
-
-    def test_task_get_default_status(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::task"})
-        name = spec.name
-        registry.register_spec(spec)
-        instance = registry.instantiate_spec(name)
-        result   = registry.make_task(instance)
-        status   = registry.get_status(result)
-        assert(status is TaskStatus_e.INIT)
-
-    def test_task_status_missing_task(self, registry):
-        name = TaskName("basic::task")
-        assert(registry.get_status(name) == TaskStatus_e.NAMED)
-
-    def test_set_status(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::task"})
-        name = spec.name
-        registry.register_spec(spec)
-        instance = registry.instantiate_spec(name)
-        result = registry.make_task(instance)
-        assert(registry.get_status(result) is TaskStatus_e.INIT)
-        assert(registry.set_status(result, TaskStatus_e.SUCCESS) is True)
-        assert(registry.get_status(result) is TaskStatus_e.SUCCESS)
-
-    def test_set_status_missing_task(self, registry):
-        name = TaskName("basic::task")
-        assert(registry.set_status(name, TaskStatus_e.SUCCESS) is False)
-
-    def test_spec_retrieval(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::task"})
-        name = spec.name
-        registry.register_spec(spec)
-        retrieved = registry.specs[name]
-        assert(retrieved == spec)
-
 class TestRegistration:
 
     def test_sanity(self):
@@ -131,59 +84,17 @@ class TestRegistration:
         assert(bool(registry.specs))
         assert(len(registry.specs) == 1)
 
-    def test_register_spec_adds_to_implicit(self, registry):
+    def test_register_spec_adds_to_abstract(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
-        assert(not bool(registry.specs))
-        assert(not bool(registry.implicit))
+        assert(not bool(registry.abstract))
         registry.register_spec(spec)
-        assert(bool(registry.specs))
-        assert(bool(registry.implicit))
-        assert(len(registry.specs) == 1)
-        assert(registry.implicit[spec.name.with_cleanup()] == spec.name)
+        assert(bool(registry.abstract))
 
-    def test_register_job_adds_to_implicit(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::+.job"})
-        assert(not bool(registry.specs))
-        assert(not bool(registry.implicit))
-        registry.register_spec(spec)
-        assert(bool(registry.specs))
-        assert(bool(registry.implicit))
-        assert(len(registry.specs) == 1)
-        assert(registry.implicit[spec.name.with_head()] == spec.name)
-        assert(spec.name.with_cleanup() not in registry.implicit)
-
-    def test_register_job_head_adds_cleanup_to_implicit(self, registry):
-        spec = registry._tracker._factory.build({"name":"basic::+.job..$head$"})
-        assert(not bool(registry.specs))
-        assert(not bool(registry.implicit))
-        registry.register_spec(spec)
-        assert(bool(registry.specs))
-        assert(bool(registry.implicit))
-        assert(len(registry.specs) == 1)
-        assert(spec.name not in registry.implicit)
-        assert(spec.name.with_cleanup() in registry.implicit)
-
-    def test_register_spec_not_implicit_extras(self, registry):
-        """
-        Registering a spec doesn't register implicit extras
-        """
-        spec = registry._tracker._factory.build({"name":"basic::task"})
-        assert(not bool(registry.specs))
-        registry.register_spec(spec)
-        assert(spec.name.with_cleanup() not in registry.concrete)
-
-    def test_register_job_spec_not_implicit_extras(self, registry):
-        """
-        Registering a job does not register extras
-        """
+    def test_register_job_only_adds_a_single_spec(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::+.job"})
         assert(not bool(registry.specs))
         registry.register_spec(spec)
-        assert(bool(registry.specs))
-        assert(spec.name in registry.specs)
-        assert(spec.name.with_head() not in registry.concrete)
-        assert(spec.name.with_head() not in registry.specs)
-        assert(not bool(registry.concrete[spec.name]))
+        assert(len(registry.specs) == 1)
 
     def test_register_abstract_is_idempotent(self, registry):
         """
@@ -191,12 +102,14 @@ class TestRegistration:
         """
         spec = registry._tracker._factory.build({"name":"basic::task"})
         assert(not bool(registry.specs))
-        assert(not bool(registry.concrete[spec.name]))
+        assert(not bool(registry.concrete))
+        assert(not bool(registry.abstract))
         assert(len(registry.specs) == 0)
         for _ in range(5):
             registry.register_spec(spec)
             assert(len(registry.specs) == 1) # just the spec
-            assert(len(registry.concrete[spec.name]) == 0) # no concrete
+            assert(len(registry.concrete) == 0) # no concrete
+            assert(len(registry.abstract) == 1) # no concrete
 
     def test_re_registration_errors_on_overwrite(self, registry):
         """
@@ -205,23 +118,28 @@ class TestRegistration:
         spec  = registry._tracker._factory.build({"name":"basic::task"})
         spec2 = registry._tracker._factory.build({"name":"basic::task", "blah": "bloo"})
         assert(not bool(registry.specs))
-        assert(not bool(registry.concrete[spec.name]))
+        assert(not bool(registry.concrete))
         assert(len(registry.specs) == 0)
         registry.register_spec(spec)
-        assert("blah" not in registry.specs[spec.name].extra)
+        assert("blah" not in registry.specs[spec.name].spec.extra)
         with pytest.raises(ValueError):
             registry.register_spec(spec2)
+
+        assert("blah" not in registry.specs[spec.name].spec.extra)
 
     def test_register_concrete_is_idempotent(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
         ispec = registry._tracker._factory.instantiate(spec)
         assert(not bool(registry.specs))
-        assert(not bool(registry.concrete[ispec.name]))
-        assert(len(registry.specs) == 0)
+        assert(not bool(registry.concrete))
+        registry.register_spec(spec)
+        assert(len(registry.specs) == 1)
         for _ in range(5):
             registry.register_spec(ispec)
-            assert(len(registry.specs) == 1)
-            assert(len(registry.concrete[ispec.name.de_uniq()]) == 1) # no concrete
+            assert(len(registry.specs) == 2)
+            assert(len(registry.concrete) == 1) # no concrete
+        else:
+            assert(registry.specs[spec.name].related == {ispec.name})
 
     def test_register_spec_with_artifacts(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task",
@@ -250,15 +168,26 @@ class TestRegistration:
                                "required_for": ["basic::super.1"]})
         ispec = registry._tracker._factory.instantiate(spec)
         assert(not bool(registry.specs))
+        registry.register_spec(spec)
         registry.register_spec(ispec)
         assert(bool(registry.specs))
-        assert(len(registry.specs) == 1)
+        assert(len(registry.specs) == 2)
 
     def test_register_spec_ignores_disabled(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task", "disabled":True})
         assert(len(registry.specs) == 0)
         registry.register_spec(spec)
         assert(len(registry.specs) == 0)
+
+    def test_register_explicit_generated_task(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::+.job"})
+        head = registry._tracker._factory.build({"name":"basic::+.job..$head$"})
+        assert(len(registry.specs) == 0)
+        registry.register_spec(spec)
+        assert(len(registry.specs) == 1)
+        registry.register_spec(head)
+        assert(len(registry.specs) == 2)
+        assert(head.name in registry.specs)
 
 class TestInstantiation_Specs:
 
@@ -293,6 +222,7 @@ class TestInstantiation_Specs:
         inst_1 = registry.instantiate_spec(TaskName("basic::task"))
         inst_2 = registry.instantiate_spec(TaskName("basic::task"))
         assert(inst_1 == inst_2)
+        assert(inst_1.uuid() == inst_2.uuid())
 
     def test_dont_reuse_instantiation(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -302,7 +232,7 @@ class TestInstantiation_Specs:
         inst_1 = registry.instantiate_spec(TaskName("basic::task"))
         inst_2 = registry.instantiate_spec(TaskName("basic::task"), extra={"blah":"bloo"})
         assert(inst_1 != inst_2)
-
+        assert(inst_1.uuid() != inst_2.uuid())
 
     def test_instantiation_force_new(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -312,7 +242,7 @@ class TestInstantiation_Specs:
         inst_1 = registry.instantiate_spec(TaskName("basic::task"))
         inst_2 = registry.instantiate_spec(TaskName("basic::task"), force=True)
         assert(inst_1 != inst_2)
-
+        assert(inst_1.uuid() != inst_2.uuid())
 
     def test_instantiation_disallow_new(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -322,6 +252,7 @@ class TestInstantiation_Specs:
         inst_1 = registry.instantiate_spec(TaskName("basic::task"))
         inst_2 = registry.instantiate_spec(TaskName("basic::task"), force=False)
         assert(inst_1 == inst_2)
+        assert(inst_1.uuid() == inst_2.uuid())
 
     def test_instantiate_spec_no_op(self, registry):
         base_spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -329,10 +260,12 @@ class TestInstantiation_Specs:
         registry.register_spec(base_spec)
         registry.register_spec(spec)
         special = registry.instantiate_spec(spec.name)
-        assert(spec is not special)
+        assert(special.uuid())
+        assert(spec.name is not special)
         assert(spec is not base_spec)
         assert(spec.name < special)
-        assert(special in registry.concrete[spec.name])
+        assert(special.de_uniq() in registry.concrete)
+        assert(special in registry.specs[spec.name].related)
 
     def test_instantiate_spec_match_reuse(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
@@ -341,11 +274,11 @@ class TestInstantiation_Specs:
         for i in range(5):
             instance = registry.instantiate_spec(spec.name)
             assert(isinstance(instance, TaskName))
-            assert(instance in registry.concrete[spec.name])
+            assert(instance.de_uniq() in registry.concrete)
             instances.add(instance)
             assert(spec.name < instance)
             assert(registry.specs[instance] is not registry.specs[spec.name])
-            assert(len(registry.concrete[spec.name]) == 1)
+            assert(len(registry.concrete) == 1)
         assert(len(instances) == 1)
 
     def test_instantiate_spec_chain(self, registry):
@@ -394,8 +327,8 @@ class TestInstantiation_Specs:
         assert(spec is not base_spec)
         assert(isinstance(special, TaskName))
         concrete = registry.specs[special]
-        assert(concrete.extra.blah == 2)
-        assert(concrete.extra.bloo == 15)
+        assert(concrete.spec.extra.blah == 2)
+        assert(concrete.spec.extra.bloo == 15)
 
     def test_instantiate_spec_depends_merge(self, registry):
         base_spec = registry._tracker._factory.build({"name":"basic::task", "depends_on":["example::dep"]})
@@ -410,10 +343,13 @@ class TestInstantiation_Specs:
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, TaskName))
-        concrete = registry.specs[special]
-        assert(len(concrete.depends_on) == 2)
-        assert(any("example::dep" in x.target for x in concrete.depends_on))
-        assert(any("another::dep" in x.target for x in concrete.depends_on))
+        match registry.specs[special]:
+            case API.SpecMeta_d(spec=_spec):
+                assert(len(_spec.depends_on) == 2)
+                assert(any("example::dep" in x.target for x in _spec.depends_on))
+                assert(any("another::dep" in x.target for x in _spec.depends_on))
+            case x:
+                assert(False), x
 
 class TestInstantiation_Jobs:
 
@@ -425,53 +361,70 @@ class TestInstantiation_Jobs:
         spec     = registry._tracker._factory.build({"name":"basic::+.job",
                                                      "depends_on":["example::dep"],
                                                      "blah": 2, "bloo": 5})
-        abs_head = spec.name.with_head()
         registry.register_spec(spec)
-        assert(abs_head not in registry.concrete)
         instance = registry.instantiate_spec(spec.name)
         assert(instance in registry.specs)
-        assert(abs_head in registry.concrete)
-        assert(registry.concrete[abs_head][0] in registry.specs)
-        assert(instance in registry.concrete[spec.name])
+        assert(spec.name in registry.concrete)
         assert(spec.name < instance)
+        match registry.specs[spec.name]:
+            case API.SpecMeta_d() as _meta:
+                assert(instance in _meta.related)
+            case x:
+                assert(False), x
 
     def test_instantiate_job_head(self, registry):
         spec     = registry._tracker._factory.build({"name":"basic::+.job",
-                                   "depends_on":["example::dep"],
-                                   "blah": 2, "bloo": 5})
-        abs_head = spec.name.with_head()
+                                                     "depends_on":["example::dep"],
+                                                     "blah": 2, "bloo": 5})
         registry.register_spec(spec)
-        assert(abs_head not in registry.concrete)
         instance = registry.instantiate_spec(spec.name)
+        head_inst = instance.with_head()
         assert(instance in registry.specs)
-        assert(abs_head in registry.concrete)
-        assert(registry.concrete[abs_head][0] in registry.specs)
-        assert(instance in registry.concrete[spec.name])
-        assert(spec.name < instance)
+        assert(spec.name in registry.concrete)
+        assert(instance in registry.specs[spec.name].related)
+        assert(head_inst in registry.specs[instance].related)
+
+    def test_instantiate_explicit_job_head(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::+.job"})
+        head = registry._tracker._factory.build({"name":"basic::+.job..$head$",
+                                                 "blah": 2, "bloo": 5})
+        registry.register_spec(spec)
+        registry.register_spec(head)
+        assert(spec.name in registry.specs)
+        assert(head.name in registry.specs)
+        instance   = registry.instantiate_spec(spec.name)
+        inst_head  = instance.with_head()
+        assert(instance in registry.specs)
+        assert(inst_head in registry.specs)
+        assert(head.name < inst_head)
+        assert(registry.instantiate_spec(inst_head) == inst_head)
+        assert(inst_head in registry.specs[head.name].related)
+        assert(inst_head in registry.specs[instance].related)
 
     def test_instantiate_job_cleanup(self, registry):
         spec     = registry._tracker._factory.build({"name":"basic::+.job",
-                                   "depends_on":["example::dep"],
-                                   "blah": 2, "bloo": 5})
-        ##--|
-        spec_cleanup = spec.name.with_cleanup()
-        abs_head     = spec.name.with_head()
-        head_cleanup = spec.name.with_head().with_cleanup()
+                                                     "depends_on":["example::dep"],
+                                                     "blah": 2, "bloo": 5})
         registry.register_spec(spec)
         # Only the spec is registered
-        assert(abs_head not in registry.specs)
-        assert(spec_cleanup not in registry.specs)
-        assert(abs_head not in registry.concrete)
-        assert(spec_cleanup not in registry.concrete)
-        instance = registry.instantiate_spec(spec.name)
+        assert(len(registry.specs) == 1)
+        # create the job
+        instance      = registry.instantiate_spec(spec.name)
         assert(instance in registry.specs)
-        # After instantiation, the head is registered, cleanup isnt
-        assert(abs_head in registry.concrete)
-        assert(spec_cleanup not in registry.specs)
-        assert(spec_cleanup not in registry.concrete)
-        assert(registry.concrete[abs_head][0] in registry.specs)
-        assert(instance in registry.concrete[spec.name])
-        assert(spec.name < instance)
+        assert(instance in registry.specs[spec.name].related)
+        # which creates the head
+        inst_head     = instance.with_head()
+        assert(inst_head in registry.specs)
+        assert(inst_head in registry.specs[instance].related)
+        # which creates the head cleanup
+        good_cleanup  = inst_head.with_cleanup()
+        assert(good_cleanup in registry.specs)
+        assert(good_cleanup in registry.specs[inst_head].related)
+        # the job base does *not* create a cleanup
+        bad_cleanup   = instance.with_cleanup()
+        assert(bad_cleanup not in registry.specs)
+        # In total, 4 specs
+        assert(len(registry.specs) == 4)
 
 class TestInstantiation_Relations:
 
@@ -490,8 +443,8 @@ class TestInstantiation_Relations:
                 assert(dep_name.uuid())
                 assert(dep_spec.name < dep_name)
                 assert(dep_name in registry.specs)
-                dep_inst_spec = registry.specs[dep_name]
-                assert(bool(dep_inst_spec.actions))
+                dep_inst_meta = registry.specs[dep_name]
+                assert(bool(dep_inst_meta.spec.actions))
             case x:
                  assert(False), x
 
@@ -505,9 +458,9 @@ class TestInstantiation_Relations:
         control_inst = registry.instantiate_spec(control_spec.name)
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
-                dep_inst_spec = registry.specs[dep_name]
-                assert("blah" in dep_inst_spec.extra)
-                assert(dep_name in registry.late_injections)
+                dep_inst_meta = registry.specs[dep_name]
+                assert("blah" in dep_inst_meta.spec.extra)
+                assert(dep_inst_meta.injection_source[0] == control_inst)
             case x:
                  assert(False), x
 
@@ -521,10 +474,10 @@ class TestInstantiation_Relations:
         control_inst = registry.instantiate_spec(control_spec.name)
         match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
             case TaskName() as dep_name:
-                dep_inst_spec = registry.specs[dep_name]
-                assert("blah" in dep_inst_spec.extra)
-                assert("aweg" not in dep_inst_spec.extra)
-                assert(dep_name in registry.late_injections)
+                dep_inst_meta = registry.specs[dep_name]
+                assert("blah" in dep_inst_meta.spec.extra)
+                assert("aweg" not in dep_inst_meta.spec.extra)
+                assert(dep_inst_meta.injection_source[0] == control_inst)
             case x:
                  assert(False), x
 
@@ -593,7 +546,6 @@ class TestInstantiation_Relations:
             registry.instantiate_relation(control_spec.depends_on[0],
                                       control=control_inst)
 
-
     def test_relation_with_uniq_target(self, registry):
         target_spec = registry._tracker._factory.build({"name":"basic::target"})
         registry.register_spec(target_spec)
@@ -649,28 +601,67 @@ class TestInstantiation_Relations:
             case x:
                 assert(False), x
 
-    def test_relation_with_job_head(self, registry):
-        target_spec = registry._tracker._factory.build({"name":"basic::+.target"})
-        registry.register_spec(target_spec)
-        relation = {"task":"basic::+.target..$head$"}
-        control_spec = registry._tracker._factory.build({"name":"basic::control",
-                                       "blah": "aweg",
-                                       "depends_on": [relation]})
+    def test_relation_with_literal_job_head(self, registry):
+        relation_literal  = {"task":"basic::+.target..$head$"}
+        control_spec      = registry._tracker._factory.build({"name":"basic::control",
+                                                              "blah": "aweg",
+                                                              "depends_on": [relation_literal]})
+        target_spec       = registry._tracker._factory.build({"name":"basic::+.target"})
+        literal_head      = registry._tracker._factory.build({"name":"basic::+.target..$head$"})
+        base_relation     = control_spec.depends_on[0]
+        cleanup_relation  = control_spec.depends_on[1]
         registry.register_spec(control_spec)
+        registry.register_spec(target_spec)
+        registry.register_spec(literal_head)
+        # instantiate the control
         control_inst = registry.instantiate_spec(control_spec.name)
-        # First instantiate the base job relation
-        match registry.instantiate_relation(control_spec.depends_on[0], control=control_inst):
-            case TaskName() as x if "basic::+.target" < x and not x.is_head():
-                assert(True)
-            case x:
-                assert(False), x
-        # Then the head
-        registry.instantiate_spec(target_spec.name.with_head())
-        match registry.instantiate_relation(control_spec.depends_on[1], control=control_inst):
-            case TaskName() as x if "basic::+.target" < x and x.is_head():
-                assert(True)
-            case x:
-                assert(False), x
+        assert(control_inst in registry.specs[control_spec.name].related)
+        # and the job
+        job_inst = registry.instantiate_spec(target_spec.name)
+        assert(job_inst in registry.specs[target_spec.name].related)
+        # which instantiates the job_head and cleanup
+        job_head = job_inst.with_head()
+        assert(job_head in registry.specs)
+        assert(job_head in registry.specs[job_inst].related)
+        job_clean = job_head.with_cleanup()
+        assert(job_clean in registry.specs)
+        assert(job_clean in registry.specs[job_head].related)
+
+        # instantiate the control->target relation
+        rel_inst1 = registry.instantiate_relation(base_relation, control=control_inst)
+        assert(rel_inst1 == job_inst)
+        rel_inst2 = registry.instantiate_relation(cleanup_relation, control=control_inst)
+        assert(rel_inst2 == job_head)
+
+
+    def test_relation_with_literal_cleanup(self, registry):
+        relation_literal  = {"task":"basic::target..$cleanup$"}
+        control_spec      = registry._tracker._factory.build({"name":"basic::control",
+                                                              "blah": "aweg",
+                                                              "depends_on": [relation_literal]})
+        target_spec       = registry._tracker._factory.build({"name":"basic::target"})
+        literal_head      = registry._tracker._factory.build({"name":"basic::target..$cleanup$"})
+        base_relation     = control_spec.depends_on[0]
+        cleanup_relation  = control_spec.depends_on[1]
+        registry.register_spec(control_spec)
+        registry.register_spec(target_spec)
+        registry.register_spec(literal_head)
+        # instantiate the control
+        control_inst = registry.instantiate_spec(control_spec.name)
+        assert(control_inst in registry.specs[control_spec.name].related)
+        # and the target
+        target_inst = registry.instantiate_spec(target_spec.name)
+        assert(target_inst in registry.specs[target_spec.name].related)
+        # which instantiates the cleanup
+        target_cleanup = target_inst.with_cleanup()
+        assert(target_cleanup in registry.specs)
+        assert(target_cleanup in registry.specs[target_inst].related)
+
+        # instantiate the control->target relation
+        rel_inst1 = registry.instantiate_relation(base_relation, control=control_inst)
+        assert(rel_inst1 == target_inst)
+        rel_inst2 = registry.instantiate_relation(cleanup_relation, control=control_inst)
+        assert(rel_inst2 == target_cleanup)
 
 class TestInstantiation_Tasks:
 
@@ -682,9 +673,17 @@ class TestInstantiation_Tasks:
         name = spec.name
         registry.register_spec(spec)
         instance = registry.instantiate_spec(name)
-        assert(not bool(registry.tasks))
+        match registry.specs[instance]:
+            case API.SpecMeta_d(task=TaskStatus_e()):
+                assert(True)
+            case x:
+                assert(False), x
         registry.make_task(instance)
-        assert(bool(registry.tasks))
+        match registry.specs[instance]:
+            case API.SpecMeta_d(task=Task_p()):
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_make_task_with_late_injection(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})
@@ -692,10 +691,52 @@ class TestInstantiation_Tasks:
         registry.register_spec(spec)
         source_inst = registry.instantiate_spec(spec.name)
         registry.make_task(source_inst)
-        registry.tasks[source_inst].state["blah"] = "bloo"
+        registry.specs[source_inst].task.state["blah"] = "bloo"
 
         dep_inst = registry.instantiate_spec(spec.name)
         registry._register_late_injection(dep_inst, inj, source_inst)
         registry.make_task(dep_inst)
-        assert("blah" in registry.tasks[dep_inst].state)
-        assert(registry.tasks[dep_inst].state["blah"] == "bloo")
+        assert(registry.specs[dep_inst].task.state["blah"] == "bloo")
+
+    def test_task_retrieval(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::task"})
+        name = spec.name
+        registry.register_spec(spec)
+        instance  = registry.instantiate_spec(name)
+        result    = registry.make_task(instance)
+        retrieved = registry.specs[result].task
+        assert(isinstance(retrieved, Task_p))
+
+    def test_task_get_default_status(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::task"})
+        name = spec.name
+        registry.register_spec(spec)
+        instance = registry.instantiate_spec(name)
+        result   = registry.make_task(instance)
+        status, _ = registry.get_status(result)
+        assert(status is TaskStatus_e.INIT)
+
+    def test_task_status_missing_task(self, registry):
+        name = TaskName("basic::task")
+        assert(registry.get_status(name) == (TaskStatus_e.NAMED, registry._tracker._declare_priority))
+
+    def test_set_status(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::task"})
+        name = spec.name
+        registry.register_spec(spec)
+        instance = registry.instantiate_spec(name)
+        result = registry.make_task(instance)
+        assert(registry.get_status(result)[0] is TaskStatus_e.INIT)
+        assert(registry.set_status(result, TaskStatus_e.SUCCESS) is True)
+        assert(registry.get_status(result)[0] is TaskStatus_e.SUCCESS)
+
+    def test_set_status_missing_task(self, registry):
+        name = TaskName("basic::task")
+        assert(registry.set_status(name, TaskStatus_e.SUCCESS) is False)
+
+    def test_spec_retrieval(self, registry):
+        spec = registry._tracker._factory.build({"name":"basic::task"})
+        name = spec.name
+        registry.register_spec(spec)
+        retrieved = registry.specs[name].spec
+        assert(retrieved == spec)

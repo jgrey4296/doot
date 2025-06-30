@@ -27,12 +27,13 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow._interface import TaskStatus_e, TaskMeta_e
+from doot.workflow._interface import TaskStatus_e, TaskMeta_e, Task_p, TaskName_p
 from doot.workflow import TaskName
 from doot.util import mock_gen
 
 # ##-- end 1st party imports
 
+from .. import _interface as API # noqa: N812
 from ..registry import TrackRegistry
 from ..network import TrackNetwork
 from ..naive_tracker import NaiveTracker
@@ -64,6 +65,8 @@ if TYPE_CHECKING:
 #
 logging = logmod.root
 logmod.getLogger("jgdv").propagate = False
+logmod.getLogger("doot.control.tracker.registry").propagate = False
+logmod.getLogger("doot.util").propagate = False
 
 def expected_spec_count(*args:Any) -> int:
     return len(args)
@@ -209,9 +212,8 @@ class TestTrackerNetworkBuild:
     def test_build_empty(self, network):
         obj = network
         assert(len(obj) == 1)
-        assert(not bool(obj._tracker.tasks))
         assert(not bool(obj._tracker.specs))
-        assert(not obj._tracker.is_valid)
+        assert(obj._tracker.is_valid)
         obj.build_network()
         assert(len(obj) == 1)
         assert(obj._tracker.is_valid)
@@ -235,17 +237,22 @@ class TestTrackerNetworkBuild:
         """ $cleanup$ successors are not built till a task is instantiated """
         obj  = network
         spec = network._tracker._factory.build({"name":"basic::task"})
-        cleanup_name = spec.name.with_cleanup()
         obj._tracker.register(spec)
         instance     = obj._tracker._instantiate(spec.name)
+        cleanup_name = instance.with_cleanup()
+        assert(cleanup_name.is_cleanup())
+        assert(cleanup_name.uuid() == instance.uuid())
         obj.connect(instance)
         obj.build_network()
-        match obj._tracker.concrete.get(cleanup_name, None):
-            case [TaskName() as cleanup_inst]:
-                cleanup_spec = obj._tracker.specs[cleanup_inst]
-                assert(cleanup_spec.name.is_cleanup())
-                assert(cleanup_name < cleanup_spec.name)
-                assert(any(cleanup_name < x for x in obj.succ[instance]))
+        match obj._tracker.specs[instance]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                cleanup_inst = _rels.pop()
+                assert(cleanup_inst == cleanup_name)
+                cleanup_meta = obj._tracker.specs[cleanup_inst]
+                cleanup_spec = cleanup_meta.spec
+                assert(cleanup_name == cleanup_spec.name)
+                assert(cleanup_name in obj.succ[instance])
             case x:
                 assert(False), x
 
@@ -262,11 +269,15 @@ class TestTrackerNetworkBuild:
         assert(len(obj) == 2)
         obj.build_network()
         assert(len(obj) == 5)
-        match obj._tracker.concrete.get(spec2.name, None):
-            case [TaskName() as dep_inst]:
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                dep_inst = _rels.pop()
                 assert(spec2.name < dep_inst)
                 assert(dep_inst in obj.pred[instance])
                 assert(instance in obj.succ[dep_inst])
+            case x:
+                assert(False), x
 
     def test_build_single_dependent_node(self, network):
         obj   = network
@@ -280,8 +291,10 @@ class TestTrackerNetworkBuild:
         assert(len(obj) == 2)
         obj.build_network()
         assert(len(obj) == 5)
-        match obj._tracker.concrete.get(spec2.name, None):
-            case [TaskName() as dep_inst]:
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                dep_inst = _rels.pop()
                 assert(spec2.name < dep_inst)
                 assert(dep_inst in obj.succ[instance])
                 assert(instance in obj.pred[dep_inst])
@@ -301,10 +314,10 @@ class TestTrackerNetworkBuild:
 
     def test_build_dep_chain(self, network):
         """Check basic::task triggers basic::dep, which triggers basic::chained"""
-        obj = network
-        spec = network._tracker._factory.build({"name":"basic::task", "depends_on":["basic::dep"]})
-        spec2 = network._tracker._factory.build({"name":"basic::dep", "depends_on":["basic::chained"]})
-        spec3 = network._tracker._factory.build({"name":"basic::chained"})
+        obj    = network
+        spec   = network._tracker._factory.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec2  = network._tracker._factory.build({"name":"basic::dep", "depends_on":["basic::chained"]})
+        spec3  = network._tracker._factory.build({"name":"basic::chained"})
         obj._tracker.register(spec, spec2, spec3)
         instance = obj._tracker._instantiate(spec.name)
         assert(len(obj) == 1)
@@ -314,17 +327,19 @@ class TestTrackerNetworkBuild:
         obj.build_network()
         obj.validate_network()
         assert(len(obj) == 7)
-        match obj._tracker.concrete.get(spec2.name, None):
-            case [TaskName() as dep_inst]:
-                assert(spec2.name < dep_inst)
-                assert(dep_inst in obj.pred[instance])
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                s2_inst = _rels.pop()
+                assert(s2_inst in obj.pred[instance])
             case x:
                 assert(False), x
 
-        match obj._tracker.concrete.get(spec3.name, None):
-            case [TaskName() as chain_inst]:
-                assert(spec3.name < chain_inst)
-                assert(chain_inst in obj.pred[dep_inst])
+        match obj._tracker.specs[spec3.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                inst = _rels.pop()
+                assert(inst in obj.pred[s2_inst])
             case x:
                 assert(False), x
 
@@ -346,7 +361,7 @@ class TestTrackerNetworkBuild:
         obj.connect(T1)
         obj.connect(T2)
         obj.build_network()
-        assert(len(obj._tracker.concrete["basic::dep"]) == 2)
+        assert(len(obj._tracker.specs["basic::dep"].related) == 2)
 
     def test_build_separate_dependencies_from_state(self, network):
         """
@@ -367,8 +382,8 @@ class TestTrackerNetworkBuild:
         obj.connect(T1)
         obj.connect(T2)
         obj.build_network()
-        assert(len(obj._tracker.concrete["basic::dep"]) == 2)
-        for dep in obj._tracker.concrete["basic::dep"]:
+        assert(len(obj._tracker.specs["basic::dep"].related) == 2)
+        for dep in obj._tracker.specs["basic::dep"].related:
             assert(len(obj.succ[dep]) == 2)
 
 class TestTrackerNetworkBuild_Constraints:
@@ -386,10 +401,10 @@ class TestTrackerNetworkBuild_Constraints:
         obj.build_network()
         obj.validate_network()
         assert(len(obj) == 5)
-        match obj._tracker.concrete.get(spec2.name, None):
-            case [TaskName() as dep_inst]:
-                assert(spec2.name < dep_inst)
-                assert(dep_inst in obj.pred[instance])
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                assert(_rels.pop() in obj.pred[instance])
             case x:
                 assert(False), x
 
@@ -406,9 +421,9 @@ class TestTrackerNetworkBuild_Constraints:
         obj.build_network()
         assert(len(obj) == 5)
         match list(obj.pred[instance]):
-            case [TaskName() as dep_inst]:
+            case [TaskName_p() as dep_inst]:
                 assert(spec2.name < dep_inst)
-                assert(spec.test_key == obj._tracker.specs[dep_inst].test_key)
+                assert(spec.test_key == obj._tracker.specs[dep_inst].spec.test_key)
             case x:
                 assert(False), x
 
@@ -425,9 +440,9 @@ class TestTrackerNetworkBuild_Constraints:
         assert(not bool(obj.adj[obj._tracker._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
-        assert(not bool(obj._tracker.concrete[spec2.name]))
+        assert(not bool(obj._tracker.specs[spec2.name].related))
         obj.build_network()
-        assert(bool(obj._tracker.concrete[spec2.name]))
+        assert(bool(obj._tracker.specs[spec2.name].related))
 
     def test_build_dep_match_with_injection(self, network):
         obj = network
@@ -444,8 +459,8 @@ class TestTrackerNetworkBuild_Constraints:
         obj.build_network()
         assert(len(obj) == 5)
         match list(obj.pred[instance]):
-            case [TaskName() as dep_inst]:
-                dep_inst_spec = obj._tracker.specs[dep_inst]
+            case [TaskName_p() as dep_inst]:
+                dep_inst_spec = obj._tracker.specs[dep_inst].spec
                 assert(spec2.name < dep_inst)
                 assert(spec.test_key == dep_inst_spec.inj_key)
             case x:
@@ -464,7 +479,7 @@ class TestTrackerNetworkBuild_Constraints:
         assert(not bool(obj.adj[obj._tracker._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
-        assert(not bool(obj._tracker.concrete[spec2.name]))
+        assert(not bool(obj._tracker.specs[spec2.name].related))
         with pytest.raises(doot.errors.TrackingError):
             obj.build_network()
 
@@ -486,20 +501,20 @@ class TestTrackerNetworkBuild_Constraints:
         obj.build_network()
         assert(len(obj) == 7)
         match list(obj.pred[instance]):
-            case [TaskName() as dep_inst]:
+            case [TaskName_p() as dep_inst]:
                 assert(spec2.name < dep_inst)
-                assert(spec.test_key == obj._tracker.specs[dep_inst].test_key)
-                dep_spec = obj._tracker.specs[dep_inst]
+                assert(spec.test_key == obj._tracker.specs[dep_inst].spec.test_key)
+                dep_spec = obj._tracker.specs[dep_inst].spec
                 assert(spec2.name <= dep_spec.sources[-1])
                 assert(dep_spec.test_key != spec2.test_key)
             case x:
                 assert(False), x
 
         match list(obj.pred[dep_inst]):
-            case [TaskName() as chain_inst]:
+            case [TaskName_p() as chain_inst]:
                 assert(spec3.name < chain_inst)
-                assert(spec.test_key == obj._tracker.specs[chain_inst].test_key)
-                chain_spec = obj._tracker.specs[chain_inst]
+                assert(spec.test_key == obj._tracker.specs[chain_inst].spec.test_key)
+                chain_spec = obj._tracker.specs[chain_inst].spec
                 assert(spec3.name <= chain_spec.sources[-1])
                 assert(chain_spec.test_key != spec3.test_key)
             case x:
@@ -528,21 +543,21 @@ class TestTrackerNetworkBuild_Constraints:
         obj.build_network()
         assert(len(obj) == 7)
         match list(obj.succ[instance]):
-            case [_, TaskName() as req_inst, TaskName() as cleanup_inst]:
+            case [_, TaskName_p() as req_inst, TaskName_p() as cleanup_inst]:
                 assert(spec2.name < req_inst)
                 assert(spec.name < cleanup_inst)
                 assert(cleanup_inst.is_cleanup())
                 # Test concrete specs have carried the injection:
-                assert(obj._tracker.specs[req_inst].test_key == spec.test_key)
+                assert(obj._tracker.specs[req_inst].spec.test_key == spec.test_key)
             case x:
                 assert(False), x
 
         match list(obj.succ[req_inst]):
-            case [TaskName() as chain_inst, TaskName() as req_cleanup]:
+            case [TaskName_p() as chain_inst, TaskName_p() as req_cleanup]:
                 assert(spec3.name < chain_inst)
                 assert(spec2.name < req_cleanup)
                 assert(req_cleanup.is_cleanup())
-                assert(obj._tracker.specs[chain_inst].test_key == spec.test_key)
+                assert(obj._tracker.specs[chain_inst].spec.test_key == spec.test_key)
             case x:
                 assert(False), x
 
@@ -553,11 +568,10 @@ class TestTrackerNetworkBuild_Jobs:
 
     def test_build_job(self, network):
         """ a job should build a ..$head$ as well,
-        and the head should build a ..$cleanup$ """
+        and the head should build a ..$cleanup$
+        """
         obj         = network
         spec        = network._tracker._factory.build({"name":"basic::+.job", "meta": ["JOB"]})
-        job_head    = spec.name.with_head()
-        job_cleanup = job_head.with_cleanup()
         obj._tracker.register(spec)
         assert(len(obj) == 1) # Root node
         assert(len(obj._tracker.specs) == 1)
@@ -568,36 +582,87 @@ class TestTrackerNetworkBuild_Jobs:
         obj.build_network()
         assert(len(obj) == 4)
         assert(instance in obj)
-        match obj._tracker.concrete.get(job_head, None):
-            case [TaskName() as head_instance]:
-                assert(head_instance in obj.succ[instance])
-                pass
+        match obj._tracker.specs[instance]:
+            case API.SpecMeta_d(related=_rels):
+                job_head = _rels.pop()
+                assert(job_head.is_head())
+                assert(job_head in obj.succ[instance])
             case x:
                 assert(False), x
 
-        match obj._tracker.concrete.get(job_cleanup, None):
-            case [TaskName() as cleanup_instance]:
-                assert(cleanup_instance in obj.succ[head_instance])
+        match obj._tracker.specs[job_head]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                job_cleanup = _rels.pop()
+                assert(job_cleanup in obj.succ[job_head])
             case x:
                 assert(False), x
 
     def test_build_with_head_dep(self, network):
         obj = network
+        assert(len(obj) == 1)
         spec  = network._tracker._factory.build({"name":"basic::task",
-                                "depends_on":["basic::+.job..$head$"]})
+                                                 "depends_on":["basic::+.job..$head$"]})
         spec2 = network._tracker._factory.build({"name":"basic::+.job"})
         assert(TaskMeta_e.JOB in spec2.name)
         obj._tracker.register(spec, spec2)
         instance = obj._tracker._instantiate(spec.name)
+        assert(spec.name < instance)
         assert(len(obj) == 1)
         assert(not bool(obj.adj[obj._tracker._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
         obj.build_network()
-        assert(spec.name in obj._tracker.concrete)
-        assert(spec2.name.with_head() in obj._tracker.concrete)
-        assert(spec2.name in obj._tracker.concrete)
         obj.validate_network()
+        match obj._tracker.specs[instance]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                head_inst = _rels.pop()
+                assert(head_inst.uuid())
+            case x:
+                assert(False), x
+
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                s2_inst = _rels.pop()
+                assert(s2_inst.uuid())
+                assert(spec2.name < s2_inst)
+            case x:
+                assert(False), x
+
+
+    def test_build_with_cleanup_dep(self, network):
+        obj = network
+        assert(len(obj) == 1)
+        spec  = network._tracker._factory.build({"name":"basic::task",
+                                                 "depends_on":["basic::other..$cleanup$"]})
+        spec2 = network._tracker._factory.build({"name":"basic::other"})
+        obj._tracker.register(spec, spec2)
+        instance = obj._tracker._instantiate(spec.name)
+        assert(spec.name < instance)
+        assert(len(obj) == 1)
+        assert(not bool(obj.adj[obj._tracker._root_node]))
+        obj.connect(instance)
+        assert(len(obj) == 2)
+        obj.build_network()
+        obj.validate_network()
+        match obj._tracker.specs[instance]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                head_inst = _rels.pop()
+                assert(head_inst.uuid())
+            case x:
+                assert(False), x
+
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                s2_inst = _rels.pop()
+                assert(s2_inst.uuid())
+                assert(spec2.name < s2_inst)
+            case x:
+                assert(False), x
 
 class TestTrackerNetworkBuild_Artifacts:
 
@@ -618,9 +683,11 @@ class TestTrackerNetworkBuild_Artifacts:
         obj.validate_network()
         assert(len(obj) == 6)
         # Check theres a path between the specs, via the artifact
-        match obj._tracker.concrete.get(spec2.name, None):
-            case [TaskName() as dep_inst]:
-                assert(spec2.name < dep_inst)
+        match obj._tracker.specs[spec2.name]:
+            case API.SpecMeta_d(related=_rels):
+                assert(len(_rels) == 1)
+                dep_inst = _rels.pop()
+                assert(dep_inst.uuid())
                 assert(nx.has_path(obj._graph, dep_inst, instance))
             case x:
                 assert(False), x

@@ -52,7 +52,7 @@ class DootBaseAction:
 
     @override
     def __str__(self):
-        return f"Base Action"
+        return "Base Action"
 
     def __call__(self, spec:ActionSpec, state:dict) -> Maybe[dict|bool]:
         logging.debug("Base Action Called: %s", state.get("count", 0))

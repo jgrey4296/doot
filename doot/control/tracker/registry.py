@@ -85,11 +85,7 @@ class _Registration_m(API.Registry_d):
     def register_spec(self, spec:TaskSpec_i) -> None:
         """ Register task specs, abstract or concrete
 
-        An initial concrete instance will be created for any abstract spec.
-
-        Specs with names ending in $partial$ will apply their direct .sources predecessor
-        under themselves, and pop off the 'partial' name
-        That predecessor can not be partial itself
+        Does *not* handle any taskspec generation logic
         """
         x           : Any
         ##--|
@@ -99,48 +95,68 @@ class _Registration_m(API.Registry_d):
 
         match spec.name:
             case TaskName_p() as x if x in self.specs:
-                if self.specs[x] is not spec:
+                if self.specs[x].spec is not spec:
                     raise ValueError("Tried to overwrite a spec", spec.name)
                 return
             case TaskName_p() as x if TaskName.Marks.partial in x:
                 raise ValueError("By this point a partial spec should have been reified", x)
+
+            case TaskName_p() as x if (x.is_head() or x.is_cleanup()):
+                logging.info("[+.generated] : %s", spec.name)
+                if (gen_base:=x.de_uniq()) in self.specs:
+                    # an explicitly registered abstract head/cleanup
+                    self.specs[gen_base].related.add(spec.name)
+                if x.uuid() and (originator:=x.pop_generated()) in self.specs:
+                    self.specs[originator].related.add(spec.name)
             case TaskName_p() if x.uuid():
                 logging.info("[+.Concrete] : %s", spec.name)
-                self.concrete[spec.name.de_uniq()].append(spec.name)
+                self.concrete.add(spec.name.de_uniq())
+                self.specs[spec.name.de_uniq()].related.add(spec.name)
             case TaskName_p():
                 logging.info("[+.Abstract] : %s", spec.name)
+                self.abstract.add(spec.name)
                 self._register_blocking_relations(spec)
-                self._register_implicit_spec_names(spec)
+            case x:
+                raise TypeError(type(x))
 
-        self.specs[spec.name] = spec
+        self.specs[spec.name] = API.SpecMeta_d(spec=spec)
         self._register_spec_artifacts(spec)
 
+    def _register_artifact(self, art:Artifact_i, *tasks:TaskName_p, relation:Maybe[S_API.RelationMeta_e]=None) -> None:
+        logging.info("[+] Artifact: %s, %s", art, tasks)
+        obj : API.ArtifactMeta_d
+
+        match self.artifacts.get(art, None):
+            case API.ArtifactMeta_d() as obj:
+                pass
+            case None:
+                obj = API.ArtifactMeta_d(artifact=art)
+                self.artifacts[art] = obj
+
+        # Add it to the relevant abstract/concrete set
+        match art.is_concrete():
+            case True:
+                self.concrete.add(art)
+            case False:
+                self.abstract.add(art)
+
+        match relation:
+            case None:
+                pass
+            case S_API.RelationMeta_e.needs:
+                obj.consumers.update(tasks)
+            case S_API.RelationMeta_e.blocks:
+                obj.builders.update(tasks)
 
     def _register_spec_artifacts(self, spec:TaskSpec_i) -> None:
         """ Register the artifacts a spec produces """
         assert(hasattr(self._tracker, "_factory"))
         for rel in self._tracker._factory.action_group_elements(spec):
             match rel:
-                case RelationSpec_i(target=TaskArtifact() as art, relation=reltype):
+                case RelationSpec_i(target=Artifact_i() as art, relation=reltype):
                     self._register_artifact(art, spec.name, relation=reltype)
                 case _:
                     pass
-
-    def _register_artifact(self, art:Artifact_i, *tasks:TaskName_p, relation:Maybe[S_API.RelationMeta_e]=None) -> None:
-        logging.info("[+] Artifact: %s, %s", art, tasks)
-        self.artifacts[art].update(tasks)
-        # Add it to the relevant abstract/concrete set
-        if art.is_concrete():
-            self.concrete_artifacts.add(art)
-        else:
-            self.abstract_artifacts.add(art)
-        match relation:
-            case None:
-                pass
-            case S_API.RelationMeta_e.needs:
-                self.artifact_consumers[art].update(tasks)
-            case S_API.RelationMeta_e.blocks:
-                self.artifact_builders[art].update(tasks)
 
     def _register_blocking_relations(self, spec:TaskSpec_i) -> None:
         """ a Task[required_for=[x,y,z] blocks x,y,z,
@@ -155,37 +171,27 @@ class _Registration_m(API.Registry_d):
         # record that target needs spec
         for rel in self._tracker._factory.action_group_elements(spec):
             match rel:
-                case RelationSpec_i(target=TaskName_p()|TaskArtifact() as target, relation=RelationMeta_e.blocks) if spec.name.uuid(): # type: ignore[attr-defined]
+                case RelationSpec_i(target=TaskName_p() as target, relation=RelationMeta_e.blocks) if spec.name.uuid(): # type: ignore[attr-defined]
                     logging.info("[Requirement]: %s : %s", target, spec.name)
-                    rel.object = spec.name
-                    self.blockers[target].append(rel)
+                    self.specs[target].blocked_by.add(spec.name)
+                case RelationSpec_i(target=Artifact_i() as target, relation=RelationMeta_e.blocks) if spec.name.uuid(): # type: ignore[attr-defined]
+                    logging.info("[Requirement]: %s : %s", target, spec.name)
+                    self.artifacts[target].blocked_by.add(spec.name)
                 case _: # Ignore action specs and non
                     pass
         else:
             return
-
-    def _register_implicit_spec_names(self, spec:TaskSpec_i) -> None:
-        is_job      = (TaskMeta_e.JOB in spec.meta
-                       and not spec.name.is_head())
-        has_cleanup = not (spec.name.is_cleanup() or is_job)
-        if is_job:
-            head = spec.name.with_head()
-            assert(head not in self.implicit)
-            self.implicit[head] = spec.name
-
-        if has_cleanup:
-            cleanup = spec.name.with_cleanup()
-            assert(cleanup not in self.implicit)
-            self.implicit[cleanup] = spec.name
 
     def _register_late_injection(self, task:TaskName_p, inject:InjectSpec_i, parent:TaskName_p) -> None:
         """ Register an injection to run on task initialisation,
         using the state injection's from its parent
         """
         logging.info("[Injection] Registering: %s <- %s", task, parent)
-        assert(task not in self.late_injections), (task, parent)
         assert(parent in self.specs)
-        self.late_injections[task] = (inject, parent)
+        assert(task in self.specs)
+        assert(parent.uuid())
+        assert(task.uuid())
+        self.specs[task].injection_source = (parent, inject)
 
 class _Instantiation_m(API.Registry_d):
 
@@ -196,98 +202,115 @@ class _Instantiation_m(API.Registry_d):
         If force=True, forces a new instance to be made
         if force=False, blocks new instances from being made
         """
+        meta      : API.SpecMeta_d
+        spec      : TaskSpec_i
+        instance  : TaskSpec_i
+        ##--|
         assert(hasattr(self._tracker, "_factory"))
         match force:
             case None|False if name.uuid() and name in self.specs: # Re-use existing instance
                 if bool(extra):
                     raise ValueError("tried to instance a spec, while disallowing new specs, but providing extra values")
+                self._instantiate_implicit_tasks(name)
                 return name
             case _:
                 pass
 
-        assert(not name.uuid())
-        match self.concrete.get(name, []), force:
+        assert(not name.uuid()), name
+        meta = self.specs[name]
+        match list(meta.related), force:
             case _, True: # disallow reuse
                 pass
             case _, None if extra: # extra data provided
                 pass
             case [x, *xs], None|False: # reuse
                 logging.info("[Instance.Concrete] : %s", x)
+                self._instantiate_implicit_tasks(x)
                 return x
 
-        spec           = self.specs[name]
-        instance_spec  = self._tracker._factory.instantiate(spec, extra=extra)
-        assert(instance_spec is not None)
-        assert(instance_spec.name.uuid())
-        logging.debug("[Instance.new] %s into %s", name, instance_spec.name)
+        spec     = meta.spec
+        instance = self._tracker._factory.instantiate(spec, extra=extra)
+        assert(instance is not None)
+        assert(instance.name.uuid())
+        logging.debug("[Instance.new] %s into %s", name, instance.name)
         # register the actual concrete spec
-        self._tracker.register(instance_spec) # type: ignore[attr-defined]
+        self._tracker.register(instance) # type: ignore[attr-defined]
+        assert(instance.name in self.specs)
+        assert(instance.name in meta.related)
+        self._instantiate_implicit_tasks(instance.name)
+        return instance.name
 
-        assert(instance_spec.name in self.specs)
-        return instance_spec.name
-
-    def instantiate_relation(self, rel:RelationSpec_i, *, control:Concrete[TaskName_p]) -> Concrete[TaskName_p]:  # noqa: PLR0912
+    def instantiate_relation(self, rel:RelationSpec_i, *, control:Concrete[TaskName_p]) -> Concrete[TaskName_p]:  # noqa: PLR0912, PLR0915
         """ find a matching relation according to constraints,
             or create a new instance if theres no constraints/no match
 
         returns the concrete TaskName_p of the instanced target of the relation
         """
         x             : Any
-        control_obj   : Task_p|TaskSpec_i
-        control_data  : TaskSpec_i
+        control_meta  : API.SpecMeta_d
+        control_obj   : Task_p | TaskSpec_i
+        target        : TaskName_p
         instance      : Maybe[TaskName_p]
         existing      : TaskName_p
+        potentials    : list[TaskName_p]
         ##--|
         logging.debug("[Instance.Relation] : %s -> %s -> %s", control, rel.relation.name, rel.target)
         ##--| guards
         if control not in self.specs:
             raise doot.errors.TrackingError("Unknown control used in relation", control, rel)
-        if rel.target not in self.specs and rel.target[:,:] not in self.concrete:
-            raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
+        match rel.target:
+            case TaskName_p() as targ if targ.uuid() and targ in self.specs:
+                logging.debug("[Instance.Relation.Exists] : %s", rel.target)
+                return rel.target
+            case TaskName_p() as targ if targ in self.specs:
+                target = targ
+            case TaskName_p() as targ if targ.uuid() and targ.de_uniq() in self.specs:
+                target = targ.de_uniq()
+            case TaskName_p() as targ if targ.pop(top=False) in self.specs:
+                target = cast("TaskName_p", targ.pop())
+            case TaskName_p() as target:
+                raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, target)
 
-        assert(isinstance(rel.target, TaskName_p))
-        if rel.target.uuid() and rel.target in self.specs:
-            logging.debug("[Instance.Relation.Exists] : %s", rel.target)
-            return rel.target
+        assert(isinstance(target, TaskName_p))
         ##--|
-        match self.tasks.get(control, None) or self.specs[control]:
-            case Task_p() as x:
-                control_obj   = x
-                control_data  = x.spec
-            case TaskSpec_i() as x:
-                control_obj   = x
-                control_data  = x
-            case x:
-                raise TypeError(type(x))
+        match self.specs[control]:
+            case API.SpecMeta_d(task=Task_i() as _task) as control_meta:
+                control_obj  = _task
+            case API.SpecMeta_d(spec=_spec) as control_meta:
+                control_obj  = _spec
         ##--| reuse
-        potentials : list = self.concrete.get(rel.target[:,:], [])[:] # type: ignore[call-overload]
+        potentials   = list(self.specs[target].related)
         for existing in potentials:
-            if not rel.accepts(control_obj, self.tasks.get(existing, None) or self.specs[existing]): # type: ignore[arg-type]
-                continue
-            logging.debug("[Instance.Relation.Match] : %s", existing)
-            return existing
+            match self.specs[existing]:
+                case API.SpecMeta_d(task=Task_i() as _task) if not rel.accepts(control_obj, _task):
+                    continue
+                case API.SpecMeta_d(spec=_spec) if not rel.accepts(control_obj, _spec):
+                    continue
+                case _:
+                    logging.debug("[Instance.Relation.Match] : %s", existing)
+                    return existing
         else:
             # make a new rel.target instance
             match rel.inject:
                 case InjectSpec_i() as inj:
                     pass
                 case _:
-                    instance = self._tracker._instantiate(rel.target, force=True)
+                    instance = self._tracker._instantiate(target, force=True)
                     assert(instance is not None)
                     logging.debug("[Instance.Relation.Basic] : %s", instance)
                     return instance
 
             # Early injections applied here, so constrained relations can use them
-            match inj.apply_from_spec(control_data):
+            match inj.apply_from_spec(control_obj):
                 case dict() as x if not bool(x):
-                    instance  = self._tracker._instantiate(rel.target, force=True)
+                    instance  = self._tracker._instantiate(target, force=True)
                 case x:
-                    instance  = self._tracker._instantiate(rel.target, extra=x)
+                    instance  = self._tracker._instantiate(target, extra=x)
 
             assert(instance is not None)
             assert(instance not in potentials), instance
-            if instance and not inj.validate(control_obj, self.specs[instance], only_spec=True):
-                raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance], only_spec=True))
+            if instance and not inj.validate(control_obj, self.specs[instance].spec, only_spec=True):
+                raise doot.errors.TrackingError("Injection did not succeed", inj.validate_details(control_obj, self.specs[instance].spec, only_spec=True))
 
             self._register_late_injection(instance, inj, control) # type: ignore[attr-defined]
             logging.debug("[Instance.Relation.Inject] : %s", instance)
@@ -300,51 +323,46 @@ class _Instantiation_m(API.Registry_d):
           return the name of the task
           """
         assert(hasattr(self._tracker, "_factory"))
-        task : Task_i
+        assert(isinstance(name, TaskName_p))
+        task : Task_p
+        meta : API.SpecMeta_d
         ##--| guards
-        match name, task_obj:
-            case TaskName_p() as x, _ if not x.uuid():
+        match self.specs[name], task_obj:
+            case _, _ if not name.uuid():
                 raise doot.errors.TrackingError("Tried to build a task using a non-concrete spec", name)
-            case TaskName_p() as x, Task_i() as obj if x not in self.tasks:
-                self.tasks[x] = obj
-                return x
-            case TaskName_p() as x, Task_i() as obj:
-                raise doot.errors.TrackingError("Tried to provide a task object for already existing task", name)
-            case TaskName_p() as x, _ if x not in self.specs:
+            case None, _:
                 raise doot.errors.TrackingError("Tried to make a task from a non-existent spec name", name)
-            case TaskName_p() as x, _ if x in self.tasks:
-                return x
-            case TaskName_p() as x, _ if x not in self.tasks:
-                pass
-            case name, _:
-                raise doot.errors.TrackingError("Tried to make a task from a not-task name", name, task_obj)
+            case API.SpecMeta_d(task=Task_p()), Task_p() as obj:
+                raise doot.errors.TrackingError("Tried to provide a task object for already existing task", name)
+            case API.SpecMeta_d(task=TaskStatus_e.DEFINED), Task_p() as obj:
+                self.specs[name].task = obj
+                return name
+            case API.SpecMeta_d(task=Task_p()), None:
+                return name
+            case API.SpecMeta_d(task=TaskStatus_e()), None:
+                logging.debug("[Instance] Task Object: %s", name)
+                meta  = self.specs[name]
+                task  = self._tracker._factory.make(meta.spec, ensure=Task_i)
+                # Store it
+                meta.task = task
+                return name
+            case x:
+                raise TypeError(type(x))
 
-        ##--| build
-        logging.debug("[Instance] Task Object: %s", name)
-        spec = self.specs[name]
-        task = self._tracker._factory.make(spec, ensure=Task_i)
-        # Store it
-        self.tasks[name] = task
-        assert(name in self.tasks)
-        assert(name.uuid())
-        return name
+    def _instantiate_implicit_tasks(self, name:TaskName_p) -> None:
+        spec = self.specs[name].spec
+        for data in self._tracker._subfactory.generate_specs(spec): # type: ignore[attr-defined]
+            implicit = self._tracker._factory.build(data) # type: ignore[attr-defined]
+            if implicit.name not in self.specs:
+                self._tracker.register(implicit)
+            self._tracker._instantiate(implicit.name)
 
 class _Verification_m(API.Registry_d):
 
     def verify(self, *, strict:bool=True) -> bool:
         failures = []
-        for k, vals in self.concrete.items():
-            if k not in self.specs:
-                failures.append(f"Abstract Spec {k} is missing")
-            match [x for x in vals if x not in self.specs]:
-                case []:
-                    pass
-                case [*xs]:
-                    failures.append(f"Concrete Specs are Missing: {xs}")
-
-        for k, v in self.implicit.items():
-            if v not in self.specs:
-                failures.append(f"Implicit Spec {k} is missing its source {v}")
+        for k in (missing:=self.concrete - self.abstract - self.artifacts.keys()):
+            failures.append(f"Abstact Spec {k} is missing")
 
         # TODO Add more verify heuristics
         if not bool(failures):
@@ -361,43 +379,52 @@ class _Verification_m(API.Registry_d):
 class TrackRegistry(API.Registry_d):
     """ Stores and manipulates specs, tasks, and artifacts """
 
-    def get_status(self, task:Concrete[TaskName_p|Artifact_i]) -> TaskStatus_e|ArtifactStatus_e:
-        """ Get the status of a task or artifact """
-        match task:
-            case Artifact_i():
-                return task.get_status()
-            case TaskName_p() if task in self.tasks:
-               return self.tasks[task].status
-            case TaskName_p() if task in self.specs:
-                return TaskStatus_e.DECLARED
-            case _:
-                return TaskStatus_e.NAMED
+    def get_status(self, target:Concrete[TaskName_p|Artifact_i]) -> tuple[TaskStatus_e|ArtifactStatus_e, int]:
+        """ Get the status of a target or artifact """
+        assert(hasattr(self._tracker, "_declare_priority"))
+        assert(hasattr(self._tracker, "_root_node"))
+        if isinstance(target, Artifact_i):
+            return target.get_status(), target.priority
 
-    def set_status(self, target:Concrete[TaskName_p|Artifact_i]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+        assert(isinstance(target, TaskName_p))
+        match self.specs.get(target, None):
+            case None if target == self._tracker._root_node:
+                return TaskStatus_e.NAMED, self._tracker._declare_priority
+            case None if target.uuid() and target.de_uniq() in self.specs:
+                return TaskStatus_e.DECLARED, self._tracker._declare_priority
+            case API.SpecMeta_d(task=TaskStatus_e() as status):
+                return status, self._tracker._declare_priority
+            case API.SpecMeta_d(task=Task_p() as _target):
+                return _target.status, _target.priority
+            case _:
+                return TaskStatus_e.NAMED, self._tracker._declare_priority
+
+    def set_status(self, target:Concrete[TaskName_p|Artifact_i], status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
         """
-        match target, status:
-            case Task_i() as task, TaskStatus_e() if task.name in self.tasks:
-                logging.info("[%s] %s -> %s", task.name[:], self.get_status(task.name), status)
-                self.tasks[task.name].status = status
-            case TaskName_p() as task, TaskStatus_e() if task in self.tasks:
-                logging.info("[%s] %s -> %s", task[:], self.get_status(task), status)
-                self.tasks[task].status = status
-            case TaskName_p() as task, TaskStatus_e():
-                logging.debug("[%s] Not Started Yet", task)
-                return False
-            case TaskArtifact() as art, ArtifactStatus_e() as stat:
-                raise DeprecationWarning("Setting an artifact status is unneeded")
-            case _, _:
-                raise doot.errors.TrackingError("Bad task update status args", target, status)
-
-        return True
-
-    def get_priority(self, target:Concrete[TaskName_p|Artifact_i]) -> int:
+        x         : Any
+        instance  : TaskName_p
+        ##--|
+        logging.debug("[Status.=] : %s : %s", target, status)
         match target:
-            case TaskName_p() if target in self.tasks:
-                return self.tasks[target].priority
-            case _:
-                return API.DECLARE_PRIORITY
+            case Artifact_i() as x:
+                return False
+            case TaskName_p() as x:
+                instance = x
+            case x:
+                raise TypeError(type(x))
+
+        assert(isinstance(status, TaskStatus_e))
+        match self.specs.get(instance, None):
+            case None:
+                return False
+            case API.SpecMeta_d(task=TaskStatus_e()) as _meta:
+                _meta.task = status
+                return False
+            case API.SpecMeta_d(task=Task_p() as _task):
+                _task.status = status
+                return True
+            case x:
+                raise TypeError(type(x))

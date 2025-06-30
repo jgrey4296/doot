@@ -118,53 +118,73 @@ class ExecutionPolicy_e(enum.Enum):
     default = PRIORITY
 
 ##--| Data
+class SpecMeta_d:
+    """
+    Registry data for a spec.
+    When spec is abstract, related are the concrete instantiations
+    when spec is concrete, related are the implicit subtasks
+
+    blocked_by are the dependencies not mentioned in the spec
+    injection_source is the injection to run just before executing the task
+    injection_targets are tasks that block this task cleaning up
+    """
+    __slots__ = ("blocked_by", "injection_source", "injection_targets", "related", "spec", "task")
+
+    spec               : TaskSpec_i
+    task               : Task_p|TaskStatus_e
+    related            : set[TaskName_p]
+    blocked_by         : set[TaskName_p|Artifact_i]
+    injection_source   : Maybe[tuple[TaskName_p, InjectSpec_i]]
+    injection_targets  : set[TaskName_p]
+
+    def __init__(self, *, spec:TaskSpec_i) -> None:
+        self.spec               = spec
+        self.task               = TaskStatus_e.DECLARED
+        self.related            = set()
+        self.blocked_by         = set()
+        self.injection_source   = None
+        self.injection_targets  = set()
+
+
+class ArtifactMeta_d:
+    __slots__ = ("artifact", "blocked_by", "builders", "consumers")
+
+    artifact    : Artifact_i
+    blocked_by  : set[TaskName_p|Artifact_i]
+    builders    : set[TaskName_p]
+    consumers   : set[TaskName_p]
+
+    def __init__(self, *, artifact:Artifact_i) -> None:
+        self.artifact    = artifact
+        self.blocked_by  = set()
+        self.builders    = set()
+        self.consumers   = set()
+
 
 class Registry_d:
-    """
-    Data used in the registry
 
-    Invariants:
-    - every key in tasks has a matching key in specs.
-    - every concrete spec is in concrete under its abstract name
-    - every implicit task that hasn't been registered is in implicit, mapped to its declaring spec
-    """
-    type AbsName = Abstract[TaskName_p]
-    type ConcName = Concrete[TaskName_p]
+    _tracker   : TaskTracker_p
+    specs      : dict[TaskName_p, SpecMeta_d]
+    artifacts  : dict[Artifact_i, ArtifactMeta_d]
 
-    _tracker            : TaskTracker_p
-
-    specs               : dict[TaskName_p, TaskSpec_i]
-    concrete            : dict[AbsName, list[ConcName]]
-    implicit            : dict[AbsName, TaskName_p]
-    tasks               : dict[ConcName, Task_p]
-    artifacts           : dict[Artifact_i, set[AbsName]]
-    # Artifact sets
-    abstract_artifacts  : set[Artifact_i]
-    concrete_artifacts  : set[Artifact_i]
-    # indirect blocking requirements:
-    blockers            : dict[ConcName|Artifact_i, list[RelationSpec_i]]
-    late_injections     : dict[ConcName, tuple[InjectSpec_i, TaskName_p]]
-    artifact_builders   : dict[Artifact_i, set[TaskName_p]]
-    artifact_consumers  : dict[Artifact_i, set[TaskName_p]]
+    abstract   : set[Abstract[TaskName_p] | Artifact_i]
+    concrete   : set[Abstract[TaskName_p] | Artifact_i]
 
     def __init__(self, *, tracker:TaskTracker_p) -> None:
-        self._tracker            = tracker
-        self.specs               = {}
-        self.concrete            = collections.defaultdict(list)
-        self.implicit            = {}
-        self.tasks               = {}
-        self.artifacts           = collections.defaultdict(set)
-        self.abstract_artifacts  = set()
-        self.concrete_artifacts  = set()
-        self.artifact_builders   = collections.defaultdict(set)
-        self.artifact_consumers  = collections.defaultdict(set)
-        self.blockers            = collections.defaultdict(list)
-        self.late_injections     = {}
+        self._tracker   = tracker
+        self.specs      = {}
+        self.artifacts  = {}
+        self.abstract   = set()
+        self.concrete   = set()
+
 
 ##--| components
 
 class Registry_p(Protocol):
-    tasks : dict
+    specs      : dict
+    artifacts  : dict
+    abstract   : set
+    concrete   : set
 
     def register_spec(self, *specs:TaskSpec_i) -> None: ...
 
@@ -177,12 +197,11 @@ class Registry_p(Protocol):
     def verify(self, *, strict:bool=True) -> bool: ...
 
 class Network_p(Protocol):
-    _graph      : Any
-    _root_node  : TaskName_p
-    succ        : Mapping
-    pred        : Mapping
-
-    is_valid    : bool
+    _graph        : Any
+    _root_node    : TaskName_p
+    succ          : Mapping
+    pred          : Mapping
+    non_expanded  : set[TaskName_p|Artifact_i]
 
     def build_network(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|Artifact_i]]=None) -> None: ...
 
@@ -193,7 +212,7 @@ class Network_p(Protocol):
 class Queue_p(Protocol):
     active_set : set[TaskName_p|Artifact_i]
 
-    def queue_entry(self, target:str|TaskName_p|Artifact_i, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  ...
+    def queue_entry(self, target:str|TaskName_p|Artifact_i, *, from_user:bool=False) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  ...
 
     def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName_p]|Artifact_i: ...
 
@@ -213,37 +232,20 @@ class TaskTracker_p(Protocol):
     def active(self) -> set[TaskName_p]: ...
 
     @property
-    def specs(self) -> dict[TaskName_p, TaskSpec_i]: ...
+    def specs(self) -> dict[TaskName_p, SpecMeta_d]: ...
 
     @property
-    def artifacts(self) -> dict[Artifact_i, set[Abstract[TaskName_p]]]: ...
+    def artifacts(self) -> dict[Artifact_i, ArtifactMeta_d]: ...
 
     @property
-    def tasks(self) -> dict[Concrete[TaskName_p], Task_i]: ...
-
+    def concrete(self) -> set[TaskName_p|Artifact_i]: ...
     @property
-    def concrete(self) -> Mapping[Abstract[TaskName_p], list[Concrete[TaskName_p]]]: ...
-
-    @property
-    def artifact_builders(self) -> Mapping: ...
-
-    @property
-    def abstract_artifacts(self) -> Mapping: ...
-
-    @property
-    def concrete_artifacts(self) -> Mapping: ...
-
+    def abstract(self) -> set[TaskName_p|Artifact_i]: ...
     @property
     def network(self) -> Mapping: ...
 
     @property
     def is_valid(self) -> bool: ...
-
-    @is_valid.setter
-    def is_valid(self, val:bool) -> None: ...
-
-    @property
-    def injections_remaining(self) -> Mapping: ...
 
     ##--| public
 

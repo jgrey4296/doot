@@ -38,7 +38,7 @@ import doot.errors
 
 # ##-- end 1st party imports
 
-from .._interface import RelationMeta_e, Task_p, Task_i, RelationSpec_i
+from .._interface import RelationMeta_e, Task_p, Task_i, RelationSpec_i, InjectSpec_i, TaskSpec_i, TaskName_p, Artifact_i
 from .task_name import TaskName
 from .artifact import  TaskArtifact
 from .inject_spec import InjectSpec
@@ -64,7 +64,7 @@ if typing.TYPE_CHECKING:
 
     from jgdv import Maybe
     from .task_spec import TaskSpec
-    from .._interface import RelationMark, RelationTarget, TaskName_p, Artifact_i
+    from .._interface import RelationMark, RelationTarget
 
 # isort: on
 # ##-- end types
@@ -93,7 +93,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     # What the Relation end point is:
     Marks          : ClassVar[type[RelationMark]]  = RelationMeta_e
     ##--|
-    target       : TaskName|TaskArtifact
+    target       : TaskName_p|Artifact_i
     relation     : RelationMeta_e                = RelationMeta_e.needs
     object       : Maybe[TaskName|TaskArtifact]  = None
     constraints  : dict[str, str]                = {}
@@ -102,7 +102,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
 
     @override
     @classmethod
-    def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationMark]=None) -> RelationSpec: # type: ignore[override]
+    def build(cls, data:RelationSpec_i|ChainGuard|dict|TaskName_p|str, *, relation:Maybe[RelationMark]=None) -> RelationSpec_i: # type: ignore[override]
         """ Create a new relation, defaulting to a requirement.
 
         """
@@ -167,7 +167,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                  raise TypeError("Unknown constraints type", val)
 
     @field_validator("inject", mode="before")
-    def _validate_inject(cls, val:Any) -> Maybe[str|InjectSpec]:
+    def _validate_inject(cls, val:Any) -> Maybe[str|InjectSpec_i]:
         match val:
             case None:
                 return None
@@ -186,7 +186,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
-    def __contains__(self, query:StrangMarkAbstract_e|TaskName|TaskArtifact) -> bool:
+    def __contains__(self, query:str|StrangMarkAbstract_e|TaskName_p|Artifact_i) -> bool:
         match self.target, query:
             case TaskName(), TaskName():
                 return query <= self.target
@@ -197,7 +197,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case _:
                 raise NotImplementedError(self.target, query)
 
-    def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName]=None) -> tuple[Maybe[RelationTarget], Maybe[RelationTarget]]:
+    def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName_p]=None) -> tuple[Maybe[RelationTarget], Maybe[RelationTarget]]:
         """ a helper to make an edge for the tracker.
           uses the current (abstract) target, unless an instance is provided
           """
@@ -209,20 +209,20 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 # target is a succcessor
                 return (obj, target or self.target) # type: ignore[return-value]
 
-    def instantiate(self, *, obj:Maybe[RelationTarget]=None, target:Maybe[RelationTarget]=None) -> RelationSpec:
+    def instantiate(self, *, obj:Maybe[RelationTarget]=None, target:Maybe[RelationTarget]=None) -> RelationSpec_i:
         """
           Duplicate this relation, but with a suitable concrete task or artifact as the object or subject
         """
         match self.target, target:
             case _, None:
                 pass
-            case TaskName(), TaskArtifact():
+            case TaskName_p(), Artifact_i():
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskArtifact(), TaskName():
+            case Artifact_i(), TaskName_p():
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if not target.uuid(): # type: ignore[union-attr]
+            case TaskName_p(), TaskName_p() if not target.uuid(): # type: ignore[union-attr]
                 raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
-            case TaskArtifact(), TaskArtifact() if (match:=self.target.reify(target)) is not None: # type: ignore[operator, arg-type]
+            case Artifact_i() as abs_targ, Artifact_i() as in_targ if (match:=abs_targ.reify(in_targ)) is not None: # type: ignore[operator, arg-type]
                 target = match
             case _, _:
                 pass
@@ -241,13 +241,12 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         """ is this relation's direction obj -> target? """
         return self.relation is RelationMeta_e.blocks
 
-    def accepts(self, control:Task_i|TaskSpec, target:Task_i|TaskSpec) -> bool:
+    def accepts(self, control:Task_i|TaskSpec_i, target:Task_i|TaskSpec_i) -> bool:
         """ Test if this pair of Tasks satisfies the relation """
-        if not (target.name.uuid() and control.name.uuid()):
-            # abstract specs can't satisfy a relation
-            return False
-        if not (self.target <= target.name):
-            # targets that are not extensions of the target don't satisfy
+        uuids       = [target.name.uuid(), control.name.uuid()]
+        obj_target  = isinstance(self.target, TaskName_p)
+        name_match  = obj_target and self.target <= target.name
+        if (None in uuids or not name_match):
             return False
 
         control_vals = control.state if isinstance(control, Task_p) else control.extra # type: ignore[union-attr]

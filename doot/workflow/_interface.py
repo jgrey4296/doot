@@ -205,15 +205,15 @@ class TaskStatus_e(enum.Enum):
     def default(cls) -> TaskStatus_e:
         return cls.NAMED
 
-    @classmethod # type: ignore
+    @classmethod
     def pre_set(cls) -> set:
         return {cls.NAMED, cls.DECLARED, cls.DEFINED}
 
-    @classmethod # type: ignore
+    @classmethod
     def success_set(cls) -> set:
         return {cls.SUCCESS, cls.TEARDOWN, cls.DEAD}
 
-    @classmethod # type: ignore
+    @classmethod
     def fail_set(cls) -> set:
         return {cls.SKIPPED, cls.HALTED, cls.FAILED}
 
@@ -257,9 +257,9 @@ class InjectSpec_i(Buildable_p, Protocol):
     literal      : dict
     with_suffix  : Maybe[str]
 
-    def apply_from_spec(self, parent:Mapping|TaskSpec_i) -> dict: ...
+    def apply_from_spec(self, parent:dict|TaskSpec_i|Task_p) -> dict: ...
 
-    def apply_from_state(self, parent:Mapping|Task_p) -> dict: ...
+    def apply_from_state(self, parent:dict|Task_p) -> dict: ...
 
     def apply_literal(self, val:Any) -> dict: ...
 
@@ -278,7 +278,7 @@ class RelationSpec_i(Protocol):
     constraints  : dict[str, str]
     inject       : Maybe[InjectSpec_i]
 
-    def __contains__(self, query:enum.Enum|TaskName_p|Artifact_i) -> bool: ...
+    def __contains__(self, query:str|enum.Enum|TaskName_p|Artifact_i) -> bool: ...
 
     def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName_p]=None) -> tuple[Maybe[RelationTarget], Maybe[RelationTarget]]: ...
 
@@ -334,8 +334,13 @@ class Action_p(Protocol):
 
 @runtime_checkable
 class Artifact_i(Location_p, Protocol):
+    priority : int
+
+    def __contains__(self, other:object) -> bool: ...
 
     def get_status(self) -> ArtifactStatus_e: ...
+
+    def reify(self, other:pl.Path|Location_p) -> Maybe[Artifact_i]: ...
 ##--|
 
 @runtime_checkable
@@ -351,6 +356,7 @@ class TaskName_p(Strang_p, Protocol):
     def is_cleanup(self) -> bool:
         pass
 
+    def pop_generated(self) -> Self: ...
 ##--|
 
 @runtime_checkable
@@ -385,6 +391,7 @@ class Task_p(Protocol):
 
     @property
     def priority(self) -> int: ...
+
     @priority.setter
     def priority(self, val:int) -> None: ...
 

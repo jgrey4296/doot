@@ -74,6 +74,13 @@ class TestTaskName:
         simple = TaskName("basic.sub.test::tail")
         assert(str(simple) == "basic.sub.test::tail")
 
+
+    def test_with_head(self):
+        simple = TaskName("a::b.c.d[<uuid>]")
+        expect = "a::b.c.d..$head$[<uuid>]"
+        assert(simple.with_head()[:] == expect)
+
+
 class TestTaskName_UUID:
 
     def test_sanity(self):
@@ -103,6 +110,66 @@ class TestTaskName_UUID:
         assert(inst1 is not inst2)
         assert(inst1.uuid() == inst2.uuid())
         assert(inst1 == inst2)
+
+
+    def test_to_head_propagates_uuid(self):
+        """
+        .. basic::a.b.c[<uuid1>]
+        -> basic::a.b.c..$head$.<uuid1>[<uuid2>]
+        """
+        obj = TaskName("basic::a.b.c")
+        inst1 = obj.to_uniq()
+        inst2 = inst1.with_head()
+        assert(inst1 is not inst2)
+        assert(inst1.uuid() == inst2.uuid())
+        assert(inst1 < inst2)
+
+
+    def test_to_cleanup_propagates_uuid(self):
+        """
+        .. basic::a.b.c[<uuid1>]
+        -> basic::a.b.c..$cleanup$.<uuid1>[<uuid2>]
+        """
+        obj = TaskName("basic::a.b.c")
+        inst1 = obj.to_uniq()
+        inst2 = inst1.with_cleanup()
+        assert(inst1 is not inst2)
+        assert(inst1.uuid() == inst2.uuid())
+        assert(inst1 < inst2)
+
+
+    def test_head_can_pop_to_base(self):
+        """
+        .. basic::a.b.c..$head$.<uuid1>[<uuid2>]
+        -> basic::a.b.c[<uuid1>]
+        """
+        obj   = TaskName("basic::a.b.c")
+        base  = obj.to_uniq()
+        head  = base.with_head()
+        chop  = head.pop_generated()
+        assert(base is not head)
+        assert(head is not chop)
+        assert(base is not chop)
+        assert(head.is_head())
+        assert(chop.uuid() == base.uuid())
+        assert(chop == base)
+
+
+    def test_cleanup_can_pop_to_base(self):
+        """
+        .. basic::a.b.c..$head$.<uuid1>[<uuid2>]
+        -> basic::a.b.c[<uuid1>]
+        """
+        obj      = TaskName("basic::a.b.c")
+        base     = obj.to_uniq()
+        cleanup  = base.with_cleanup()
+        chop     = cleanup.pop_generated()
+        assert(base is not cleanup)
+        assert(cleanup is not chop)
+        assert(base is not chop)
+        assert(cleanup.is_cleanup())
+        assert(chop.uuid() == base.uuid())
+        assert(chop == base)
 
 class TestTaskName_Marks:
 
@@ -135,7 +202,7 @@ class TestTaskName_Marks:
         assert(TaskName.Marks.partial in simple)
 
     def test_customised(self):
-        simple = TaskName("basic::tail.<+>")
+        simple = TaskName("basic::tail.$+$")
         assert(TaskName.Marks.customised in simple)
         assert(TaskName.Marks.extend not in simple)
 
@@ -150,21 +217,19 @@ class TestTaskName_Comparison:
         with_head = instance.with_head()
         assert(isinstance(with_head, TaskName))
         assert(instance.uuid())
-        assert(not with_head.uuid())
+        assert(with_head.uuid())
+        assert(instance.uuid() == with_head.uuid())
         assert(with_head[1,-1] == TaskName.Marks.head)
         assert(name < instance)
         assert(name < with_head)
-        assert(not (instance < with_head))
+        assert(instance < with_head)
 
-    def test_job_head_to_instance(self):
+
+    def test_head_must_have_base(self):
         name      = TaskName("simple::task")
-        with_head = name.with_head()
-        instance  = with_head.to_uniq()
-        assert(isinstance(instance, TaskName))
-        assert(instance.uuid())
-        assert(instance.pop(top=True) == name)
-        assert(name < with_head < instance)
-        assert(not (instance < with_head))
+        with pytest.raises(ValueError):
+            name.with_head()
+
 
 class TestTaskName_StructInteraction:
 
