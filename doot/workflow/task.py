@@ -76,9 +76,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TASK_ALISES                    = doot.aliases.task # type: ignore
-PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS # type: ignore
-STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K # type: ignore
+TASK_ALISES                    = doot.aliases.task
+PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS
+STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 class _TaskActionPrep_m:
 
@@ -207,25 +207,24 @@ class DootTask:
     COMPLETE_STATES  : ClassVar[set[TaskStatus_e]]  = {TaskStatus_e.SUCCESS}
     _default_flags   : ClassVar                     = {TaskMeta_e.TASK}
     action_ctor      : type
-    _records         : list
     _help            : tuple[str, ...]  = tuple(["The Simplest Task"])
     _version         : str              = "0.1"
+    _internal_state  : dict
 
     def __init__(self, spec:TaskSpec, *, job:Any=None, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
-        self.flags                     = TaskMeta_e.TASK
-        self.state                     = dict(spec.extra)
-        self._spec                     = spec
-        self._priority                 = self.spec.priority
-        self._status                   = DootTask.INITIAL_STATE
-        self._records                  = []
+        self.flags                               = TaskMeta_e.TASK
+        self._internal_state                     = dict(spec.extra)
+        self._spec                               = spec
+        self._priority                           = self.spec.priority
+        self._status                             = DootTask.INITIAL_STATE
 
-        self.state[STATE_TASK_NAME_K]  = self.spec.name
-        self.state['_action_step']     = 0
+        self._internal_state[STATE_TASK_NAME_K]  = self.spec.name
+        self._internal_state['_action_step']     = 0
 
         match action_ctor:
             case None:
                 from .actions import DootBaseAction
-                self.action_ctor       = DootBaseAction
+                self.action_ctor                 = DootBaseAction
             case type() as x:
                 self.action_ctor  = x
             case x:
@@ -247,12 +246,14 @@ class DootTask:
         return hash(self.name)
 
     def __lt__(self, other:TaskName_p|Task_p) -> bool:
-        """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
+        """ Task A < Task B if B ∈ A.depends_on """
         match other:
             case TaskName_p():
                 name = other.name
             case Task_p():
                 name = other.spec.name
+            case x:
+                raise TypeError(type(x))
         return any(name in x.target for x in self.spec.depends_on if isinstance(x, RelationSpec_i))
 
     @override
@@ -292,6 +293,9 @@ class DootTask:
     def priority(self, val:int) -> None:
         self._priority = val
 
+    @property
+    def internal_state(self) -> dict:
+        return self._internal_state
     ##--| methods
 
     def prepare_actions(self) -> None:
@@ -323,10 +327,6 @@ class DootTask:
                     pass
                 case [*xs]:
                     raise doot.errors.TaskError("Action Spec preparation failures", self.name[:], xs)
-
-    def add_execution_record(self, arg:Any) -> None:
-        """ Record some execution record information for display or debugging """
-        self._records.append(arg)
 
     def log(self, msg:str|Lambda|list, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None:
         """

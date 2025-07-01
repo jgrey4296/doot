@@ -249,8 +249,8 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
         if (None in uuids or not name_match):
             return False
 
-        control_vals = control.state if isinstance(control, Task_p) else control.extra # type: ignore[union-attr]
-        target_vals  = target.state  if isinstance(target, Task_p) else target.extra # type: ignore[union-attr]
+        control_vals = control.internal_state if isinstance(control, Task_p) else control.extra # type: ignore[union-attr]
+        target_vals  = target.internal_state  if isinstance(target, Task_p) else target.extra # type: ignore[union-attr]
 
         # Check constraints match
         for targ_k,source_k in self.constraints.items():

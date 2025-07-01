@@ -222,7 +222,7 @@ class TestInjectSpec_Validation:
                                   })
         control_task = factory.make(control)
         target_task  = factory.make(target)
-        target_task.state['bloo'] = 10
+        target_task._internal_state['bloo'] = 10
         match inj.validate_details(control_task, target_task):
             case dict() as x if any(bool(v) for v in x.values()):
                 assert(True)
@@ -455,7 +455,7 @@ class TestInjection_Application:
         control = factory.build({"name": "simple::control",
                                   "aweg": "other"})
         control_task = DootTask(control)
-        control_task.state['aweg'] = "task_state"
+        control_task._internal_state['aweg'] = "task_state"
         match injection.apply_from_state(control_task):
             case {"aweg": "task_state"}:
                 assert(True)

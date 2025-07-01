@@ -40,16 +40,17 @@ from doot.util._interface import DelayedSpec
 from doot.util.factory import SubTaskFactory, TaskFactory
 from doot.workflow import (ActionSpec, DootTask, InjectSpec, RelationSpec,
                            TaskArtifact, TaskName, TaskSpec)
-from doot.workflow._interface import (CLI_K, Artifact_i, ArtifactStatus_e,
-                                      InjectSpec_i, RelationSpec_i, Task_i,
-                                      TaskName_p, TaskSpec_i, TaskStatus_e,
-                                      MUST_INJECT_K)
+from doot.workflow._interface import (CLI_K, MUST_INJECT_K, Artifact_i,
+                                      ArtifactStatus_e, InjectSpec_i,
+                                      RelationSpec_i, Task_i, Task_p,
+                                      TaskName_p, TaskSpec_i, TaskStatus_e)
 
 # ##-- end 1st party imports
 
 # ##-| Local
 from . import _interface as API # noqa: N812
 from ._base import Tracker_abs
+from ._interface import TaskTracker_p
 from .network import TrackNetwork
 from .queue import TrackQueue
 from .registry import TrackRegistry
@@ -82,8 +83,6 @@ if TYPE_CHECKING:
     type Concrete[T] = T
 
 ##--|
-from doot.workflow._interface import Task_p
-from ._interface import TaskTracker_p
 # isort: on
 # ##-- end types
 
@@ -91,11 +90,13 @@ from ._interface import TaskTracker_p
 logging    = logmod.getLogger(__name__)
 ##-- end logging
 
+assert(isinstance(TrackRegistry, API.Registry_p))
 ##--|
 
 @Proto(API.TaskTracker_p)
 class NaiveTracker(Tracker_abs):
     """ Specific implementations for the default naive tracker """
+    _registry : TrackRegistry
 
     def next_for(self, target:Maybe[str|TaskName_p]=None) -> Maybe[Task_p|Artifact_i]:
         """ ask for the next task that can be performed
@@ -109,12 +110,12 @@ class NaiveTracker(Tracker_abs):
         focus   : TaskName_p|Artifact_i
         idx     : int
         result  : Maybe[Task_p|Artifact_i]
-        status  : TaskStatus_e
+        status  : TaskStatus_e|ArtifactStatus_e
         x       : Any
 
         logging.info("[Next.For] (Active: %s)", len(self.active))
         if not self.is_valid:
-            raise doot.errors.TrackingError("Network is in an invalid state")
+            raise doot.errors.TrackingError("Network is in an invalid internal_state")
 
         if target and target not in self.active:
             self.queue(target, silent=True)
@@ -123,7 +124,7 @@ class NaiveTracker(Tracker_abs):
         result = None
         while (result is None) and bool(self._queue) and 0 < (count:=count-1) and (idx:=idx+1):
             focus      = self._deque()
-            status, _  = self.get_status(target=focus)  # type: ignore[attr-defined]
+            status, _  = self.get_status(target=focus)
             logging.debug("[Next.For.%-3s]: %s  : %s", idx, status, focus)
 
             match focus:
@@ -147,7 +148,7 @@ class NaiveTracker(Tracker_abs):
         status, _ = self.get_status(target=focus) # type: ignore[attr-defined]
         match status:
             case TaskStatus_e.DEAD:
-                # Clear state
+                # Clear internal_state
                 self.specs[focus].task = TaskStatus_e.DEAD
                 self.active.remove(focus)
                 assert(focus not in self.active)
@@ -158,13 +159,13 @@ class NaiveTracker(Tracker_abs):
                 for succ, _ in self._successor_states_of(focus):
                     match self.queue(succ):
                         case TaskName() as x if x.is_cleanup():
-                            # make the cleanup task early, to apply shared state
+                            # make the cleanup task early, to apply shared internal_state
                             assert(isinstance(focus, TaskName))
                             self._instantiate(x, parent=focus, task=True)
                         case _:
                             pass
                 else:
-                    # TODO for cleanup succ, move focus.state -> succ.state
+                    # TODO for cleanup succ, move focus.internal_state -> succ.internal_state
                     self.set_status(focus, TaskStatus_e.DEAD) # type: ignore[attr-defined]
             case TaskStatus_e.SUCCESS:
                 self.queue(focus, status=TaskStatus_e.TEARDOWN)
@@ -178,7 +179,7 @@ class NaiveTracker(Tracker_abs):
                 self.queue(focus)
             case TaskStatus_e.READY:   # return the task if its ready
                 self.queue(focus, status=TaskStatus_e.RUNNING)
-                return self.specs[focus].task
+                return cast("Task_p", self.specs[focus].task)
             case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
                 waiting  : bool  = False
                 deps_of_focus    = self._dependency_states_of(focus)
@@ -198,14 +199,13 @@ class NaiveTracker(Tracker_abs):
                 self.queue(focus, status=TaskStatus_e.WAIT)
             case TaskStatus_e.DEFINED:
                 self._instantiate(focus, task=True)
-                assert(self.specs[focus].task.status is TaskStatus_e.INIT)
                 self.queue(focus)
             case TaskStatus_e.DECLARED:
                 self.queue(focus, status=TaskStatus_e.DEFINED)
             case TaskStatus_e.NAMED:
                 logging.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
             case x: # Error otherwise
-                raise doot.errors.TrackingError("Unknown task state", x)
+                raise doot.errors.TrackingError("Unknown task internal_state", x)
         ##--|
         return None
 
@@ -219,17 +219,17 @@ class NaiveTracker(Tracker_abs):
             case ArtifactStatus_e.STALE:
                 for pred, _ in self._dependency_states_of(focus):
                     self.queue(pred)
-
             case ArtifactStatus_e.DECLARED if bool(focus):
-                self.queue(focus, status=ArtifactStatus_e.EXISTS)
+                self.queue(focus)
             case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                 deps : list[tuple] = self._dependency_states_of(focus)
                 match deps:
                     case [] if not focus.is_concrete():
-                        self.queue(focus, status=ArtifactStatus_e.EXISTS)
+                        self.queue(focus)
                     case []:
                         assert(not bool(focus))
-                        path = focus.expand()
+                        path = doot.locs[focus]
+
                         self.queue(focus)
                         # Returns the artifact, the runner can try to create
                         # it, then override the halt
@@ -247,7 +247,7 @@ class NaiveTracker(Tracker_abs):
                     self.queue(focus)
 
             case x: # Error otherwise
-                raise doot.errors.TrackingError("Unknown task state", x)
+                raise doot.errors.TrackingError("Unknown task internal_state", x)
 
         ##--|
         return None
@@ -272,13 +272,16 @@ class NaiveTracker(Tracker_abs):
     def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:  # noqa: PLR0912
         """ After a task is created, values can be injected into it.
         these include, in order:
-        - parent state,
+        - parent internal_state,
         - cli params
-        - instantiator state injection
+        - instantiator internal_state injection
         """
-        x     : Any
-        meta  : API.SpecMeta_d
-        task  : Task_p
+        x            : Any
+        meta         : API.SpecMeta_d
+        task         : Task_p
+        task_args    : dict
+        inj_control  : Maybe[TaskName_p]
+        inj          : InjectSpec_i
         ##--|
         match self.specs[name]:
             case API.SpecMeta_d(task=Task_p() as task) as meta:
@@ -290,7 +293,7 @@ class NaiveTracker(Tracker_abs):
             case None:
                 pass
             case API.SpecMeta_d(task=Task_p() as p_task):
-                task.state.update(p_task.state) # type: ignore[attr-defined]
+                task.internal_state.update(p_task.internal_state) # type: ignore[attr-defined]
 
         ##--| apply CLI params
         assert(hasattr(task, "param_specs"))
@@ -301,41 +304,47 @@ class NaiveTracker(Tracker_abs):
                 # Apply CLI passed params, but only as the default
                 # So if override values have been injected, they are preferred
                 target     = task.name.pop(top=True)[:,:]
-                task_args : dict = doot.args.on_fail({}).sub[target]()
+                task_args  = doot.args.on_fail({}).sub[target]()
                 for cli in xs:
-                    task.state.setdefault(cli.name, task_args.get(cli.name, cli.default)) # type: ignore[attr-defined]
+                    task.internal_state.setdefault(cli.name, task_args.get(cli.name, cli.default)) # type: ignore[attr-defined]
 
-                if CLI_K in task.state: # type: ignore[attr-defined]
-                    del task.state[CLI_K] # type: ignore[attr-defined]
+                if CLI_K in task.internal_state: # type: ignore[attr-defined]
+                    del task.internal_state[CLI_K] # type: ignore[attr-defined]
 
         ##--| apply late injections
         match meta.injection_source:
             case None:
+                inj_control = None
+            case TaskName_p() as inj_control, _ if inj_control not in self.specs:
+                raise ValueError("Late Injection source is not a task", inj_control)
+            case TaskName_p() as inj_control, InjectSpec_i() as inj:
                 pass
-            case TaskName_p() as x, _ if x not in self.specs :
-                raise ValueError("Late Injection source is not a task", str(x))
-            case TaskName_p() as c_name, InjectSpec_i() as inj:
-                control = self.specs[c_name].task
-                assert(control is not None)
-                task.state |= inj.apply_from_state(control) # type: ignore[attr-defined]
+
+        match self.specs.get(inj_control, None): # type: ignore[arg-type]
+            case None:
+                pass
+            case API.SpecMeta_d(task=Task_p() as control):
+                task.internal_state.update(inj.apply_from_state(control))
                 if not inj.validate(cast("Task_i", control), task):
                     raise doot.errors.TrackingError("Late Injection Failed")
                 # TODO remvoe  the injection from the registry
+            case x:
+                raise TypeError(type(x))
 
         ##--| validate
         match task.spec.extra.on_fail([])[MUST_INJECT_K](): # type: ignore[attr-defined]
             case []:
                 pass
-            case [*xs] if bool(missing:=[x for x in xs if x not in task.state]): # type: ignore[attr-defined]
-                raise doot.errors.TrackingError("Task did not receive required injections", task.name, xs, task.state.keys()) # type: ignore[attr-defined]
+            case [*xs] if bool(missing:=[x for x in xs if x not in task.internal_state]): # type: ignore[attr-defined]
+                raise doot.errors.TrackingError("Task did not receive required injections", task.name, xs, task.internal_state.keys()) # type: ignore[attr-defined]
 
         ##--| prep actions
         task.prepare_actions()
 
-    def _dependency_states_of(self, focus:TaskName_p) -> list[tuple]:
+    def _dependency_states_of(self, focus:TaskName_p|Artifact_i) -> list[tuple]:
         return [(x, self.get_status(target=x)[0]) for x in self._network.pred[focus]]
 
-    def _successor_states_of(self, focus:TaskName_p) -> list[tuple]:
+    def _successor_states_of(self, focus:TaskName_p|Artifact_i) -> list[tuple]:
         return [(x, self.get_status(target=x)[0]) for x in self._network.succ[focus]]
 
     def _deque(self) -> TaskName_p|Artifact_i:
@@ -360,5 +369,5 @@ class NaiveTracker(Tracker_abs):
     def get_status(self, *, target:Maybe[Concrete[TaskName_p]|Artifact_i]=None) -> tuple[TaskStatus_e|ArtifactStatus_e, int]:
         return self._registry.get_status(target)
 
-    def set_status(self, task:Concrete[TaskName_p]|Artifact_i|Task_p, state:TaskStatus_e) -> bool:
-        return self._registry.set_status(task, state) # type: ignore[attr-defined]
+    def set_status(self, task:Concrete[TaskName_p]|Artifact_i|Task_p, internal_state:TaskStatus_e) -> bool:
+        return self._registry.set_status(task, internal_state) # type: ignore[attr-defined]

@@ -362,15 +362,15 @@ class TestTracker_cleanup:
         match tracker.next_for():
             case Task_p() as task:
                 assert("basic::task" < task.name)
-                assert(task.state["blah"] == "aweg")
-                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
+                assert(task.internal_state["blah"] == "aweg")
+                tracker.set_status(task.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task2:
                 assert(task2.name.is_cleanup())
-                assert(task2.state["blah"] == "aweg")
+                assert(task2.internal_state["blah"] == "aweg")
             case x:
                  assert(False), x
 
@@ -382,16 +382,16 @@ class TestTracker_cleanup:
         match tracker.next_for():
             case Task_p() as task:
                 assert(spec.name < task.name)
-                assert("blah" not in task.state)
-                task.state["blah"] = "aweg"
-                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
+                assert("blah" not in task.internal_state)
+                task.internal_state["blah"] = "aweg"
+                tracker.set_status(task.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task2:
                 assert(task2.name.is_cleanup())
-                assert(task2.state["blah"] == "aweg")
+                assert(task2.internal_state["blah"] == "aweg")
             case x:
                  assert(False), x
 
@@ -404,24 +404,24 @@ class TestTracker_cleanup:
         match tracker.next_for():
             case Task_p() as task:
                 assert("basic::task" < task.name)
-                assert("blah" not in task.state)
-                task.state["blah"] = "aweg"
-                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
+                assert("blah" not in task.internal_state)
+                task.internal_state["blah"] = "aweg"
+                tracker.set_status(task.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task2:
                 assert(dep.name < task2.name)
-                assert(task2.state["blah"] == "aweg")
-                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
+                assert(task2.internal_state["blah"] == "aweg")
+                tracker.set_status(task2.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task3:
                 assert(task3.name.is_cleanup())
-                assert(task3.state["blah"] == "aweg")
+                assert(task3.internal_state["blah"] == "aweg")
             case x:
                  assert(False), x
 
@@ -434,26 +434,26 @@ class TestTracker_cleanup:
         match tracker.next_for():
             case Task_p() as task:
                 assert("basic::task" < task.name)
-                assert("blah" not in task.state)
-                task.state["blah"] = "aweg"
-                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
+                assert("blah" not in task.internal_state)
+                task.internal_state["blah"] = "aweg"
+                tracker.set_status(task.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task2:
                 assert(dep.name < task2.name)
-                assert(task2.state["blah"] == "aweg")
-                task2.state['aweg'] = "qqqq"
-                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
+                assert(task2.internal_state["blah"] == "aweg")
+                task2.internal_state['aweg'] = "qqqq"
+                tracker.set_status(task2.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task3:
                 assert(task3.name.is_cleanup())
-                assert(task3.state["blah"] == "aweg")
-                assert("aweg" not in task3.state)
+                assert(task3.internal_state["blah"] == "aweg")
+                assert("aweg" not in task3.internal_state)
             case x:
                  assert(False), x
 
@@ -461,8 +461,8 @@ class TestTracker_cleanup:
             case Task_p() as task4:
                 assert(task4.name.is_cleanup())
                 assert(dep.name < task4.name)
-                assert(task4.state['blah'] == "aweg")
-                assert("aweg" in task4.state)
+                assert(task4.internal_state['blah'] == "aweg")
+                assert("aweg" in task4.internal_state)
             case x:
                  assert(False), x
 
@@ -475,19 +475,19 @@ class TestTracker_cleanup:
         match tracker.next_for():
             case Task_p() as task:
                 assert("basic::task" < task.name)
-                assert("blah" not in task.state)
-                task.state["blah"] = "aweg"
-                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
+                assert("blah" not in task.internal_state)
+                task.internal_state["blah"] = "aweg"
+                tracker.set_status(task.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task2:
                 assert("basic::dep" < task2.name)
-                assert(task2.state["blah"] == "aweg")
-                task2.state['aweg'] = "qqqq"
-                task2.state["qqqq"] = "blah"
-                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
+                assert(task2.internal_state["blah"] == "aweg")
+                task2.internal_state['aweg'] = "qqqq"
+                task2.internal_state["qqqq"] = "blah"
+                tracker.set_status(task2.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -495,9 +495,9 @@ class TestTracker_cleanup:
             case Task_p() as task3:
                 assert("basic::task" < task3.name)
                 assert(task3.name.is_cleanup())
-                assert(task3.state["blah"] == "aweg")
-                assert("aweg" not in task3.state)
-                assert("qqqq" not in task3.state)
+                assert(task3.internal_state["blah"] == "aweg")
+                assert("aweg" not in task3.internal_state)
+                assert("qqqq" not in task3.internal_state)
             case x:
                  assert(False), x
 
@@ -505,9 +505,9 @@ class TestTracker_cleanup:
             case Task_p() as task4:
                 assert("basic::dep" < task4.name)
                 assert(task4.name.is_cleanup())
-                assert(task4.state['blah'] == "aweg")
-                assert(task4.state["aweg"] == "qqqq")
-                assert(task4.state["qqqq"] == "blah")
+                assert(task4.internal_state['blah'] == "aweg")
+                assert(task4.internal_state["aweg"] == "qqqq")
+                assert(task4.internal_state["qqqq"] == "blah")
             case x:
                  assert(False), x
 
@@ -520,19 +520,19 @@ class TestTracker_cleanup:
         match tracker.next_for():
             case Task_p() as task:
                 assert("basic::task" < task.name)
-                assert("blah" not in task.state)
-                task.state["blah"] = "aweg"
-                tracker.set_status(task.name, state=TaskStatus_e.SUCCESS)
+                assert("blah" not in task.internal_state)
+                task.internal_state["blah"] = "aweg"
+                tracker.set_status(task.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
         match tracker.next_for():
             case Task_p() as task2:
                 assert("basic::dep" < task2.name)
-                assert(task2.state["blah"] == "aweg")
-                task2.state['aweg'] = "qqqq"
-                task2.state["qqqq"] = "blah"
-                tracker.set_status(task2.name, state=TaskStatus_e.SUCCESS)
+                assert(task2.internal_state["blah"] == "aweg")
+                task2.internal_state['aweg'] = "qqqq"
+                task2.internal_state["qqqq"] = "blah"
+                tracker.set_status(task2.name, internal_state=TaskStatus_e.SUCCESS)
             case x:
                  assert(False), x
 
@@ -540,9 +540,9 @@ class TestTracker_cleanup:
             case Task_p() as task3:
                 assert("basic::task" < task3.name)
                 assert(task3.name.is_cleanup())
-                assert(task3.state["blah"] == "aweg")
-                assert("aweg" not in task3.state)
-                assert("qqqq" not in task3.state)
+                assert(task3.internal_state["blah"] == "aweg")
+                assert("aweg" not in task3.internal_state)
+                assert("qqqq" not in task3.internal_state)
             case x:
                  assert(False), x
 
@@ -550,9 +550,9 @@ class TestTracker_cleanup:
             case Task_p() as task4:
                 assert("basic::dep" < task4.name)
                 assert(task4.name.is_cleanup())
-                assert(task4.state['blah'] == "aweg")
-                assert(task4.state["aweg"] == "qqqq")
-                assert(task4.state["qqqq"] == "blah")
+                assert(task4.internal_state['blah'] == "aweg")
+                assert(task4.internal_state["aweg"] == "qqqq")
+                assert(task4.internal_state["qqqq"] == "blah")
             case x:
                  assert(False), x
 

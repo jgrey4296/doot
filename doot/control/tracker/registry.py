@@ -375,6 +375,7 @@ class _Verification_m(API.Registry_d):
 
 ##--|
 
+@Proto(API.Registry_p)
 @Mixin(_Registration_m, _Instantiation_m, _Verification_m)
 class TrackRegistry(API.Registry_d):
     """ Stores and manipulates specs, tasks, and artifacts """

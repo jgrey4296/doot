@@ -72,6 +72,15 @@ def registry():
     tracker = NaiveTracker()
     return tracker._registry
 
+
+class TestRegistry:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        assert(isinstance(TrackRegistry, API.Registry_p))
+
 class TestRegistration:
 
     def test_sanity(self):
@@ -691,12 +700,12 @@ class TestInstantiation_Tasks:
         registry.register_spec(spec)
         source_inst = registry.instantiate_spec(spec.name)
         registry.make_task(source_inst)
-        registry.specs[source_inst].task.state["blah"] = "bloo"
+        registry.specs[source_inst].task.internal_state["blah"] = "bloo"
 
         dep_inst = registry.instantiate_spec(spec.name)
         registry._register_late_injection(dep_inst, inj, source_inst)
         registry.make_task(dep_inst)
-        assert(registry.specs[dep_inst].task.state["blah"] == "bloo")
+        assert(registry.specs[dep_inst].task.internal_state["blah"] == "bloo")
 
     def test_task_retrieval(self, registry):
         spec = registry._tracker._factory.build({"name":"basic::task"})

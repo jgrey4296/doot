@@ -395,6 +395,10 @@ class Task_p(Protocol):
     @priority.setter
     def priority(self, val:int) -> None: ...
 
+    @property
+    def internal_state(self) -> dict: ...
+    ##--| other
+
     def log(self, msg:str, level:int=logmod.DEBUG, prefix:Maybe[str]=None) -> None: ...
     """ utility method to log a message, useful as tasks are running """
 
@@ -414,9 +418,8 @@ class Task_i(Task_p, Protocol):
     """
     Meta information for a task
     """
-    _default_flags : ClassVar[set[TaskMeta_e]]
+    _default_flags   : ClassVar[set[TaskMeta_e]]
 
     _version         : str
     _help            : tuple[str, ...]
     doc              : tuple[str, ...]
-    state            : dict

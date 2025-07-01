@@ -81,9 +81,9 @@ class InjectSpec(BaseModel):
     With a Task C, the control, and Task T, the target,
     C injects data into T at defined times:
     - from_spec[K1, K2]   : T.spec[K1]  = C.spec[K2]
-    - from_state[K1, K2]  : T.state[K1] = C.state[K2]
-    - from_target[K0, K2] : T.state[K1_] = T.spec[C.spec[K2]]
-    - literal[K1, V]      : T.state[k1] = V
+    - from_state[K1, K2]  : T._internal_state[K1] = C._internal_state[K2]
+    - from_target[K0, K2] : T._internal_state[K1_] = T.spec[C.spec[K2]]
+    - literal[K1, V]      : T._internal_state[k1] = V
 
     Injection data can be:
     - list[DKey]            : coerced to dict of {K : K}. Implicit keys
@@ -222,14 +222,14 @@ class InjectSpec(BaseModel):
             state_failure = bool(self.from_state) and not all(isinstance(x, Task_p) for x in (control, target))
         match control:
             case Task_i():
-                control_vals   = control.state
+                control_vals   = control._internal_state
                 control_needs |= set(self.from_state.values())
             case _:
                 control_vals   = control.extra # type: ignore[attr-defined]
 
         match target:
             case Task_i():
-                target_vals   = target.state
+                target_vals   = target._internal_state
                 target_needs |= set(self.from_state.keys())
             case _:
                 target_vals  = target.extra # type: ignore[attr-defined]
@@ -260,7 +260,7 @@ class InjectSpec(BaseModel):
             "rhs_redirect"    : control_redirects,
             "lhs_redirect"    : target_redirects,
             "mismatches"      : mismatches,
-            "state"           : state_failure,
+            "_internal_state"           : state_failure,
             "literal"         : literals,
         }
 
@@ -292,12 +292,12 @@ class InjectSpec(BaseModel):
             return data
 
     def apply_from_state(self, control:dict|Task_p) -> dict:
-        """ Expand a key using the control state """
+        """ Expand a key using the control _internal_state """
         # logging.info("Applying from_state injection: %s", control.name)
         pdata : dict
         match control:
             case Task_i():
-                pdata = control.state
+                pdata = control._internal_state
             case dict():
                 pdata = control
             case x:

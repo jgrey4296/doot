@@ -11,7 +11,6 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import shutil
 from functools import partial
 from uuid import UUID, uuid1
@@ -43,6 +42,9 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import pathlib as pl
+    from .interface import TaskSpec_i, ActionSpec_i
+    from jgdv.structs.locator._interface import Location_p
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -52,7 +54,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from .structs import TaskSpec
 from ._interface import Task_p
 
 # isort: on
@@ -62,8 +63,8 @@ from ._interface import Task_p
 logging   = logmod.getLogger(__name__)
 ##-- end logging
 
-make_missing = doot.config.on_fail(False).settings.commands.run.location_check.make_missing()
-strict       = doot.config.on_fail(True).settings.commands.run.location_check.strict()
+make_missing : Final[bool] = doot.config.on_fail(False).settings.commands.run.location_check.make_missing()  # noqa: FBT003
+strict       : Final[bool] = doot.config.on_fail(True).settings.commands.run.location_check.strict()  # noqa: FBT003
 ##--|
 @Proto(Task_p)
 class CheckLocsTask(DootTask):
@@ -72,12 +73,14 @@ class CheckLocsTask(DootTask):
     """
     task_name = "_locations::check"
 
-    def __init__(self, spec:TaskSpec=None):
+    def __init__(self, spec:TaskSpec_i=None):
+        actions : list[ActionSpec_i]
+        locations : list[Location_p]
         match [DKey(x, implicit=True) for x in doot.locs]:
             case []:
                 actions = []
             case [*_]:
-                locations = [DKey(x, implicit=True) for x in doot.locs]
+                locations = [DKey(x, implicit=True) for x in doot.locs] # type: ignore[misc]
                 actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
 
         spec      = {
@@ -87,8 +90,9 @@ class CheckLocsTask(DootTask):
         }
         super().__init__(spec)
 
-    @DKeyed.args
-    def checklocs(self, spec:ActionSpec, state:dict, args:list) -> None:
+    @DKeyed.args # type: ignore[attr-defined]
+    def checklocs(self, spec:ActionSpec_i, state:dict, args:list) -> None:  # noqa: ARG002
+        path : pl.Path
         errors = []
         for loc in args:
             try:
@@ -109,7 +113,7 @@ class CheckLocsTask(DootTask):
             except PermissionError:
                 if strict:
                     errors.append(path)
-                doot.report.act("Check", "Location Permision Error: %s", loc)
+                doot.report.act("Check", f"Location Permision Error: {loc}")
                 doot.report.fail()
         else:
             if strict and bool(errors):

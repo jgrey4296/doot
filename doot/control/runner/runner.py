@@ -156,7 +156,7 @@ class _ActionExecution_m:
 
         """
         result                     = None
-        task.state['_action_step'] = count
+        task.internal_state['_action_step'] = count
         match group:
             case str():
                 doot.report.act(f"{self.step}.{group}.{count}", action.do)
@@ -164,8 +164,8 @@ class _ActionExecution_m:
                 doot.report.act(f"{self.step}._.{count}", action.do)
 
         logging.debug("Action Executing for Task: %s", task.name)
-        logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
-        result = action(task.state)
+        logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.internal_state.keys()))
+        result = action(task.internal_state)
         match result:
             case None | True:
                 result = ActRE.SUCCESS
@@ -175,7 +175,7 @@ class _ActionExecution_m:
                 # result will be returned, and expand_job/execute_task will handle it
                 pass
             case dict(): # update the task's state
-                task.state.update({str(k):v for k,v in result.items()})
+                task.internal_state.update({str(k):v for k,v in result.items()})
                 result = ActRE.SUCCESS
             case list() if all(isinstance(x, TaskName_p|TaskSpec_i|DelayedSpec) for x in result):
                 pass

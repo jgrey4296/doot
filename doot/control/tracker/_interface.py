@@ -180,12 +180,8 @@ class Registry_d:
 
 ##--| components
 
+@runtime_checkable
 class Registry_p(Protocol):
-    specs      : dict
-    artifacts  : dict
-    abstract   : set
-    concrete   : set
-
     def register_spec(self, *specs:TaskSpec_i) -> None: ...
 
     def instantiate_spec(self, name:Abstract[TaskName_p], *, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]: ...
