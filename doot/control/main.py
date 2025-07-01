@@ -121,15 +121,16 @@ class Loading_m:
                               target=target,
                               fallback=None):
             case None:
-                parser_callbacks = None
+                parser_model = None
             case type() as ctor:
-                parser_callbacks = ctor()
-            case x:
+                parser_model = ctor()
+             case  x:
                 raise TypeError(type(x))
 
         match parser_callbacks:
             case None:
-                self.parser = jgdv.cli.ParseMachine()
+                from .arg_parser_model import DootArgParserModel
+                self.parser = jgdv.cli.ParseMachine(DootArgParserModel())
             case jgdv.cli.ArgParser_p() as p:
                 self.parser = jgdv.cli.ParseMachine(parser=p)
             case _:
@@ -164,11 +165,17 @@ class CLIArgParsing_m:
 
     def parse_args(self, *, override:Maybe[list]=None) -> None:
         """ use loaded cmd and tasks to parse sys.argv """
-        cmd_vals         : list             = list(doot.loaded_cmds.values())
-        subcmd_handlers  : tuple[str, ...]  = tuple(x for x,y in doot.loaded_cmds.items() if isinstance(y, AcceptsSubcmds_p))
-        subcmds          : list             = [(subcmd_handlers, x) for x in doot.loaded_tasks.values()]
-        to_parse         : list[str]        = override or self.raw_args[1:]
-        unaliased_args   : list[str]        = self._unalias_raw_args(to_parse)  # type: ignore
+        cmd_vals         : list
+        subcmd_handlers  : tuple[str, ...]
+        subcmds          : list
+        to_parse         : list[str]
+        unaliased_args   : list[str]
+        ##--|
+        cmd_vals         = list(doot.loaded_cmds.values())
+        subcmd_handlers  = tuple(x for x,y in doot.loaded_cmds.items() if isinstance(y, AcceptsSubcmds_p))
+        subcmds          = [(subcmd_handlers, x) for x in doot.loaded_tasks.values()]
+        to_parse         = override or self.raw_args[1:]
+        unaliased_args   = self._unalias_raw_args(to_parse)  # type: ignore
         try:
             cli_args = self.parser(unaliased_args,
                                    head_specs=self.param_specs(), # type: ignore
