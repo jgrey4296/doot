@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from jgdv.cli._interface import ParamStruct_p
+    from jgdv.cli._interface import ParamSpec_p
     from jgdv._abstract.protocols import StubStruct_p
 
     from doot.workflow import ActionSpec, TaskName

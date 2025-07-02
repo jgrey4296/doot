@@ -26,8 +26,8 @@ basic    = "doot.control.runner:DootRunner"
 
 [[doot.aliases.parser]]
 # Map {alias} -> CodeRef String
-default  =   "jgdv.cli.arg_parser:CLIParser"
-basic    =   "jgdv.cli.arg_parser:CLIParser"
+default  =   "doot.control.arg_parser_model:DootArgParserModel"
+basic    =   "doot.control.arg_parser_model:DootArgParserModel"
 
 [[doot.aliases.action]] # basic actions
 # Map {alias} -> CodeRef String

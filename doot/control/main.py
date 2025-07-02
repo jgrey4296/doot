@@ -89,9 +89,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-env                                     = os.environ
-DEFAULT_EMPTY_CMD : Final[list[str]]    = ["--help"]
-DEFAULT_IMPLICIT_CMD: Final[list[str]]  = ["run"]
+env                                       = os.environ
+DEFAULT_EMPTY_CMD     : Final[list[str]]  = ["--help"]
+DEFAULT_IMPLICIT_CMD  : Final[list[str]]  = ["run"]
+PROG_NAME             : Final[str]        = "doot"
 
 # Body:
 
@@ -107,30 +108,31 @@ class Loading_m:
         self.get_constants()
         self.set_command_aliases()
         doot.load_plugins()
-        self.load_cli_parser(target=doot.config.on_fail("default").startup.loaders.parser()) # type: ignore
-        doot.load_reporter(target=doot.config.on_fail("default").startup.loaders.reporter()) # type: ignore
-        doot.load_commands(loader=doot.config.on_fail("default").startup.loaders.command()) # type: ignore
-        doot.load_tasks(loader=doot.config.on_fail("default").startup.loaders.task()) # type: ignore
+        self.load_cli_parser(target=doot.config.on_fail("default").startup.loaders.parser())
+        doot.load_reporter(target=doot.config.on_fail("default").startup.loaders.reporter())
+        doot.load_commands(loader=doot.config.on_fail("default").startup.loaders.command())
+        doot.load_tasks(loader=doot.config.on_fail("default").startup.loaders.task())
 
     def get_constants(self) -> None:
         # Constants are always loaded, so need no on_fail
-        self._version_template       = doot.constants.printer.version_template # type: ignore
+        self._version_template       = doot.constants.printer.version_template
 
     def load_cli_parser(self, *, target:str="default") -> None:
-        match plugin_selector(doot.loaded_plugins.on_fail([], list).parser(), # type: ignore
+        match plugin_selector(doot.loaded_plugins.on_fail([], list).parser(),
                               target=target,
                               fallback=None):
             case None:
-                parser_callbacks = None
+                parser_model = None
             case type() as ctor:
-                parser_callbacks = ctor()
-            case x:
+                parser_model = ctor()
+            case  x:
                 raise TypeError(type(x))
 
-        match parser_callbacks:
+        match parser_model:
             case None:
-                self.parser = jgdv.cli.ParseMachine()
-            case jgdv.cli.ArgParser_p() as p:
+                from .arg_parser_model import DootArgParserModel  # noqa: PLC0415
+                self.parser = jgdv.cli.ParseMachine(DootArgParserModel())
+            case jgdv.cli.ArgParserModel_p() as p:
                 self.parser = jgdv.cli.ParseMachine(parser=p)
             case _:
                 raise TypeError("Improper argparser specified", self.parser)
@@ -164,18 +166,23 @@ class CLIArgParsing_m:
 
     def parse_args(self, *, override:Maybe[list]=None) -> None:
         """ use loaded cmd and tasks to parse sys.argv """
-        cmd_vals         : list             = list(doot.loaded_cmds.values())
-        subcmd_handlers  : tuple[str, ...]  = tuple(x for x,y in doot.loaded_cmds.items() if isinstance(y, AcceptsSubcmds_p))
-        subcmds          : list             = [(subcmd_handlers, x) for x in doot.loaded_tasks.values()]
-        to_parse         : list[str]        = override or self.raw_args[1:]
-        unaliased_args   : list[str]        = self._unalias_raw_args(to_parse)  # type: ignore
+        cmds               : list
+        subcmds            : list
+        unaliased_args     : list[str]
+        implicits          : dict[str,list[str]]
+        ##--|
+        cmds            = list(doot.loaded_cmds.values())
+        subcmds         = self._map_subcmd_constraints()
+        unaliased_args  = self._unalias_raw_args()
+        implicits       = self._construct_implicits()
+
         try:
-            cli_args = self.parser(unaliased_args,
-                                   head_specs=self.param_specs(), # type: ignore
-                                   cmds=cast("list[ParamSource_p]", cmd_vals),
-                                   # Associate tasks with the run cmd
-                                   subcmds=cast("list[tuple[str, ParamSource_p]]", subcmds),
-                                   )
+            cli_args  = self.parser(unaliased_args,
+                                    prog=self,
+                                    cmds=cmds,
+                                    subs=subcmds,
+                                    implicits=implicits,
+                                    )
         except jgdv.cli.errors.HeadParseError as err:
             raise doot.errors.FrontendError("Doot Head Failed to Parse", err) from None
         except jgdv.cli.errors.CmdParseError as err:
@@ -192,24 +199,6 @@ class CLIArgParsing_m:
                     doot.set_parsed_cli_args(ChainGuard(parsed_args), override=bool(override)) # type: ignore[attr-defined]
                 case x:
                     raise TypeError(type(x))
-
-    def handle_implicit_cmds(self) -> None:
-        """
-        Post arg parsing, if explicit commands aren't given, use implicit ones.
-        """
-        empty_call_cmd     : list  = doot.config.on_fail(DEFAULT_EMPTY_CMD, list).startup.empty_cmd()            # type: ignore
-        implicit_task_cmd  : str   = doot.config.on_fail(DEFAULT_IMPLICIT_CMD, list).startup.implicit_task_cmd()  # type: ignore
-        match doot.args.on_fail(None).cmd.name(), bool(doot.args.on_fail(None).sub()):
-            case None, False: # No subtasks, no cmd
-                self.parse_args(override=[*empty_call_cmd, *self.raw_args[1:]])
-            case str() as target , False if target == EMPTY_CMD: # empty cmd
-                self.parse_args(override=[*empty_call_cmd, *self.raw_args[1:]])
-            case str() as target, True if target == EMPTY_CMD: # Subtasks, so use implicit task cmd
-                self.parse_args(override=[*implicit_task_cmd, *self.raw_args[1:]])
-            case str() as target, _:
-                pass
-            case x:
-                raise TypeError(type(x))
 
     def handle_cli_args(self) -> Maybe[int]:
         """ Overlord specific cli arg responses.
@@ -261,13 +250,14 @@ class CLIArgParsing_m:
 
         return "\n".join(help_lines)
 
-    def _unalias_raw_args(self, raw:list[str]) -> list[str]:
+    def _unalias_raw_args(self) -> list[str]:
         """ replaces aliases with their full command args.
 
         Just a simple, literal, find and replace
         """
-        result        = []
-        sep           = doot.constants.patterns.TASK_PARSE_SEP
+        raw     = self.raw_args
+        result  = []
+        sep     = doot.constants.patterns.TASK_PARSE_SEP
         for i, x in enumerate(raw):
             match doot.cmd_aliases.on_fail(None)[x]():
                 case None:
@@ -285,6 +275,22 @@ class CLIArgParsing_m:
             return result
 
 
+
+    def _construct_implicits(self) -> dict[str, list[str]]:
+        result : dict = {}
+        match doot.config.on_fail(DEFAULT_IMPLICIT_CMD, list).startup.implicit_task_cmd():
+            case [x, *_] as xs:
+                result[x] = xs
+            case x:
+                raise TypeError(type(x))
+
+        return result
+
+
+    def _map_subcmd_constraints(self) -> list[tuple[tuple[str, ...], ParamSource_p]]:
+        subcmd_handlers  = tuple(x for x,y in doot.loaded_cmds.items() if isinstance(y, AcceptsSubcmds_p))
+        subcmds          = [(subcmd_handlers, x) for x in doot.loaded_tasks.values()]
+        return subcmds
 
 class CmdRun_m:
     """ mixin for actually running a command  """
@@ -418,7 +424,8 @@ class ExitHandlers_m:
         return API.ExitCodes.EARLY
 
     def _missing_config_exit(self, err:Exception) -> int:
-        base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
+        load_targets: list = doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()
+        base_target = pl.Path(load_targets[0])
         # Handle missing files
         if base_target.exists():
             doot.report.error("[%s] : Base Config Target exists but it contains no valid config: %s",
@@ -519,6 +526,10 @@ class DootMain:
         self._errored           = None
         self._implicit_task_cmd = None
 
+    @property
+    def name(self) -> str:
+        return PROG_NAME
+
     def param_specs(self) -> list[ParamSpec]:
         """ The cli parameters of the main doot program. """
         return [
@@ -543,7 +554,6 @@ class DootMain:
         try:
             self._load()
             self.parse_args()
-            self.handle_implicit_cmds()
             match self.handle_cli_args():
                 case None:
                     pass

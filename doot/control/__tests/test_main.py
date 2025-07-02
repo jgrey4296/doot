@@ -45,7 +45,6 @@ class TestDootMain:
         dmain       = DootMain()
         mocker.patch.object(dmain, "_load")
         mocker.patch.object(dmain, "parse_args")
-        mocker.patch.object(dmain, "handle_implicit_cmds")
         mocker.patch.object(dmain, "handle_cli_args", return_value=None)
         mocker.patch.object(dmain, "set_cmd_instance")
         mocker.patch.object(dmain, "_install_at_exit")

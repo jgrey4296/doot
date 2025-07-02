@@ -45,7 +45,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv.cli import ParamStruct_p
+    from jgdv.cli import ParamSpec_p
     from jgdv import Maybe, Lambda
     from jgdv.structs.chainguard import ChainGuard
     from typing import Final
@@ -103,7 +103,7 @@ class BaseCommand:
             case _:
                 return f" {self.name: <10} :"
 
-    def param_specs(self) -> list[ParamStruct_p]:
+    def param_specs(self) -> list[ParamSpec_p]:
         """
         Provide parameter specs for parsing into doot.args.cmd
         """
