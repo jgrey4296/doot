@@ -101,15 +101,12 @@ class _TreeReporter_m:
             match curr:
                 case None:
                     self.finished()
-                    # self.pop_state()
                 case str() as x, list() as y:
                     self.branch(x, info="Branch")
-                    # self.push_state(x)
                     queued.append(None)
                     queued +=  reversed(y)
                 case str() as x, dict() as y:
                     self.branch(x, info="Branch")
-                    # self.push_state(x)
                     queued.append(None)
                     queued +=  reversed(y.items())
                 case str() as x:
@@ -207,33 +204,34 @@ class _GenReporter_m:
         return self
 
     def summary(self:Reporter_p) -> Reporter_p:
+        msg : str
         self.active_level(logmod.WARN)
         match self.state.state:
             case "fail":
                 self.state.log_extra['colour'] = "red"
-                msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg() # type: ignore
+                msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
             case _:
-                msg = doot.config.on_fail("Success").shutdown.notify.success_msg() # type: ignore
+                msg = doot.config.on_fail("Success").shutdown.notify.success_msg()
 
         self.line(msg)
         # TODO the report
         self.gap()
         return self
 
-    def user(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
+    def user(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
         self.log.warning(msg, *rest, **kwargs)
         return self
 
-    def trace(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
+    def trace(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
         self.log.info(msg, *rest, **kwargs)
         return self
 
-    def detail(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
+    def detail(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
         self.log.debug(msg, *rest, **kwargs)
         return self
 
-    def failure(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
-        match doot.is_setup: # type: ignore
+    def failure(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
+        match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
@@ -242,7 +240,7 @@ class _GenReporter_m:
         return self
 
     def warn(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
-        match doot.is_setup: # type: ignore
+        match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
@@ -251,7 +249,7 @@ class _GenReporter_m:
         return self
 
     def error(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
-        match doot.is_setup: # type: ignore
+        match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
             case _:
@@ -299,6 +297,7 @@ class BasicReporter:
             case x:
                 raise TypeError(type(x))
 
+    @override
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} : {self.log.name} : {self.log.level} >"
 

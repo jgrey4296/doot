@@ -196,7 +196,7 @@ class CLIArgParsing_m:
         else:
             match cli_args:
                 case dict() as parsed_args:
-                    doot.set_parsed_cli_args(ChainGuard(parsed_args), override=bool(override)) # type: ignore[attr-defined]
+                    doot.set_parsed_cli_args(parsed_args, override=bool(override)) # type: ignore[attr-defined]
                 case x:
                     raise TypeError(type(x))
 
@@ -569,7 +569,7 @@ class DootMain:
         except doot.errors.MissingConfigError as err:
             match self.raw_args:
                 case [*_, "stub", "--config"]:
-                    from doot.cmds.stub_cmd import StubCmd
+                    from doot.cmds.stub_cmd import StubCmd  # noqa: PLC0415
                     stubber = StubCmd()
                     stubber._stub_doot_toml()
                 case _:
