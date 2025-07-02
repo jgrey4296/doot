@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv.cli import ParamStruct_p
+    from jgdv.cli import ParamSpec_p
     from jgdv.cli.param_spec import ParamSpec
     from jgdv.structs.chainguard import ChainGuard
 
@@ -387,7 +387,7 @@ class ListCmd(BaseCommand):
     ])
 
     @override
-    def param_specs(self) -> list[ParamStruct_p]:
+    def param_specs(self) -> list[ParamSpec_p]:
         params = [
             *super().param_specs(),
             self.build_param(name="<0>pattern", type=str,  default="", desc="Filter the listing to only values passing this regex"),
