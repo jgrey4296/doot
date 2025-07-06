@@ -101,6 +101,8 @@ class TestTaskFactory_Over:
                 assert(over_task.name < new_spec.name)
                 assert("a" in new_spec.extra)
                 assert("b" in new_spec.extra)
+                assert(len(new_spec.actions) == len(under_task.actions))
+                assert(new_spec.actions[0].kwargs.msg == under_task.actions[0].kwargs.msg)
                 assert(bool(new_spec.actions))
                 for x in ["agroup::base", "agroup::base.a"]:
                     assert(x in new_spec.sources)

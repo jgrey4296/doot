@@ -215,12 +215,12 @@ class TaskFactory:
             case dict():
                 bot_data = bot
             case TaskSpec_i():
-                bot_data = bot.model_dump()
+                bot_data = dict(bot)
         match top:
             case dict():
                 top_data = top
             case TaskSpec_i():
-                top_data = top.model_dump()
+                top_data = dict(top)
         ##--|
         result          = self._specialize_merge(bot=bot_data, top=top_data)
         match name:
