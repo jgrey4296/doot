@@ -69,9 +69,9 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-LOG_PREFIX : Final[str]     = "----"
-PYPROJ     : Final[pl.Path] = pl.Path("pyproject.toml")
-ROOT_ELEM  : Final[str]     = "doot"
+LOG_PREFIX  : Final[str]  = "----"
+PYPROJ      : Final[str]  = "pyproject.toml"
+ROOT_ELEM   : Final[str]  = "doot"
 # Body:
 
 @runtime_checkable

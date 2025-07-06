@@ -139,6 +139,7 @@ class Tracker_abs:
 
     @property
     def abstract(self) -> set:
+        assert(hasattr(self._registry, "abstract"))
         return self._registry.abstract
 
     @property
@@ -179,8 +180,9 @@ class Tracker_abs:
                 case x:
                     raise TypeError(type(x))
 
-    def queue(self, name:str|TaskName_p|TaskSpec_i|Artifact_i|DelayedSpec, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: ARG002
-        queued : TaskName_p|Artifact_i
+    def queue(self, name:str|TaskName_p|TaskSpec_i|Artifact_i|DelayedSpec, *, from_user:int|bool=False, status:Maybe[TaskStatus_e]=None, **kwargs:Any) -> Maybe[Concrete[TaskName_p|Artifact_i]]:  # noqa: ARG002
+        queued  : TaskName_p|Artifact_i
+        ##--|
         match name:
             case str() | TaskName_p() | Artifact_i():
                 pass

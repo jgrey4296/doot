@@ -330,7 +330,6 @@ class TestTaskFactory_Naming:
             case x:
                 assert(False), x
 
-
     def test_with_str_suffix(self, factory):
         suffix = "blah"
         match factory._prep_name(TaskName("simple::task"), suffix=suffix):
@@ -339,6 +338,13 @@ class TestTaskFactory_Naming:
             case x:
                 assert(False), x
 
+    def test_with_int_suffix(self, factory):
+        suffix = 2
+        match factory._prep_name(TaskName("simple::task"), suffix=suffix):
+            case TaskName_p() as x:
+                assert(x[1,-1] == str(suffix))
+            case x:
+                assert(False), x
 
     def test_with_false_suffix(self, factory):
         suffix = False
@@ -347,7 +353,6 @@ class TestTaskFactory_Naming:
                 assert(x == "simple::task")
             case x:
                 assert(False), x
-
 
     def test_with_None_suffix(self, factory):
         suffix = None
@@ -365,7 +370,6 @@ class TestTaskFactory_Naming:
                 assert(not x.uuid())
             case x:
                 assert(False), x
-
 
 class TestSubTaskFactory:
     """ Tests a spec can build related specs,

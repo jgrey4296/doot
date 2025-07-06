@@ -3,7 +3,7 @@
 
 """
 # ruff: noqa: N812
-# mypy: disable-error-code="attr-defined"
+# : disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -34,9 +34,7 @@ from jgdv.debugging import NullHandler, SignalHandler
 import doot
 import doot.errors
 from doot.control.runner._interface import TaskRunner_p
-from doot.util.factory import DelayedSpec
-from doot.workflow import (ActionSpec, RelationSpec, TaskArtifact, TaskName,
-                           TaskSpec)
+from doot.workflow import (ActionSpec, RelationSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.workflow._interface import ActionResponse_e as ActRE
 from doot.workflow._interface import Job_p, Task_p, TaskName_p, TaskSpec_i, ActionSpec_i, RelationSpec_i
 
@@ -59,6 +57,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from doot.util.factory import DelayedSpec
     from doot.control.tracker._interface import TaskTracker_p
     from jgdv import Maybe
     from typing import Final
@@ -155,18 +154,19 @@ class _ActionExecution_m:
           or an ActRE describing the action result.
 
         """
-        result                     = None
+        result : ActRE|list
+        ##--|
         task.internal_state['_action_step'] = count
         match group:
             case str():
-                doot.report.act(f"{self.step}.{group}.{count}", action.do)
+                doot.report.act(f"{self.step}.{group}.{count}", str(action.do))
             case None:
-                doot.report.act(f"{self.step}._.{count}", action.do)
+                doot.report.act(f"{self.step}._.{count}", str(action.do))
 
         logging.debug("Action Executing for Task: %s", task.name)
         logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.internal_state.keys()))
-        result = action(task.internal_state)
-        match result:
+        response = action(task.internal_state)
+        match response:
             case None | True:
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
@@ -174,11 +174,9 @@ class _ActionExecution_m:
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
                 pass
-            case dict(): # update the task's state
-                task.internal_state.update({str(k):v for k,v in result.items()})
+            case dict() as data: # update the task's state
+                task.internal_state.update({str(k):v for k,v in data.items()})
                 result = ActRE.SUCCESS
-            case list() if all(isinstance(x, TaskName_p|TaskSpec_i|DelayedSpec) for x in result):
-                pass
             case _:
                 raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
 
@@ -228,7 +226,7 @@ class DootRunner:
         self.tracker       = tracker
         self.teardown_list = [] # list of tasks to teardown
 
-    def __call__(self, *tasks:str, handler:Maybe[ContextManager]=None): #noqa: ARG002
+    def __call__(self, *tasks:str, handler:Maybe[bool|type[ContextManager]|ContextManager]=None): #noqa: ARG002
         """ tasks are initial targets to run.
           so loop on the tracker, getting the next task,
           running its actions,
@@ -281,7 +279,7 @@ class DootRunner:
             self.handle_failure(err)
         except Exception as err:
             doot.report.fail()
-            self.tracker.clear_queue()
+            self.tracker.clear()
             raise
         else:
             self.handle_task_success(task)

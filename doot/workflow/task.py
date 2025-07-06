@@ -3,7 +3,6 @@
 A Utility implementation of most of what a task needs
 """
 # mypy: disable-error-code="attr-defined"
-# ruff: noqa: C409
 # Imports:
 from __future__ import annotations
 
@@ -38,7 +37,7 @@ from doot.errors import StructLoadError, TaskError
 
 # ##-| Local
 from ._interface import (Action_p, Job_p, QueueMeta_e, Task_p, RelationSpec_i,
-                         TaskMeta_e, TaskStatus_e, TaskSpec_i, TaskName_p)
+                         TaskMeta_e, TaskStatus_e, TaskSpec_i, TaskName_p, ActionSpec_i)
 from .structs import RelationSpec, TaskArtifact, ActionSpec, TaskName
 
 # # End of Imports.
@@ -211,7 +210,14 @@ class DootTask:
     _version         : str              = "0.1"
     _internal_state  : dict
 
-    def __init__(self, spec:TaskSpec, *, job:Any=None, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
+    def __init__(self, spec:TaskSpec_i, *, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
+        match spec:
+            case TaskSpec_i():
+                pass
+            case x:
+                breakpoint()
+                pass
+
         self.flags                               = TaskMeta_e.TASK
         self._internal_state                     = dict(spec.extra)
         self._spec                               = spec
@@ -223,8 +229,8 @@ class DootTask:
 
         match action_ctor:
             case None:
-                from .actions import DootBaseAction
-                self.action_ctor                 = DootBaseAction
+                from .actions import DootBaseAction  # noqa: PLC0415
+                self.action_ctor = DootBaseAction
             case type() as x:
                 self.action_ctor  = x
             case x:
@@ -308,16 +314,16 @@ class DootTask:
         failed : list[Exception] = []
         for action_spec in self.spec.action_group_elements():
             match action_spec:
-                case RelationSpec():
+                case RelationSpec_i():
                     pass
-                case ActionSpec() if action_spec.fun is not None:
+                case ActionSpec_i() if action_spec.fun is not None:
                     pass
-                case ActionSpec() if action_spec.do is not None:
+                case ActionSpec_i() if action_spec.do is not None:
                     try:
                         action_spec.set_function()
                     except (doot.errors.StructError, ImportError) as err:
                         failed.append(err)
-                case ActionSpec():
+                case ActionSpec_i():
                     action_spec.set_function(fun=self.action_ctor)
                 case _:
                     failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.name))
@@ -348,7 +354,7 @@ class DootTask:
         for line in lines:
             logging.log(level, prefix + str(line))
 
-    def get_action_group(self, group_name:str) -> list[ActionSpec]:
+    def get_action_group(self, group_name:str) -> list[ActionSpec_i]:
         if not bool(group_name):
             raise TaskError("Tried to retrieve an empty groupname")
         if hasattr(self, group_name):

@@ -96,7 +96,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
 ##--| Controllers
 
 class StartupController:
@@ -141,7 +140,9 @@ class StartupController:
 
     def _load_config(self, obj:DO, *, targets:Maybe[list[Loadable]], prefix:Maybe[str]) -> None:  # noqa: PLR0912
         """ Load a specified config, or one of the defaults if it exists """
-        target_paths : list[pl.Path]
+        x                 : Any
+        target_paths      : list[pl.Path]
+        existing_targets  : list[pl.Path]
         ##--|
         match targets:
             case list() if bool(targets) and all([isinstance(x, pl.Path) for x in targets]):
@@ -170,16 +171,17 @@ class StartupController:
             except OSError as err:
                 raise DErr.InvalidConfigError(existing_targets, *err.args) from err
             else:
-                if existing_targets == [ControlAPI.PYPROJ] and ControlAPI.ROOT_ELEM not in config:
-                    raise DErr.MissingConfigError("Pyproject has no doot config")
+                match existing:
+                    case x if x.name == DootAPI.PYPROJ_TOML and DootAPI.TOOL_PREFIX not in config:
+                        raise DErr.MissingConfigError("Pyproject has no doot config")
+                    case x if x.name == DootAPI.DOOT_TOML:
+                        chopped = config
+                    case x if prefix not in config:
+                        logging.warning("No Root element or prefix found in config: %s", existing)
+                        chopped   = config.remove_prefix(prefix)
+                        if not bool(chopped):
+                            continue
 
-                if ControlAPI.ROOT_ELEM not in config and prefix not in config:
-                    logging.debug("No Root element or prefix found in config: %s", existing)
-                    continue
-
-                chopped   = config.remove_prefix(prefix)
-                if not bool(chopped):
-                    continue
                 conf_ver  = chopped.on_fail(None).startup.doot_version()
                 obj.verify_config_version(conf_ver, source=existing)
                 obj.config = ChainGuard.merge(chopped, obj.config._table()) # type: ignore[arg-type]
@@ -255,8 +257,8 @@ class PluginsController:
 
     def load(self, obj:DO) -> None:
         self._load_plugins(obj)
-        self.load_commands(obj, loader=obj.config.on_fail("default").startup.loaders.command())
-        self.load_tasks(obj, loader=obj.config.on_fail("default").startup.loaders.task())
+        self._load_commands(obj, loader=obj.config.on_fail("default").startup.loaders.command())
+        self._load_tasks(obj, loader=obj.config.on_fail("default").startup.loaders.task())
 
     def _load_plugins(self, obj:DootOverlord) -> None:
         """ Use the plugin loader to find all applicable `importlib.EntryPoint`s  """
@@ -267,8 +269,8 @@ class PluginsController:
         try:
             plugin_loader = PluginLoader()
             plugin_loader.setup()
-            obj.loaded_plugins = self.plugin_loader.load()
-            obj.update_aliases(data=self.loaded_plugins) # type: ignore[attr-defined]
+            obj.loaded_plugins = plugin_loader.load()
+            obj.update_aliases(data=obj.loaded_plugins) # type: ignore[attr-defined]
         except DErr.PluginError as err:
             obj.report.error("Plugins Not Loaded Due to Error: %s", err) # type: ignore[attr-defined]
             raise
@@ -283,18 +285,18 @@ class PluginsController:
         match plugin_selector(obj.loaded_plugins.on_fail([], list).command_loader(),
                               target=loader):
             case type() as ctor:
-                self.cmd_loader = ctor()
+                cmd_loader = ctor()
             case x:
                 raise TypeError(type(x))
 
-        match self.cmd_loader:
+        match cmd_loader:
             case Loader_p():
                 try:
-                    self.cmd_loader.setup(self.loaded_plugins)
-                    self.loaded_cmds = self.cmd_loader.load()
+                    cmd_loader.setup(obj.loaded_plugins)
+                    obj.loaded_cmds = cmd_loader.load()
                 except DErr.PluginError as err:
                     obj.report.error("Commands Not Loaded due to Error: %s", err) # type: ignore[attr-defined]
-                    self.loaded_cmds = ChainGuard()
+                    obj.loaded_cmds = ChainGuard()
             case x:
                 raise TypeError("Unrecognized loader type", x)
 
@@ -302,7 +304,9 @@ class PluginsController:
         """ Load task entry points, using the preferred task loader,
         or the default
         """
-        task_loader : Loader_p
+        x            : Any
+        task_loader  : Loader_p
+        ##--|
         match plugin_selector(obj.loaded_plugins.on_fail([], list).task_loader(),
                               target=loader):
             case type() as ctor:
@@ -310,9 +314,9 @@ class PluginsController:
             case x:
                 raise TypeError(type(x))
 
-        match obj.task_loader:
+        match task_loader:
             case Loader_p():
-                task_loader.setup(self.loaded_plugins)
+                task_loader.setup(obj.loaded_plugins)
                 obj.loaded_tasks = task_loader.load()
             case x:
                 raise TypeError("Unrecognised loader type", x)
@@ -387,7 +391,7 @@ class DootOverlord:
         self.update_import_path()
 
     def load(self) -> None:
-        pass
+        self._plugin.load(self)
 
     def load_reporter(self, target:str="default") -> None:
         if not bool(self.loaded_plugins):
@@ -396,10 +400,9 @@ class DootOverlord:
         match plugin_selector(self.loaded_plugins.on_fail([], list).reporter(),
                               target=target):
             case type() as ctor:
-                self.report = ctor(logger=self.log_config.subprinter()) # type: ignore[attr-defined]
+                self.report = ctor() # type: ignore[attr-defined]
             case x:
                 raise TypeError(type(x))
-
 
     def verify_config_version(self, ver:Maybe[str], source:Maybe[str|pl.Path], *, override:Maybe[str]=None) -> None:
         """Ensure the config file is compatible with doot
@@ -472,12 +475,16 @@ class DootOverlord:
         """
         x         : Any
         combined  : set[pl.Path]
+        ##--| Wrappers
+        def loc_wrapper(x) -> list[pl.Path]:
+            return [self.locs[y] for y in x]
+
         ##--|
         self.report.trace("Updating Import Path")
         match paths:
             case None | []:
-                task_sources  = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [self.locs[y] for y in x])
-                task_code     = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [self.locs[y] for y in x])
+                task_sources  = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=loc_wrapper)
+                task_code     = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.code(wrapper=loc_wrapper)
                 combined = set(task_sources + task_code)
             case [*xs]:
                 combined = set(paths)
@@ -506,20 +513,29 @@ class DootOverlord:
 
     def update_cmd_args(self, data:ParseReport_d|dict, *,  override:bool=False) -> None:
         """ update global args that cmd's use for control flow """
+        ##--|
         match data:
             case _ if bool(self.args) and not override:
                 raise ValueError("Setting Parsed args but its already set")
-            case {"prog": dict() as prog, "cmds": dict() as cmds, "subs": dict() as subs, "help": bool() as help}:
-                self.args = ChainGuard({
+            case {"prog": dict() as prog, "cmds": dict() as cmds, "subs": list() as subs, "help": bool() as help}:
+                data = {
                     "prog" : prog,
                     "cmds" : cmds,
                     "subs" : subs,
                     "help" : help,
-                })
+                }
             case ParseReport_d():
-                self.args = ChainGuard(data.to_dict())
+                data = data.to_dict()
             case x:
                 raise TypeError(type(x))
+
+        ##--|
+        assert(bool(data))
+        assert(all(x in data for x in ["prog", "cmds", "subs", "help"]))
+        assert(isinstance(data['cmds'], dict))
+        assert(isinstance(data['subs'], dict))
+        self.args = ChainGuard(data)
+
 ##--| Facade
 
 class OverlordFacade(types.ModuleType):

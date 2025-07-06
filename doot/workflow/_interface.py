@@ -323,6 +323,8 @@ class TaskSpec_i(Protocol):
     @property
     def extra(self) -> ChainGuard: ...
 
+    def param_specs(self) -> list: ...
+
 @runtime_checkable
 class Action_p(Protocol):
     """
@@ -336,6 +338,7 @@ class Action_p(Protocol):
 class Artifact_i(Location_p, Protocol):
     priority : int
 
+    @override
     def __contains__(self, other:object) -> bool: ...
 
     def get_status(self) -> ArtifactStatus_e: ...
@@ -362,7 +365,7 @@ class TaskName_p(Strang_p, Protocol):
 @runtime_checkable
 class Task_p(Protocol):
 
-    def __init__(self, spec:SpecStruct_p) -> None: ...
+    def __init__(self, spec:TaskSpec_i) -> None: ...
 
     ##--| dunders
 

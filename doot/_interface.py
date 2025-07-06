@@ -72,20 +72,22 @@ aliases_file   : Loadable  = data_path.joinpath("aliases.toml")
 template_path  : Loadable  = files("doot.__data.templates")
 
 # -- Can't be in doot.constants, because that isn't loaded yet
-CONSTANT_PREFIX       : Final[str]             = "doot.constants"
-ALIAS_PREFIX          : Final[str]             = "doot.aliases"
-TOOL_PREFIX           : Final[str]             = "tool.doot"
-DEFAULT_FILENAMES     : Final[tuple[str, ...]] = ("doot.toml", "pyproject.toml")
+CONSTANT_PREFIX    : Final[str]              = "doot.constants"
+ALIAS_PREFIX       : Final[str]              = "doot.aliases"
+TOOL_PREFIX        : Final[str]              = "tool.doot"
+DOOT_TOML          : Final[str]              = "doot.toml"
+PYPROJ_TOML        : Final[str]              = "pyproject.toml"
+DEFAULT_FILENAMES  : Final[tuple[str, ...]]  = (DOOT_TOML, PYPROJ_TOML)
 
-fail_prefix           : Final[str]             = "!!!"
-GLOBAL_STATE_KEY      : Final[str]             = "global"
-LASTERR               : Final[str]             = "doot.lasterror"
+fail_prefix        : Final[str]              = "!!!"
+GLOBAL_STATE_KEY   : Final[str]              = "global"
+LASTERR            : Final[str]              = "doot.lasterror"
 
 ##--|
 class ExitCodes(enum.IntEnum):
-    SUCCESS         = 0
-    UNKNOWN_FAIL    = -1
-    NOT_SETUP       = -2
+    SUCCESS                                  = 0
+    UNKNOWN_FAIL                             = -1
+    NOT_SETUP                                = -2
     EARLY           = -3
     MISSING_CONFIG  = -4
     BAD_CONFIG      = -5

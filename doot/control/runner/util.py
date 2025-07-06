@@ -56,6 +56,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from ._interface import TaskRunner_p
+
 ##--|
 # isort: on
 # ##-- end types
@@ -78,17 +80,17 @@ class _RunnerCtx_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
-        super().__init__(*args, **kwargs)
+    def __init__(self:TaskRunner_p, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        super().__init__(*args, **kwargs) # type: ignore[safe-super]
         self._enter_msg      = loop_entry_msg
         self._exit_msg       = loop_exit_msg
         self._signal_failure = None
 
-    def __enter__(self) -> Self:
+    def __enter__(self:TaskRunner_p) -> TaskRunner_p:
         logging.info("Entering Runner Control")
         doot.report.trace("Building Task Network...")
         doot.report.gap()
-        self.tracker.build_network()
+        self.tracker.build()
         doot.report.trace("Task Network Built.")
         doot.report.detail("Network Composition: %s Nodes, %s Edges, %s Edges from Root.",
                            len(self.tracker.network.nodes),
@@ -96,19 +98,19 @@ class _RunnerCtx_m:
                            len(self.tracker.network.pred[self.tracker._root_node]))
         doot.report.trace("Validating Task Network...")
         doot.report.gap()
-        self.tracker.validate_network()
+        self.tracker.validate()
         doot.report.trace("Validation Complete.")
         doot.report.line(self._enter_msg)
         doot.report.root()
         return self
 
-    def __exit__(self, exc_type:type[Exception], exc_value:Exception, exc_traceback:Traceback) -> Literal[False]:
+    def __exit__(self:TaskRunner_p, exc_type:type[Exception], exc_value:Exception, exc_traceback:Traceback) -> Literal[False]:
         logging.info("Exiting Runner Control")
         # TODO handle exc_types?
         self._finish()
         return False
 
-    def _finish(self) -> None:
+    def _finish(self:TaskRunner_p) -> None:
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
@@ -128,19 +130,19 @@ class _RunnerHandlers_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def handle_task_success[T:Maybe[Task_p|TaskArtifact]](self, task:T) -> T:
+    def handle_task_success[T:Maybe[Task_p|TaskArtifact]](self:TaskRunner_p, task:T) -> T:
         """ The basic success handler. just informs the tracker of the success """
         match task:
             case None:
                 pass
             case TaskArtifact() as art:
-                doot.report.result([art.path], info="Success")
+                doot.report.result([str(art.path)], info="Success")
             case Task_p():
                 doot.report.result([task.name[:]], info="Success")
-                self.tracker.set_status(task, TaskStatus_e.SUCCESS)
+                self.tracker.set_status(task.name, TaskStatus_e.SUCCESS)
         return task
 
-    def handle_failure(self, failure:Exception) -> None:
+    def handle_failure(self:TaskRunner_p, failure:Exception) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.
@@ -177,12 +179,12 @@ class _RunnerHandlers_m:
                 doot.report.error("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
 
-    def notify_artifact(self, art:TaskArtifact) -> None:
+    def notify_artifact(self:TaskRunner_p, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         doot.report.result(["Artifact: %s", art])
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
-    def sleep_after(self, task:Maybe[Task_p|TaskArtifact]) -> None:
+    def sleep_after(self:TaskRunner_p, task:Maybe[Task_p|TaskArtifact]) -> None:
         """
           The runner's sleep method, which spaces out tasks
         """

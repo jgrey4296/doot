@@ -19,7 +19,7 @@ from ._base import DootError, BackendError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
-    from doot.workflow._interface import Task_i, TaskName_p, Artifact_i
+    from doot.workflow._interface import Task_i, TaskName_p, Artifact_i, TaskSpec_i
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -31,7 +31,7 @@ class TaskError(BackendError):
 
     general_msg = "Doot Task Error:"
 
-    def __init__(self, msg:str, *args:Any, task:Maybe[Task_i]=None):
+    def __init__(self, msg:str, *args:Any, task:Maybe[Task_i|TaskSpec_i]=None):
         super().__init__(msg, *args)
         self.task = task
 

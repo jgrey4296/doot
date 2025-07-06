@@ -121,7 +121,7 @@ class NaiveTracker(Tracker_abs):
             self.queue(target, silent=True)
 
         idx, count  = 0, API.MAX_LOOP
-        result = None
+        result      = None
         while (result is None) and bool(self._queue) and 0 < (count:=count-1) and (idx:=idx+1):
             focus      = self._deque()
             status, _  = self.get_status(target=focus)
@@ -229,8 +229,6 @@ class NaiveTracker(Tracker_abs):
                     case []:
                         assert(not bool(focus))
                         path = doot.locs[focus]
-
-                        self.queue(focus)
                         # Returns the artifact, the runner can try to create
                         # it, then override the halt
                         return focus
@@ -244,7 +242,8 @@ class NaiveTracker(Tracker_abs):
                         continue
                     self.queue(dep)
                 else:
-                    self.queue(focus)
+                    # No need to requeue, as tasks will check for the artifacts themselves
+                    pass
 
             case x: # Error otherwise
                 raise doot.errors.TrackingError("Unknown task internal_state", x)
@@ -269,7 +268,7 @@ class NaiveTracker(Tracker_abs):
 
     ##--| internal
 
-    def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:  # noqa: PLR0912
+    def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:  # noqa: PLR0912, PLR0915
         """ After a task is created, values can be injected into it.
         these include, in order:
         - parent internal_state,
@@ -304,7 +303,14 @@ class NaiveTracker(Tracker_abs):
                 # Apply CLI passed params, but only as the default
                 # So if override values have been injected, they are preferred
                 target     = task.name.pop(top=True)[:,:]
-                task_args  = doot.args.on_fail({}).sub[target]()
+                match doot.args.on_fail([]).subs[target]():
+                    case [x]:
+                        task_args = x.args
+                    case []:
+                        task_args = {}
+                    case x:
+                        raise TypeError(type(x))
+
                 for cli in xs:
                     task.internal_state.setdefault(cli.name, task_args.get(cli.name, cli.default)) # type: ignore[attr-defined]
 

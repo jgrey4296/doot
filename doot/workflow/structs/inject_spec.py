@@ -315,7 +315,9 @@ class InjectSpec(BaseModel):
         Used for job's to insert literal values into a key.
         eg: when mapping filenames to generated tasks
         """
-        logging.info("Applying literal injection: %s", val)
+        if not bool(self.literal):
+            return {}
+        logging.debug("Applying literal injection")
         data = {}
         for x,_y in self.literal.items():
             data[str(x)] = val or _y

@@ -102,7 +102,7 @@ class TestTracker:
         with pytest.raises(doot.errors.TrackingError):
             tracker.validate()
 
-    def test_next_simple(self, tracker):
+    def test_next_simple(self, tracker, mocker):
         spec = tracker._factory.build({"name":"basic::alpha"})
         tracker.register(spec)
         instance = tracker.queue(spec.name, from_user=True)

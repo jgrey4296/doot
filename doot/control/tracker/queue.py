@@ -100,7 +100,7 @@ class TrackQueue:
         return self._queue.peek(default=None) is not None
 
     ##--| public
-    def queue_entry(self, target:str|TaskName_p|Artifact_i, *, from_user:bool=False) -> Maybe[Concrete[TaskName_p|Artifact_i]]:
+    def queue_entry(self, target:str|TaskName_p|Artifact_i, *, from_user:int|bool=False) -> Maybe[Concrete[TaskName_p|Artifact_i]]:
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the _tracker._network
@@ -123,7 +123,6 @@ class TrackQueue:
 
     def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName_p]|Artifact_i:
         """ remove (or peek) the top task from the _queue. """
-        focus : TaskName_p|Artifact_i
         assert(hasattr(self._tracker, "set_status"))
         if peek:
             return self._queue.peek()
@@ -139,7 +138,7 @@ class TrackQueue:
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
 
     ##--| private
-    def _queue_task(self, name:str|TaskName_p, *, from_user:bool=False) -> Maybe[TaskName_p]:
+    def _queue_task(self, name:str|TaskName_p, *, from_user:int|bool=False) -> Maybe[TaskName_p]:
         x : Any
         assert(hasattr(self._tracker, "get_status"))
         ##--| ensure the name is unique
@@ -156,7 +155,7 @@ class TrackQueue:
                 raise TypeError(type(x))
         ##--| connect in the network
         if inst_name not in self._tracker.network:
-            self._tracker._connect(inst_name, None if from_user else False) # type: ignore[attr-defined]
+            self._tracker._connect(inst_name, None if bool(from_user) else False) # type: ignore[attr-defined]
         ##--| update the queue
         self.active_set.add(inst_name)
         match self._tracker.specs[inst_name]:
@@ -171,10 +170,10 @@ class TrackQueue:
         return inst_name
 
 
-    def _queue_artifact(self, art:Artifact_i, *, from_user:bool=False) -> Maybe[Artifact_i]:
+    def _queue_artifact(self, art:Artifact_i, *, from_user:int|bool=False) -> Maybe[Artifact_i]:
         assert(art in self._tracker.artifacts)
         target_priority  : int  = self._tracker._declare_priority
-        self._tracker._connect(art, None if from_user else False) # type: ignore[arg-type]
+        self._tracker._connect(art, None if bool(from_user) else False) # type: ignore[arg-type]
         self.active_set.add(art) # type: ignore[arg-type]
         self._queue.add(art, priority=target_priority)
         logging.debug("[Queue.+] : %s", art)

@@ -179,7 +179,7 @@ class TaskFactory:
 
         return result
 
-    def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping]=None) -> TaskSpec_i:
+    def instantiate(self, obj:TaskSpec_i, *, suffix:Maybe[bool|str]=None, extra:Maybe[Mapping]=None) -> TaskSpec_i:
         """
         Return this spec, copied with a uniq name
         """
@@ -196,7 +196,7 @@ class TaskFactory:
             case x:
                 raise TypeError(type(x))
 
-        result.name = self._prep_name(obj.name, suffix=False).to_uniq()
+        result.name = self._prep_name(obj.name, suffix=suffix or False).to_uniq()
         assert(result.name.uuid())
         return result
 
@@ -319,15 +319,18 @@ class TaskFactory:
 
         return specialized
 
-    def _prep_name(self, base:TaskName_p, *, suffix:Maybe[str|Literal[False]]=None) -> TaskName_p:
+    def _prep_name(self, base:TaskName_p, *, suffix:Maybe[int|str|Literal[False]]=None) -> TaskName_p:
         result : TaskName_p
+        ##--|
         match suffix:
+            case bool() | 0:
+                result = cast("TaskName_p", base)
             case None:
                 result = base.push(TaskName.Marks.customised)  # type: ignore[assignment]
-            case False:
-                result = cast("TaskName_p", base)
             case str():
                 result = base.push(suffix)  # type: ignore[assignment]
+            case int() as x if x > 0:
+                result = cast("TaskName_p", base.push(str(x)))
             case x:
                 raise TypeError(type(x))
         ##--|
@@ -389,7 +392,7 @@ class SubTaskFactory:
         head : dict        = {
             "name"             : job_head,
             "ctor"             : ctor,
-            "sources"          : obj.sources[:] + [obj.name, None],
+            "sources"          : [*obj.sources[:], obj.name, None],
             "queue_behaviour"  : API.QueueMeta_e.reactive,
             "depends_on"       : [obj.name, *head_dependencies],
             "required_for"     : obj.required_for[:],

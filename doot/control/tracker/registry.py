@@ -195,7 +195,7 @@ class _Registration_m(API.Registry_d):
 
 class _Instantiation_m(API.Registry_d):
 
-    def instantiate_spec(self, name:Abstract[TaskName_p], *, force:Maybe[bool]=None, extra:Maybe[dict|ChainGuard]=None) -> Maybe[Concrete[TaskName_p]]:
+    def instantiate_spec(self, name:Abstract[TaskName_p], *, force:Maybe[int|bool]=None, extra:Maybe[dict|ChainGuard]=None) -> Maybe[Concrete[TaskName_p]]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
 
@@ -208,7 +208,7 @@ class _Instantiation_m(API.Registry_d):
         ##--|
         assert(hasattr(self._tracker, "_factory"))
         match force:
-            case None|False if name.uuid() and name in self.specs: # Re-use existing instance
+            case None|False|0 if name.uuid() and name in self.specs: # Re-use existing instance
                 if bool(extra):
                     raise ValueError("tried to instance a spec, while disallowing new specs, but providing extra values")
                 self._instantiate_implicit_tasks(name)
@@ -229,7 +229,7 @@ class _Instantiation_m(API.Registry_d):
                 return x
 
         spec     = meta.spec
-        instance = self._tracker._factory.instantiate(spec, extra=extra)
+        instance = self._tracker._factory.instantiate(spec, suffix=force, extra=extra)
         assert(instance is not None)
         assert(instance.name.uuid())
         logging.debug("[Instance.new] %s into %s", name, instance.name)

@@ -44,7 +44,9 @@ class TestDootMain:
     def test_main_method(self, mocker):
         dmain       = DootMain()
         mocker.patch.object(dmain, "handle_cli_args", return_value=None)
-
+        mocker.patch.object(dmain._cli, "parse_args")
+        mocker.patch.object(dmain._cmd, "run_cmds")
+        mocker.patch.object(dmain._loading, "load")
         with pytest.raises(SystemExit) as ctx:
             dmain()
 

@@ -15,18 +15,27 @@ from .control.overlord import OverlordFacade
 import __main__
 
 if typing.TYPE_CHECKING:
-    from jgdv.structs.chainguard._interface import ChainGuard_p
+    from typing import Callable
+    from jgdv.structs.chainguard import ChainGuard
     from jgdv.structs.locator._interface import Locator_p
     from jgdv.logging._interface import LogConfig_p
     from doot.reporters._interface import Reporter_p
 
-    config      : ChainGuard_p
-    constants   : ChainGuard_p
-    aliases     : ChainGuard_p
-    log_config  : LogConfig_p
-    args        : ChainGuard_p
-    locs        : Locator_p
-    report      : Reporter_p
+    aliases         : ChainGuard
+    args            : ChainGuard
+    config          : ChainGuard
+    constants       : ChainGuard
+    loaded_cmds     : ChainGuard
+    loaded_plugins  : ChainGuard
+    loaded_tasks    : ChainGuard
+    locs            : Locator_p
+    log_config      : LogConfig_p
+    report          : Reporter_p
+    cmd_aliases     : ChainGuard
+    ##--| methods
+    load            : Callable
+    load_reporter   : Callable
+
 
 ##-- logging
 logging = logmod.getLogger(__name__)

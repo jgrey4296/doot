@@ -19,16 +19,21 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Proto
-from jgdv.structs.dkey import DKeyed, DKey
+from jgdv.structs.dkey import DKey, DKeyed
 from jgdv.structs.locator._interface import LocationMeta_e
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from . import ActionSpec, DootTask
 
 # ##-- end 1st party imports
+
+# ##-| Local
+from . import ActionSpec, DootTask, TaskSpec
+
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -88,12 +93,13 @@ class CheckLocsTask(DootTask):
             "actions"      : actions,
             "priority"     : 100,
         }
-        super().__init__(spec)
+        super().__init__(TaskSpec(**spec))
 
     @DKeyed.args # type: ignore[attr-defined]
     def checklocs(self, spec:ActionSpec_i, state:dict, args:list) -> None:  # noqa: ARG002
         path : pl.Path
-        errors = []
+        ##--|
+        errors  = []
         for loc in args:
             try:
                 if doot.locs.metacheck(loc, LocationMeta_e.file, LocationMeta_e.remote):

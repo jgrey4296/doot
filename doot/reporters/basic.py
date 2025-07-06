@@ -42,6 +42,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
+from jgdv.logging._interface import PRINTER_NAME
 from jgdv import Proto, Mixin
 import doot
 from . import _interface as API  # noqa: N812
@@ -69,6 +70,7 @@ if TYPE_CHECKING:
 
     from logmod import Logger
     from ._interface import Reporter_p
+    from doot.workflow._interface import TaskName_p
     type TreeElem = None | str | list[TreeElem] | dict[str, TreeElem] | tuple[str, TreeElem]
 ##--|
 
@@ -89,7 +91,6 @@ START_COUNT : Final[int] = 0
 
 class _TreeReporter_m:
     """ Methods to report a tree of data
-
 
     """
 
@@ -136,13 +137,13 @@ class _WorkflowReporter_m:
         self._out("act", info=info, msg=msg, level=level)
         return self
 
-    def branch(self:Reporter_p, name:str, info:Maybe[str]=None) -> Reporter_p:
+    def branch(self:Reporter_p, name:str|TaskName_p, info:Maybe[str]=None) -> Reporter_p:
         self._out("branch", level=5)
         self._out("begin", info=info or "Start", msg=name, level=5)
         self.push_state("branch")
         return self
 
-    def resume(self:Reporter_p, name:str) -> Reporter_p:
+    def resume(self:Reporter_p, name:str|TaskName_p) -> Reporter_p:
         self._out("resume", msg=name, level=5)
         self.push_state("resume")
         return self
@@ -218,19 +219,19 @@ class _GenReporter_m:
         self.gap()
         return self
 
-    def user(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
+    def user(self:Reporter_p, msg:str, *rest:Any, **kwargs:Any) -> Reporter_p:
         self.log.warning(msg, *rest, **kwargs)
         return self
 
-    def trace(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
+    def trace(self:Reporter_p, msg:str, *rest:Any, **kwargs:Any) -> Reporter_p:
         self.log.info(msg, *rest, **kwargs)
         return self
 
-    def detail(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
+    def detail(self:Reporter_p, msg:str, *rest:Any, **kwargs:Any) -> Reporter_p:
         self.log.debug(msg, *rest, **kwargs)
         return self
 
-    def failure(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:
+    def failure(self:Reporter_p, msg:str, *rest:Any, **kwargs:Any) -> Reporter_p:
         match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
@@ -239,7 +240,7 @@ class _GenReporter_m:
 
         return self
 
-    def warn(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
+    def warn(self:Reporter_p, msg:str, *rest:Any, **kwargs:Any) -> Reporter_p:  # noqa: ARG002
         match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
@@ -248,7 +249,7 @@ class _GenReporter_m:
 
         return self
 
-    def error(self:Reporter_p, msg:str, *rest:str, **kwargs:str) -> Reporter_p:  # noqa: ARG002
+    def error(self:Reporter_p, msg:str, *rest:Any, **kwargs:Any) -> Reporter_p:  # noqa: ARG002
         match doot.is_setup:
             case False:
                 print(msg % rest, file=sys.stderr)
@@ -268,7 +269,7 @@ class BasicReporter:
         super().__init__(*args, **kwargs)
         self._entry_count       = START_COUNT
         self._fmt               = TraceFormatter(segments=segments or API.TRACE_LINES_ASCII)
-        self._logger            = logger or logging
+        self._logger            = logger or logmod.getLogger(PRINTER_NAME)
         self._stack             = []
 
         initial_entry           = API.ReportStackEntry_d(state="initial",
@@ -279,6 +280,32 @@ class BasicReporter:
         self._stack.append(initial_entry)
         pass
 
+    @override
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} : {self.log.name} : {self.log.level} >"
+
+    def __enter__(self) -> Self:
+        self._entry_count += 1
+        self.push_state("ctx_manager")
+        return self
+
+    def __exit__(self, *exc:Any) -> bool:
+        match self._entry_count:
+            case int() as x if x < 1:
+                raise ValueError("Reporter enter/exit pairs count has gone negative")
+            case int() as x if x != len(self._stack) - 1:
+                raise ValueError("Mismatch between reporter stack and enter/exit pairs", x, len(self._stack))
+            case _:
+                self._entry_count -= 1
+                self.pop_state()
+
+        match exc:
+            case (None, None, None):
+                return True
+            case _:
+                return False
+
+    ##--|
     @property
     def state(self) -> API.ReportStackEntry_d:
         return self._stack[-1]
@@ -297,10 +324,7 @@ class BasicReporter:
             case x:
                 raise TypeError(type(x))
 
-    @override
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} : {self.log.name} : {self.log.level} >"
-
+    ##--|
     def active_level(self, level:int) -> None:
         """ Set the base level the reporter will log at. """
         self.state.log_level = level
@@ -332,30 +356,9 @@ class BasicReporter:
     def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None:
         raise NotImplementedError()
 
-    def __enter__(self) -> Self:
-        self._entry_count += 1
-        self.push_state("ctx_manager")
-        return self
-
-    def __exit__(self, *exc:Any) -> bool:
-        match self._entry_count:
-            case int() as x if x < 1:
-                raise ValueError("Reporter enter/exit pairs count has gone negative")
-            case int() as x if x != len(self._stack) - 1:
-                raise ValueError("Mismatch between reporter stack and enter/exit pairs", x, len(self._stack))
-            case _:
-                self._entry_count -= 1
-                self.pop_state()
-
-        match exc:
-            case (None, None, None):
-                return True
-            case _:
-                return False
-
     def _out(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, level:int=0) -> None:
         """ The reporter delegates all actual logging to this method
 
         """
         result = self._fmt(key, info=info, msg=msg, ctx=self.state.prefix)
-        self._logger.log(self.state.log_level+level, result)
+        self.log.log(self.state.log_level+level, result)

@@ -89,5 +89,5 @@ class TaskRunner_p(Protocol):
     def __init__(self, *, tracker:TaskTracker_p):
         pass
 
-    def __call__(self, *tasks:str, handler:Maybe[ContextManager]=None) -> bool:
+    def __call__(self, *tasks:str, handler:Maybe[bool|type[ContextManager]|ContextManager]=None) -> bool:
         pass

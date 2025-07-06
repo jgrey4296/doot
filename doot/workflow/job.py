@@ -19,20 +19,25 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Proto, Mixin
+from jgdv import Mixin, Proto
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from ._interface import Job_p, Task_p, TaskMeta_e
+
+# ##-- end 1st party imports
+
+# ##-| Local
+from ._interface import Job_p, Task_p, TaskMeta_e, TaskSpec_i, TaskName_p
 from .structs.task_name import TaskName
 from .structs.task_spec import TaskSpec
 from .task  import DootTask
 
-# ##-- end 1st party imports
+# # End of Imports.
 
 # ##-- types
 # isort: off
@@ -65,6 +70,7 @@ logging = logmod.getLogger(__name__)
 SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD # type: ignore[attr-defined]
 
 class _JobStubbing_m:
+
     @classmethod
     def stub_class(cls, stub:TaskStub) -> TaskStub:
         # Come first
@@ -84,8 +90,6 @@ class _JobStubbing_m:
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc] # type: ignore[attr-defined]
         return stub
 
-
-
 @Proto(Job_p, check=True)
 @Mixin(_JobStubbing_m)
 class DootJob(DootTask):
@@ -98,34 +102,6 @@ class DootJob(DootTask):
     _help                       = tuple(["A Basic Task Constructor"])
     _default_flags  : ClassVar  = {TaskMeta_e.JOB}
     version         : str       = "0.1"
-
-    def __init__(self, spec:TaskSpec):
-        assert(spec is not None), "Spec is empty"
-        super().__init__(spec)
-
-    def default_task(self, name:Maybe[str|TaskName], extra:Maybe[dict|ChainGuard]) -> TaskSpec:
-        task_name = None
-        match name:
-            case None:
-                task_name = self.name.push(SUBTASKED_HEAD)
-            case str():
-                task_name = self.name.push(name)
-            case TaskName():
-                task_name = name
-            case _:
-                raise doot.errors.StructError("Bad value used to make a subtask in %s : %s", self.name.de_uniq(), name)
-
-        assert(task_name is not None)
-        return TaskSpec(name=task_name, extra=ChainGuard(extra))
-
-    def is_stale(self, task:Task_p) -> bool:  # noqa: ARG002
-        return False
-
-    def specialize_task(self, task:Task_p) -> Task_p:
-        return task
-
-    def expand_job(self) -> list:
-        return []
 
     @classmethod
     def class_help(cls) -> list[str]:
@@ -153,3 +129,31 @@ class DootJob(DootTask):
                 help_lines.append(param_help)
 
         return help_lines
+
+    def __init__(self, spec:TaskSpec_i):
+        assert(spec is not None), "Spec is empty"
+        super().__init__(spec)
+
+    def default_task(self, name:Maybe[str|TaskName_p], extra:Maybe[dict|ChainGuard]) -> TaskSpec_i:
+        task_name = None
+        match name:
+            case None:
+                task_name = self.name.push(SUBTASKED_HEAD)
+            case str():
+                task_name = self.name.push(name)
+            case TaskName():
+                task_name = name
+            case _:
+                raise doot.errors.StructError("Bad value used to make a subtask in %s : %s", self.name.de_uniq(), name)
+
+        assert(task_name is not None)
+        return TaskSpec(name=task_name, extra=ChainGuard(extra))
+
+    def is_stale(self, task:Task_p) -> bool:  # noqa: ARG002
+        return False
+
+    def specialize_task(self, task:Task_p) -> Task_p:
+        return task
+
+    def expand_job(self) -> list:
+        return []
