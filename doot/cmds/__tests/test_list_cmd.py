@@ -74,74 +74,86 @@ logging = logmod.root
 
 empty_args = """
 # No args are specified
-[cmd.args]
+[cmds]
 """
 
 missing_main_arg = """
 # This has None of the main listing types
-[cmd.args]
+[[cmds.blah]]
+[cmds.blah.args]
 by_source = false
 pattern   = ""
 """
 
 minimal_example = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 tasks = true
 pattern = ""
 """
 
 simple_pattern = """
-[cmd.args]
-tasks = true
-pattern = ".+simple"
+[[cmds.list]]
+[cmds.list.args]
+tasks    = true
+pattern  = ".+simple"
 """
 
 partial_pattern = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 tasks = true
 pattern = ".+simp"
 """
 
 group_pattern = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 tasks = true
 pattern = ".+simp::"
 """
 
 list_group = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 tasks = true
 group-by = "group"
 """
 
 list_by_source = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 tasks = true
 group-by = "source"
 """
 
 list_locs = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 locs = true
 """
 
 list_loggers = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 loggers = true
 """
 
 list_flags = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 flags = true
 """
 
 list_actions = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 actions = true
 """
 
 list_plugins = """
-[cmd.args]
+[[cmds.list]]
+[cmds.list.args]
 plugins = true
 """
 
@@ -170,7 +182,7 @@ class TestListCmd:
         obj = ListCmd()
 
         with pytest.raises(doot.errors.DootError):
-            obj({}, {})
+            obj(idx=0, tasks={}, plugins={})
 
     def test_call_all_empty(self, caplog, mocker):
         caplog.set_level(logmod.NOTSET, logger=doot.report.log.name)
@@ -178,7 +190,7 @@ class TestListCmd:
         mocker.patch("doot.args", new=guard)
         mocker.patch("doot.loaded_tasks", new=guard)
         obj    = ListCmd()
-        obj({}, {"reporter": [mocker.stub("Reporter Stub")]})
+        obj(idx=0, tasks={}, plugins={"reporter": [mocker.stub("Reporter Stub")]})
         message_set = {x for x in caplog.messages}
         assert("!! No Tasks Defined" in message_set)
 
@@ -197,7 +209,7 @@ class TestListCmd:
             "simple" : factory.build({"group": "blah", "name": "simple"}), # "ctor": mock_class1}),
             "other"  : factory.build({"group": "bloo", "name": "other"}),  # "ctor": mock_class2})
         }
-        obj(job_mock, plugin_mock)
+        obj(idx=0, tasks=job_mock, plugins=plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("registered tasks/jobs:" in message_set)
@@ -217,7 +229,7 @@ class TestListCmd:
             "simple" : factory.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
             "other"  : factory.build({"group": "bloo", "name": "other", "ctor": mock_class2}),
         }
-        obj(job_mock, plugin_mock)
+        obj(idx=0, tasks=job_mock, plugins=plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("registered tasks/jobs:" in message_set)
@@ -238,7 +250,7 @@ class TestListCmd:
             "simple" : factory.build({"group": "blah", "name": "simple"}),
             "other"  : factory.build({"group": "bloo", "name": "other"}),
         }
-        result       = obj(job_mock, plugin_mock)
+        result       = obj(idx=0, tasks=job_mock, plugins=plugin_mock)
         message_set  = {x.message.lower().strip() for x in caplog.records}
 
         assert("registered tasks/jobs:" in message_set)
@@ -254,7 +266,7 @@ class TestListCmd:
                      "bloo::other"     : factory.build({"group": "bloo", "name": "other"}),
                      "bloo::diffSimple": factory.build({"group": "bloo", "name": "diffSimple"}),
                     }
-        result = obj(job_mock, plugin_mock)
+        result = obj(idx=0, tasks=job_mock, plugins=plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("registered tasks/jobs:" in message_set)
@@ -271,7 +283,7 @@ class TestListings:
         mocker.patch("doot.args", new=ChainGuard.read(simple_pattern))
         obj = ListCmd()
         tasks = []
-        match obj._list_tasks(tasks):
+        match obj._list_tasks(0, tasks):
             case []:
                 assert(False)
             case [*xs]:
@@ -284,7 +296,7 @@ class TestListings:
         mocker.patch("doot.args", new=ChainGuard.read(group_pattern))
         obj = ListCmd()
         tasks = []
-        match obj._list_tasks(tasks):
+        match obj._list_tasks(0, tasks):
             case []:
                 assert(False)
             case [*xs]:
@@ -297,7 +309,7 @@ class TestListings:
         mocker.patch("doot.args", new=ChainGuard.read(list_group))
         obj = ListCmd()
         tasks = []
-        match obj._list_tasks(tasks):
+        match obj._list_tasks(0, tasks):
             case []:
                 assert(False)
             case [*xs]:
@@ -310,7 +322,7 @@ class TestListings:
         mocker.patch("doot.args", new=ChainGuard.read(list_by_source))
         obj = ListCmd()
         tasks = []
-        match obj._list_tasks(tasks):
+        match obj._list_tasks(0, tasks):
             case [*xs]:
                 assert(True)
             case _:

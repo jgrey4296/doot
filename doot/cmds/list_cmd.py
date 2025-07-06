@@ -92,7 +92,7 @@ class _DagLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--dag",
                              _short="D",
                              type=bool,
@@ -108,7 +108,7 @@ class _TaskLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="-tasks",
                              type=bool,
                              default=True,
@@ -123,7 +123,7 @@ class _TaskLister_m:
             self.build_param(name="+params", default=False),
         ]
 
-    def _list_tasks(self, tasks) -> list[ListVal]:
+    def _list_tasks(self, idx:int, tasks) -> list[ListVal]:
         logging.info("---- Listing tasks")
 
         result : list[ListVal] = []
@@ -133,7 +133,7 @@ class _TaskLister_m:
             return result
 
         max_key            = len(max(tasks.keys(), key=len, default="def"))
-        fmt_strs, base_vars = self._build_format_strings()
+        fmt_strs, base_vars = self._build_format_strings(idx)
         data : list[dict]  = []
 
         logging.info("-- Collecting Tasks")
@@ -141,7 +141,7 @@ class _TaskLister_m:
             data.append(
                 base_vars | {
                     "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0,:]) + 2),
-                    "internal" : TaskName.Marks.hide in spec.name, # type: ignore
+                    "internal" : TaskName.Marks.hide in spec.name,
                     "disabled" : TaskMeta_e.DISABLED in spec.meta,
                     "group"  : spec.name[0,:],
                     "val"    : spec.name[1,:],
@@ -151,7 +151,7 @@ class _TaskLister_m:
                 },
             )
 
-        data    = self._filter_tasks(data)
+        data    = self._filter_tasks(idx, data)
         grouped = self._group_tasks(data)
 
         logging.info("-- Formatting")
@@ -163,12 +163,12 @@ class _TaskLister_m:
         else:
             return result
 
-    def _build_format_strings(self) -> tuple[list[str], dict]:
+    def _build_format_strings(self, idx:int) -> tuple[list[str], dict]:
         """ Builds the format string from args"""
         pieces   = []
         var_dict = {"indent": GROUP_INDENT, "val": "null"}
 
-        match doot.args.on_fail(None).cmd.args.group_by():
+        match doot.args.on_fail(None).cmd[self.name][idx].args.group_by(): # type: ignore[attr-defined]
             case "source":
                 pieces.append("- {full}")
             case _:
@@ -193,11 +193,11 @@ class _TaskLister_m:
 
         return pieces, var_dict
 
-    def _filter_tasks(self, data) -> list[dict]:
+    def _filter_tasks(self, idx:int, data) -> list[dict]:
         logging.info("-- Filtering: %s", len(data))
         show_internal  : bool  = doot.args.on_fail(False).cmd.args.internal()  # noqa: FBT003
         no_hide_names          = bool(hide_names)
-        match doot.args.on_fail(None).cmd.args.pattern().lower():
+        match doot.args.on_fail(None).cmds[self.name][idx].args.pattern().lower():
             case None | "":
                 pattern = None
             case str() as x:
@@ -238,7 +238,7 @@ class _LocationLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--locs",
                              type=bool,
                              default=False,
@@ -262,7 +262,7 @@ class _LoggerLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--loggers",
                              type=bool,
                              default=False,
@@ -296,7 +296,7 @@ class _FlagLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--flags",
                              type=bool,
                              default=False,
@@ -317,7 +317,7 @@ class _ActionLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--actions",
                              type=bool,
                              default=False,
@@ -342,7 +342,7 @@ class _PluginLister_m:
 
     def param_specs(self) -> list:
         return [
-            *super().param_specs(), # type: ignore
+            *super().param_specs(), # type: ignore[misc]
             self.build_param(name="--plugins",
                              type=bool,
                              default=False,
@@ -380,11 +380,13 @@ class _Listings_m:
 @Mixin(_Listings_m, None, allow_inheritance=True)
 class ListCmd(BaseCommand):
     build_param : Callable
-    _name  = "list"
-    _help  = tuple([
+    _help  : ClassVar = tuple([
         "A simple command to list all loaded task heads.",
         "Set settings.commands.list.hide with a list of regexs to ignore",
     ])
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs, name="list")
 
     @override
     def param_specs(self) -> list[ParamSpec_p]:
@@ -394,23 +396,25 @@ class ListCmd(BaseCommand):
         ]
         return params
 
-    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
+    def __call__(self, *, idx:int, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
+        assert(isinstance(tasks, dict))
+        assert(isinstance(plugins, dict))
         logging.debug("Starting to List Jobs/Tasks")
         result : list[Maybe[str]] = []
-        match doot.args.on_fail({}).cmd.args():
+        match dict(doot.args.on_fail({}).cmds[self.name][idx].args()):
             case {"flags":True}:
-                result = self._list_flags() # type: ignore
+                result = self._list_flags(idx) # type: ignore[attr-defined]
             case {"loggers":True}:
-                result = self._list_loggers() # type: ignore
+                result = self._list_loggers(idx) # type: ignore[attr-defined]
             case {"actions":True}:
-                result = self._list_actions(plugins) # type: ignore
+                result = self._list_actions(idx, plugins) # type: ignore[attr-defined]
             case {"plugins":True}:
-                result = self._list_plugins(plugins) # type: ignore
+                result = self._list_plugins(idx, plugins) # type: ignore[attr-defined]
             case {"locs": True}:
-                result = self._list_locations() # type: ignore
+                result = self._list_locations(idx) # type: ignore[attr-defined]
             case {"tasks": True}:
-                result = self._list_tasks(tasks) # type: ignore
+                result = self._list_tasks(idx, tasks) # type: ignore[attr-defined]
             case _:
                 raise doot.errors.CommandError("Bad args passed in", dict(doot.args))
 

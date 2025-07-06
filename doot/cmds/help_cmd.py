@@ -55,8 +55,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from doot.workflow import TaskSpec
-##--|
+    from doot.workflow._interface import TaskSpec_i
 
 # isort: on
 # ##-- end types
@@ -71,13 +70,13 @@ ITEM_INDENT     : Final[str] = "-"
 
 class _HelpDoot_m:
 
-    def _doot_help(self, plugins) -> list[str]:
+    def _doot_help(self, plugins:ChainGuard) -> list[str]:
         result = []
         # Print general help and list cmds
         result.append("Doot Help Command: No Target Specified/Matched")
         result.append("Available Command Targets: ")
         for x in sorted(plugins.command, key=lambda x: x.name):
-            result.append("-- %s" % x.name)
+            result.append(f"-- {x.name}")
         else:
             result.append("\n------------------------------")
             result.append("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
@@ -85,25 +84,24 @@ class _HelpDoot_m:
 
 class _HelpCmd_m:
 
-    def _cmd_help(self, cmd) -> list[str]:
-        result = []
-        cmd_class    = cmd.load()
-        cmd_instance = cmd_class()
+    def _cmd_help(self, *, idx:int, cmd:Any) -> list[str]:
+        result        = []
+        cmd_class     = cmd.load()
+        cmd_instance  = cmd_class()
         result += cmd_instance.help
-        # result += self._cmd_param_assignments(cmd_instance)
         return result
 
 
-    def _cmd_param_assignments(self, cmd) -> list[Maybe[str]]:
+    def _cmd_param_assignments(self, idx:int, cmd:Any) -> list[Maybe[str]]:
         result : list[Maybe[str]] = []
         result.append(None)
-        result.append("%s Parameters:" % GROUP_INDENT)
+        result.append(f"{GROUP_INDENT} Parameters:")
 
-        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, cmd.param_specs())), 0)
-        fmt_str       = f"> %{max_param_len}s : (%-5s) : %s "
-        args = doot.args.cmd.args # type: ignore
-        last_prefix = None
-        for param in sorted([x for x in cmd.param_specs()], key=ParamSpec.key_func):
+        max_param_len  = 5 + ftz.reduce(max, map(len, (x.name for x in cmd.param_specs())), 0)
+        fmt_str        = f"> %{max_param_len}s  : (%-5s) : %s "
+        args           = doot.args.cmds[self.name][idx].args # type: ignore[attr-defined]
+        last_prefix    = None
+        for param in sorted(cmd.param_specs(), key=ParamSpec.key_func):
             if last_prefix and last_prefix != param.prefix:
                 result.append(None)
             last_prefix = param.prefix
@@ -127,10 +125,14 @@ class _HelpCmd_m:
 
 class _HelpTask_m:
 
-    def _task_help(self, count, spec:TaskSpec) -> list[Maybe[str]]:
+    def _task_help(self, count:int, spec:TaskSpec_i) -> list[Maybe[str]]:
         """ Print the help for a task spec """
+        result     : list[Maybe[str]]
+        task_name  : str
+        ctor       : Maybe[Task_p|type[Task_p]]
+        ##--|
         task_name = str(spec.name)
-        result : list[Maybe[str]] = [
+        result = [
             "",
             LINE_SEP,
             f"{count:4}: Task: {task_name}",
@@ -156,7 +158,7 @@ class _HelpTask_m:
             case None:
                 ctor = None
             case CodeReference():
-                ctor = spec.ctor()
+                ctor = spec.ctor(raise_error=True)
             case _:
                 ctor = spec.ctor
 
@@ -173,35 +175,34 @@ class _HelpTask_m:
             for kwarg,val in spec.extra.items():
                 if kwarg == "cli":
                     continue
-                result.append("%s %-20s : %s" % (ITEM_INDENT, kwarg, val))
+                result.append(f"{ITEM_INDENT} {kwarg:-20} : {val}")
             result.append(None)
 
         if bool(spec.actions):
-            result.append("%s Task Actions: " % GROUP_INDENT)
+            result.append(f"{GROUP_INDENT} Task Actions: ")
             sub_indent = (1 + len(ITEM_INDENT)) * " "
             for action in spec.actions:
-                result.append("%s %-30s:" % (ITEM_INDENT, action.do))
-                # result.append("%sArgs=%-20s" % (sub_indent, action.args))
-                # result.append("%sKwargs=%s" % (sub_indent, dict(action.kwargs)))
-
+                result.append(f"{ITEM_INDENT} {action.do:-30}:")
 
         result += self._task_param_assignments(spec)
 
         return result
 
-    def _task_param_assignments(self, spec:TaskSpec) -> list:
+    def _task_param_assignments(self, spec:TaskSpec_i) -> list:
+        result : list[Maybe[str]]
+        ##--|
         if not bool(spec.param_specs()):
             return []
 
         result = []
         result.append(None)
-        result.append("%s Parameters:" % GROUP_INDENT)
+        result.append(f"{GROUP_INDENT} Parameters:")
 
-        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.key_str, spec.param_specs())), 0)
+        max_param_len = 5 + ftz.reduce(max, map(len, (x.key_str for x in spec.param_specs())), 0)
         fmt_str       = f"> %{max_param_len}s : (%5s) : %s "
-        args          = doot.args.sub[spec.name]
+        args          = doot.args.subs[spec.name]
         last_prefix   = None
-        for param in sorted([x for x in spec.param_specs()], key=ParamSpec.key_func):
+        for param in sorted(spec.param_specs(), key=ParamSpec.key_func):
             if last_prefix and last_prefix != param.prefix:
                 result.append(None)
             match param.type_:
@@ -228,24 +229,30 @@ class _HelpTask_m:
 @Mixin(_HelpDoot_m, _HelpCmd_m, _HelpTask_m)
 class HelpCmd(BaseCommand):
     _name      = "help"
-    _help      = ["Print info about the specified cmd or task",
-                  "Can also be triggered by passing --help to any command or task"
-                  ]
+    _help      = ("Print info about the specified cmd or task",
+                  "Can also be triggered by passing --help to any command or task",
+                  )
 
+    @override
     def param_specs(self) -> list:
         return [
             *super().param_specs(),
-            self.build_param(name="<1>target", type=str, default="", desc="The target to get help about. A command or task.")
+            self.build_param(name="<1>target", type=str, default="", desc="The target to get help about. A command or task."),
         ]
 
-    def __call__(self, idx, tasks, plugins):
+    def __call__(self, *, idx:int, tasks:ChainGuard, plugins:ChainGuard):  # noqa: PLR0912
         """List task generators"""
+        task_targets  : list
+        cmd_targets   : list
+        self_help     : bool
+        ##--|
         task_targets = []
         cmd_targets  = []
         self_help    = False
-        match dict(doot.args.cmd.args):
-            case {"target": ""|None} if bool(doot.args.sub):
-                task_targets += [tasks[x] for x in doot.args.sub.keys()]
+        match dict(doot.args.cmds[self.name][idx].args[self.name][idx]):
+            case {"target": ""|None} if bool(doot.args.subs):
+                # No target, generate list of all tasks
+                task_targets += [tasks[x] for x in doot.args.subs.keys()]
             case {"target": ""|None} | {"help":True}:
                 self_help = True
             case {"target": x} if x in doot.cmd_aliases:
@@ -254,11 +261,7 @@ class HelpCmd(BaseCommand):
             case {"target": target}:
                 # Print help of just the specified target(s)
                 task_targets +=  [y for x,y in tasks.items() if x in target]
-                cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
-            case {"target": target}:
-                # Print help of just the specified target(s)
-                task_targets +=  [y for x,y in tasks.items() if x in target]
-                cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
+                cmd_targets  +=  [x for x in plugins.command if x.name == target]
             case {"help": True}:
                 self_help = True
 
@@ -269,7 +272,7 @@ class HelpCmd(BaseCommand):
             case []:
                 pass
             case [x]:
-                result = self._cmd_help(x)
+                result = self._cmd_help(idx=idx, cmd=x) # type: ignore[attr-defined]
                 self._print_text(result)
                 return
             case [*xs]:
@@ -282,18 +285,15 @@ class HelpCmd(BaseCommand):
             case [*xs]:
                 result = []
                 for i, spec in enumerate(task_targets):
-                    result += self._task_help(i, spec)
+                    result += self._task_help(i, spec) # type: ignore[attr-defined]
                 else:
                     self._print_text(result)
                     return
 
         match self_help:
             case True:
-                result = self._self_help()
+                result = self.help
                 self._print_text(result)
             case False:
-                result = self._doot_help(plugins)
+                result = self._doot_help(plugins) # type: ignore[attr-defined]
                 self._print_text(result)
-
-    def _self_help(self) -> list:
-        return self.help

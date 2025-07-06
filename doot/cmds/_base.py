@@ -69,7 +69,8 @@ logging = logmod.getLogger(__name__)
 @Mixin(ParamSpecMaker_m)
 class BaseCommand:
     """ Generic implementations of command methods """
-    build_param : Callable
+    build_param  : Callable
+    _help        : ClassVar[tuple[str, ...]]
 
     def __init__(self, name:Maybe[str]=None):
         self._name = name
@@ -80,7 +81,7 @@ class BaseCommand:
         return self._name or self.__class__.__name__.lower()
 
     @property
-    def help(self:Command_p) -> list[str]:
+    def help(self) -> list[str]:
         help_lines : list[str] = [
             "", f"Command: {self.name}", "",
             *list(self._help or []),
@@ -90,12 +91,12 @@ class BaseCommand:
         if bool(params):
             key_func = params[0].key_func
             help_lines += ["", "Params:"]
-            help_lines += filter(bool, (x.help_str() for x in sorted(self.param_specs(), key=key_func))) # type: ignore
+            help_lines += filter(lambda x: bool(x), (x.help_str() for x in sorted(self.param_specs(), key=key_func))) # type: ignore[arg-type]
 
         return help_lines
 
     @property
-    def helpline(self:Command_p) -> str:
+    def helpline(self) -> str:
         """ get just the first line of the help text """
         match self._help:
             case [x, *_]:
@@ -105,7 +106,7 @@ class BaseCommand:
 
     def param_specs(self) -> list[ParamSpec_p]:
         """
-        Provide parameter specs for parsing into doot.args.cmd
+        Provide parameter specs for parsing into doot.args.cmds
         """
         return [
            self.build_param(name="--help", default=False, implicit=True),
@@ -125,11 +126,11 @@ class BaseCommand:
         for line in text:
             match line:
                 case str():
-                    doot.report.user(line) # type: ignore
+                    doot.report.user(line)
                 case (str() as s, dict() as d):
-                    doot.report.user(s, extra=d) # type: ignore
+                    doot.report.user(s, extra=d)
                 case None:
-                    doot.report.user("") # type: ignore
+                    doot.report.user("")
 
 
 

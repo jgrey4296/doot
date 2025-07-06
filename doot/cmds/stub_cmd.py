@@ -147,10 +147,10 @@ class _StubAction_m:
             self.build_param(name="--action", type=bool, default=False, desc="Help Stub Actions"),
         ]
 
-    def _stub_action(self, plugins:ChainGuard) -> list[Maybe[str]]:
+    def _stub_action(self, idx:int, plugins:ChainGuard) -> list[Maybe[str]]:
         logging.info("---- Stubbing Actions")
         result : list[Maybe[str]] = []
-        target_name = doot.args.cmd.args.name
+        target_name = doot.args.cmd[self.name][idx].args.name
         unaliased = doot.aliases.on_fail(target_name).action[target_name]
         matched = [x for x in plugins.action
                    if x.name == target_name
@@ -200,7 +200,7 @@ class _StubTask_m:
             self.build_param(name="<2>ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
         ]
 
-    def _stub_task_toml(self, tasks, plugins) -> list[str]:  # noqa: PLR0912
+    def _stub_task_toml(self, idx:int, tasks:ChainGuard, plugins:ChainGuard) -> list[str]:
         """
         This creates a toml stub using default values, as best it can
         """
@@ -227,7 +227,7 @@ class _StubTask_m:
 
         return []
 
-    def _stub_task_name(self, tasks):
+    def _stub_task_name(self, tasks:ChainGuard) -> str:
         match doot.args.on_fail(None).cmd.args.name():
             case None:
                 raise doot.errors.CommandError("No Name Provided for Stub")
@@ -239,7 +239,7 @@ class _StubTask_m:
         count = 0
         while str(name) in tasks:
             count += 1
-            name = original_name.push("$conflicted$", count)
+            name = original_name.push("$conflicted$", str(count))
         else:
             return name
 
@@ -248,6 +248,8 @@ class _StubTask_m:
         such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
         """
+        task_mro : Iterable
+        ##--|
         match  doot.aliases.task.get((ctor:=doot.args.on_fail("task").cmd.args.ctor()), None):
             case None:
                 raise doot.errors.CommandError("Task Ctor was not appliable", ctor)
@@ -307,11 +309,12 @@ class StubCmd(BaseCommand):
     """ Called to interactively create a stub task definition
       with a `target`, outputs to that file, else to stdout for piping
     """
-    _name : ClassVar[str]           = "stub" # type: ignore[misc]
-    _help : ClassVar[list[str]]     = ["Create a new stub task either to stdout, or path",
-                                       "args allow stubbing a config file, cli parameter, or action",
-                                       ]
+    _name = "stub" # type: ignore[misc]
+    _help = tuple(["Create a new stub task either to stdout, or path",
+                   "args allow stubbing a config file, cli parameter, or action",
+                   ])
 
+    @override
     def param_specs(self) -> list:
         return [
             *super().param_specs(),
