@@ -42,6 +42,7 @@ from doot.workflow import TaskName
 # ##-| Local
 from . import _interface as API#  noqa: N812
 from doot.util.factory import TaskFactory
+from ._interface import TaskLoader_p
 
 # # End of Imports.
 
@@ -58,8 +59,7 @@ from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
     from doot.util._interface import TaskFactory_p
-    from doot.workflow import TaskSpec
-    from doot.workflow._interface import Job_p
+    from doot.workflow._interface import TaskName_p, TaskSpec_i
     import pathlib as pl
     from jgdv import Maybe
     from typing import Final
@@ -69,9 +69,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-##--|
-from doot.workflow._interface import Task_p
-from ._interface import TaskLoader_p
 # isort: on
 # ##-- end types
 
@@ -79,9 +76,13 @@ from ._interface import TaskLoader_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-exit_on_load_failures = doot.config.on_fail(False).shutdown.exit_on_load_failures()
+##--| vars
+TOML_SUFFIX            : Final[str]   = ".toml"
+exit_on_load_failures  : Final[bool]  = doot.config.on_fail(False).shutdown.exit_on_load_failures()
+allow_overloads        : Final[bool]  = doot.config.on_fail(False, bool).allow_overloads()
 
-def apply_group_and_source(group, source, x): # noqa: ANN201, ANN001
+##--| util
+def apply_group_and_source(group, source, x):  # noqa: ANN201, ANN001
     """ insert the group and source  into a task definition dict
 
     a task is:
@@ -113,11 +114,11 @@ class TaskLoader:
     """
     load toml defined tasks, and create doot.structs.TaskSpecs of them
     """
-    tasks                  : dict[str, tuple[dict, Job_p]]
-    failures               : dict[str, list]
+    tasks                  : dict[str|TaskName_p, TaskSpec_i]
+    failures               : dict[str|pl.Path, list]
     cmd_names              : set[str]
     task_builders          : dict[str,Any]
-    extra                  : Maybe[ChainGuard]
+    extra                  : Maybe[ChainGuard|dict]
     exit_on_load_failures  : bool
     factory                : TaskFactory_p
 
@@ -137,7 +138,7 @@ class TaskLoader:
         self.plugins       = plugins
         self.task_builders = {}
         self.failures      = defaultdict(list)
-        for plugin in ChainGuard(plugins).on_fail([]).task():
+        for plugin in ChainGuard(plugins).on_fail([]).task(): # type: ignore[attr-defined]
             if plugin.name in self.task_builders:
                 logging.warning("Conflicting Task Builder Type Name: %s: %s / %s",
                                 plugin.name,
@@ -159,30 +160,31 @@ class TaskLoader:
             case list():
                 self.extra = {"_": extra}
             case dict() | ChainGuard():
-                self.extra = ChainGuard(extra).on_fail({}).tasks()
+                self.extra = ChainGuard(extra).on_fail({}).tasks() # type: ignore[attr-defined]
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
-    def load(self) -> ChainGuard[TaskSpec]:
+    def load(self) -> ChainGuard:
+        assert(hasattr(doot.report, "user"))
         with TimeBlock_ctx(logger=logging, enter="---- Loading Tasks",  exit="---- Task Loading Time"):
             logging.debug("Loading Tasks from Config files")
-            for source in doot.configs_loaded_from:
+            for source in doot.configs_loaded_from: # type: ignore[attr-defined]
                 try:
-                    source_data : ChainGuard = ChainGuard.load(source)
-                    task_specs = source_data.on_fail({}).tasks()
+                    source_data : ChainGuard = ChainGuard.load(source) # type: ignore[attr-defined]
+                    task_specs = source_data.on_fail({}).tasks() # type: ignore[attr-defined]
                 except OSError as err:
                     logging.exception("Failed to Load Config File: %s : %s", source, err.args)
                     continue
                 else:
                     raw = self._get_raw_specs_from_data(task_specs, source)
-                    self._build_task_specs(raw, self.cmd_names)
+                    self._build_task_specs(raw)
 
             if self.extra:
                 logging.debug("Loading Tasks from extra values")
                 raw = self._get_raw_specs_from_data(self.extra, "(extra)")
-                self._build_task_specs(raw, self.cmd_names)
+                self._build_task_specs(raw)
 
-            task_sources = doot.config.on_fail([doot.locs[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+            task_sources = doot.config.on_fail([doot.locs[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])  # type: ignore[index, union-attr]
             logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
             for path in task_sources:
                 self._load_specs_from_path(path)
@@ -208,13 +210,13 @@ class TaskLoader:
 
         logging.debug("Task List Size: %s", len(self.tasks))
         logging.debug("Task List Names: %s", list(self.tasks.keys()))
-        return ChainGuard(self.tasks)
+        return ChainGuard(self.tasks) # type: ignore[arg-type]
 
     def _get_raw_specs_from_data(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
         """ extract raw task descriptions from a toplevel tasks dict, with no format checking.
           expects the dict to be { group_key : [ task_dict ]  }
           """
-        raw_specs = []
+        raw_specs : list = []
         # Load from doot.toml task specs
         for group, d in data.items():
             if not isinstance(d, list):
@@ -226,10 +228,12 @@ class TaskLoader:
         return raw_specs
 
     def _load_specs_from_path(self, path:pl.Path) -> None:
-        """ load a config file defined API.task_sources of tasks """
+        """ load a config file defined task_sources of tasks """
+        data : ChainGuard
+        assert(hasattr(doot, "verify_config_version"))
         targets   = []
         if path.is_dir():
-            targets += [x for x in path.iterdir() if x.suffix == API.TOML_SUFFIX]
+            targets += [x for x in path.iterdir() if x.suffix == TOML_SUFFIX]
         elif path.is_file():
             targets.append(path)
         else:
@@ -238,8 +242,8 @@ class TaskLoader:
         for task_file in targets:
             logging.info("Loading Tasks from: %s", task_file)
             try:
-                data = ChainGuard.load(task_file)
-                doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
+                data = ChainGuard.load(task_file) # type: ignore[attr-defined]
+                doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file) # type: ignore[attr-defined]
             except OSError as err:
                 self.failures[task_file].append(str(err))
             except doot.errors.VersionMismatchError as err:
@@ -247,17 +251,17 @@ class TaskLoader:
                     # startup designates a config file, which is handled in main
                     self.failures[task_file].append("Version mismatch")
             else:
-                doot.update_global_task_state(data, source=task_file)
+                doot.update_global_task_state(data, source=task_file) # type: ignore[attr-defined]
 
-                raw_specs = []
-                for group, val in data.on_fail({}).tasks().items():
+                raw_specs : list = []
+                for group, val in data.on_fail({}).tasks().items(): # type: ignore[attr-defined]
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
 
-                self._build_task_specs(raw_specs, self.cmd_names, source=task_file)
-                self._load_location_updates(data.on_fail([]).locations(), task_file)
+                self._build_task_specs(raw_specs, source=task_file)
+                self._load_location_updates(data.on_fail([]).locations(), task_file) # type: ignore[attr-defined]
 
-    def _build_task_specs(self, specs:list[dict], commands:set[str], source:Maybe[str|pl.Path]=None) -> None:  # noqa: PLR0912
+    def _build_task_specs(self, specs:list[dict], source:Maybe[str|pl.Path]=None) -> None:  # noqa: PLR0912
         """
         convert raw dicts into TaskSpec objects
 
@@ -265,10 +269,10 @@ class TaskLoader:
         logging.info("---- Building Task Specs (%s Current, %s Potential) ", len(self.tasks), len(specs))
         source = source or "<Sourceless>"
 
-        def _allow_registration(task_name:str) -> bool:
+        def _allow_registration(task_name:TaskName_p|str) -> bool:
             """ precondition to check for overrides/name conflicts """
             logging.info("Checking: %s", task_name)
-            if API.allow_overloads:
+            if allow_overloads:
                 return True
             return task_name not in self.tasks
 
@@ -312,8 +316,8 @@ class TaskLoader:
                     self.tasks[task_spec.name] = task_spec
                 else:
                     logging.warning("Current Tasks: %s", self.tasks)
-                    err = doot.errors.StructLoadError("Task Name Overloaded", task_name)
-                    self.failures[source].append(err)
+                    _err = doot.errors.StructLoadError("Task Name Overloaded", task_name)
+                    self.failures[source].append(_err)
 
     def _load_location_updates(self, data:list[ChainGuard], source:str|pl.Path) -> None:
         logging.debug("Loading Location Updates: %s", source)

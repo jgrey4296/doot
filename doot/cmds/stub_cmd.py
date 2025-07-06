@@ -74,7 +74,7 @@ if TYPE_CHECKING:
 ##--|
 from doot.control.loaders._interface import PluginLoader_p
 from doot.workflow._interface import Task_p
-from ._interface import Command_i
+from ._interface import Command_p
 # isort: on
 # ##-- end types
 
@@ -93,7 +93,7 @@ NL = None
 class _StubDoot_m:
     """ Mixin for stubbing the doot.toml file """
 
-    def param_specs(self:Command_i) -> list:
+    def param_specs(self:Command_p) -> list:
         return [
             *super().param_specs(), # type: ignore[safe-super]
             self.build_param(name="--config", type=bool, default=False, desc="Stub a doot.toml"), # type: ignore[attr-defined]
@@ -301,7 +301,7 @@ class _StubPrinter_m:
 
 ##--|
 
-@Proto(Command_i)
+@Proto(Command_p)
 @Mixin(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinter_m)
 class StubCmd(BaseCommand):
     """ Called to interactively create a stub task definition

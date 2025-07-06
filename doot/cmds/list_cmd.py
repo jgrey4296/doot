@@ -42,7 +42,7 @@ import doot.errors
 from doot.workflow._interface import TaskMeta_e
 from doot.workflow import TaskName
 from ._base import BaseCommand
-from ._interface import Command_i
+from ._interface import Command_p
 
 # ##-- end 1st party imports
 
@@ -376,7 +376,7 @@ class _PluginLister_m:
 class _Listings_m:
     pass
 
-@Proto(Command_i)
+@Proto(Command_p)
 @Mixin(_Listings_m, None, allow_inheritance=True)
 class ListCmd(BaseCommand):
     build_param : Callable

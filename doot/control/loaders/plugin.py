@@ -13,7 +13,6 @@ import functools as ftz
 import importlib
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -48,6 +47,7 @@ from typing import no_type_check, final, override, overload
 from ._interface import PluginLoader_p
 
 if TYPE_CHECKING:
+    import pathlib as pl
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -63,11 +63,33 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+##--| vars
+skip_default_plugins  : Final[bool]           = doot.config.on_fail(False).startup.skip_default_plugins()  # noqa: FBT003
+skip_plugin_search    : Final[bool]           = doot.config.on_fail(False).startup.skip_plugin_search()  # noqa: FBT003
+env_plugins           : Final[dict]           = doot.config.on_fail({}).startup.plugins(wrapper=dict) # type: ignore[arg-type]
+
+# Constants:
+## The plugin types to search for:
+frontend_plugins     : Final[list]          = doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES # type: ignore[attr-defined]
+backend_plugins      : Final[list]          = doot.constants.entrypoints.BACKEND_PLUGIN_TYPES # type: ignore[attr-defined]
+plugin_types         : Final[set]           = set(frontend_plugins + backend_plugins)
+
+cmd_loader_key       : Final[str]           = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY # type: ignore[attr-defined]
+task_loader_key      : Final[str]           = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY # type: ignore[attr-defined]
+PLUGIN_PREFIX        : Final[str]           = doot.constants.entrypoints.PLUGIN_TOML_PREFIX # type: ignore[attr-defined]
+DEFAULT_CMD_LOADER   : Final[str]           = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER # type: ignore[attr-defined]
+DEFAULT_TASK_LOADER  : Final[str]           = doot.constants.entrypoints.DEFAULT_TASK_LOADER # type: ignore[attr-defined]
+DEFAULT_TASK_GROUP   : Final[str]           = doot.constants.names.DEFAULT_TASK_GROUP # type: ignore[attr-defined]
+
+# Other
+TOML_SUFFIX          : Final[str]           = ".toml"
+
+##--| util
 def build_entry_point (x:str, y:str, z:str) -> EntryPoint:
     """ Make an EntryPoint """
-    if z not in API.plugin_types:
+    if z not in plugin_types:
         raise doot.errors.PluginError("Plugin Type Not Found: %s : %s", z, (x, y))
-    group = f"{API.PLUGIN_PREFIX}.{z}"
+    group = f"{PLUGIN_PREFIX}.{z}"
     return EntryPoint(name=x, value=y, group=group)
 
 @Proto(PluginLoader_p)
@@ -94,7 +116,7 @@ class PluginLoader:
         use entry_points(group="doot")
         add to the config ChainGuard
         """
-        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
+        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX) # type: ignore[attr-defined]
         try:
             self._load_system_plugins()
         except Exception as err:
@@ -120,13 +142,15 @@ class PluginLoader:
         return loaded
 
     def _load_system_plugins(self) -> None:
-        if API.skip_plugin_search:
+        plugin_group  : str
+        entry_point   : EntryPoint
+        if skip_plugin_search:
             return
 
         logging.info("-- Searching environment for plugins, skip with `skip_plugin_search` in config")
-        for plugin_type in API.plugin_types:
+        for plugin_type in plugin_types:
             try:
-                plugin_group = f"{API.PLUGIN_PREFIX}.{plugin_type}"
+                plugin_group = f"{PLUGIN_PREFIX}.{plugin_type}"
                 # Load env wide entry points
                 for entry_point in entry_points(group=plugin_group):
                     self.plugins[plugin_type].append(entry_point)
@@ -136,8 +160,8 @@ class PluginLoader:
     def _load_from_toml(self) -> None:
         logging.info("-- Loading Plugins from Toml")
         # load config entry points
-        for cmd_group, vals in API.env_plugins.items():
-            if cmd_group not in API.plugin_types:
+        for cmd_group, vals in env_plugins.items():
+            if cmd_group not in plugin_types:
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue
 
@@ -151,27 +175,27 @@ class PluginLoader:
                 self.plugins[cmd_group].append(ep)
 
     def _load_extra_plugins(self) -> None:
-        extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
+        extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict) # type: ignore[attr-defined]
         if not bool(extra_eps):
             return
 
         logging.info("-- Loading Extra Plugins")
         # load extra-config entry points
         for k,v in extra_eps.items():
-            if k not in API.plugin_types:
+            if k not in plugin_types:
                 logging.warning("Unknown plugin type found in extra config: %s", k)
                 continue
-            ep = build_entry_point(k, v, doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
+            ep = build_entry_point(k, v, doot.constants.entrypoints.PLUGIN_TOML_PREFIX) # type: ignore[attr-defined]
             logging.debug("Adding Plugin: %s", ep)
             self.plugins[k].append(ep)
 
     def _append_defaults(self) -> None:
-        if API.skip_default_plugins:
+        if skip_default_plugins:
             return
 
         logging.info("-- Loading Default Plugin Aliases")
-        self.plugins[API.cmd_loader_key].append(build_entry_point(API.cmd_loader_key, API.DEFAULT_CMD_LOADER, API.cmd_loader_key))
-        self.plugins[API.task_loader_key].append(build_entry_point(API.task_loader_key, API.DEFAULT_TASK_LOADER, API.task_loader_key))
+        self.plugins[cmd_loader_key].append(build_entry_point(cmd_loader_key, DEFAULT_CMD_LOADER, cmd_loader_key))
+        self.plugins[task_loader_key].append(build_entry_point(task_loader_key, DEFAULT_TASK_LOADER, task_loader_key))
 
         for group, vals in doot.aliases.items():
             logging.debug("Loading aliases: %s (%s)", group, len(vals))

@@ -19,7 +19,13 @@ from jgdv.structs.chainguard import ChainGuard
 import doot
 from doot.control.loaders import plugin
 import doot.control.loaders._interface as LoaderAPI
+##--|
 logging = logmod.root
+
+frontend_plugins     : Final[list]          = doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES
+backend_plugins      : Final[list]          = doot.constants.entrypoints.BACKEND_PLUGIN_TYPES
+plugin_types         : Final[set]           = set(frontend_plugins + backend_plugins)
+##--|
 
 class TestPluginLoader:
 
@@ -35,14 +41,14 @@ class TestPluginLoader:
         basic.setup()
         loaded = basic.load()
 
-        for key in LoaderAPI.plugin_types:
+        for key in plugin_types:
             assert(key in loaded), f"{key} missing"
 
     def test_all_loaded_are_entrypoints(self):
         basic = plugin.PluginLoader()
         basic.setup()
         loaded = basic.load()
-        for key in LoaderAPI.plugin_types:
+        for key in plugin_types:
             for value in loaded[key]:
                 assert(isinstance(value, EntryPoint))
 

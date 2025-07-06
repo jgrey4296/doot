@@ -29,7 +29,7 @@ from jgdv.cli import ParamSpecMaker_m
 
 # ##-- 1st party imports
 import doot
-from ._interface import Command_p, Command_i
+from ._interface import Command_p
 
 # ##-- end 1st party imports
 
@@ -65,7 +65,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(Command_i, check=False)
+@Proto(Command_p, check=False)
 @Mixin(ParamSpecMaker_m)
 class BaseCommand:
     """ Generic implementations of command methods """
@@ -80,7 +80,7 @@ class BaseCommand:
         return self._name or self.__class__.__name__.lower()
 
     @property
-    def help(self:Command_i) -> list[str]:
+    def help(self:Command_p) -> list[str]:
         help_lines : list[str] = [
             "", f"Command: {self.name}", "",
             *list(self._help or []),
@@ -95,7 +95,7 @@ class BaseCommand:
         return help_lines
 
     @property
-    def helpline(self:Command_i) -> str:
+    def helpline(self:Command_p) -> str:
         """ get just the first line of the help text """
         match self._help:
             case [x, *_]:

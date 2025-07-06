@@ -35,7 +35,7 @@ from doot.workflow.check_locs import CheckLocsTask
 
 # ##-| Local
 from ._base import BaseCommand
-from ._interface import Command_i
+from ._interface import Command_p
 
 # # End of Imports.
 
@@ -78,7 +78,7 @@ check_locs               : Final = doot.config.on_fail(False).settings.commands.
 
 ##--|
 
-@Proto(Command_i)
+@Proto(Command_p)
 class RunCmd(BaseCommand):
     _name                               = "run"
     _help  : ClassVar[tuple[str, ...]]  = tuple(["Will perform the tasks/jobs targeted.",

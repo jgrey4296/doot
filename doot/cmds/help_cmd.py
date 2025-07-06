@@ -30,7 +30,7 @@ from jgdv.cli._interface import NON_DEFAULT_KEY
 # ##-- 1st party imports
 import doot
 from ._base import BaseCommand
-from ._interface import Command_i
+from ._interface import Command_p
 from doot.workflow._interface import Task_p
 
 # ##-- end 1st party imports
@@ -224,7 +224,7 @@ class _HelpTask_m:
 
 
 ##--|
-@Proto(Command_i)
+@Proto(Command_p)
 @Mixin(_HelpDoot_m, _HelpCmd_m, _HelpTask_m)
 class HelpCmd(BaseCommand):
     _name      = "help"
@@ -238,7 +238,7 @@ class HelpCmd(BaseCommand):
             self.build_param(name="<1>target", type=str, default="", desc="The target to get help about. A command or task.")
         ]
 
-    def __call__(self, tasks, plugins):
+    def __call__(self, idx, tasks, plugins):
         """List task generators"""
         task_targets = []
         cmd_targets  = []

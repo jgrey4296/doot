@@ -55,31 +55,18 @@ class Command_p(CLIParamProvider_p, Protocol):
     Holds command information and performs it
     """
 
-    def __call__(self, jobs:ChainGuard, plugins:ChainGuard):
+    @property
+    def name(self) -> str: ...
+    @property
+    def help(self) -> list[str]: ...
+    @property
+    def helpline(self) -> str: ...
+    ##--|
+    def __call__(self, idx:int, jobs:ChainGuard, plugins:ChainGuard):
         pass
 
     def shutdown(self, tasks:ChainGuard, plugins:ChainGuard, errored:Maybe[Exception]=None) -> None:
         """
           A Handler called on doot shutting down. only the triggered cmd's shutdown gets called
         """
-        pass
-
-class Command_i(Command_p, Protocol):
-    _name    : Maybe[str]           = None
-    _help    : Maybe[Iterable[str]] = None
-
-    _version : VerStr               = "0.1"
-
-    @property
-    def name(self) -> str:
-        """get command name as used from command line"""
-        pass
-
-    @property
-    def help(self) -> list[str]:
-        pass
-
-    @property
-    def helpline(self) -> str:
-        """ get just the first line of the help text """
         pass

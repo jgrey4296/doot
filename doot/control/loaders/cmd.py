@@ -93,7 +93,7 @@ class CommandLoader:
                 logging.debug("Loading Cmd: %s", cmd_point.name)
                 # load the plugins
                 cmd = cmd_point.load()
-                if not issubclass(cmd, Command_p):
+                if not isinstance(cmd, Command_p):
                     raise TypeError("Not a Command_p", cmd)
 
                 self.cmds[cmd_point.name] = cmd()

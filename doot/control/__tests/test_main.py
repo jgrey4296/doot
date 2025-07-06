@@ -43,13 +43,7 @@ class TestDootMain:
 
     def test_main_method(self, mocker):
         dmain       = DootMain()
-        mocker.patch.object(dmain, "_load")
-        mocker.patch.object(dmain, "parse_args")
         mocker.patch.object(dmain, "handle_cli_args", return_value=None)
-        mocker.patch.object(dmain, "set_cmd_instance")
-        mocker.patch.object(dmain, "_install_at_exit")
-        mocker.patch.object(dmain, "run_cmd")
-        mocker.patch.object(dmain, "shutdown")
 
         with pytest.raises(SystemExit) as ctx:
             dmain()
@@ -61,9 +55,9 @@ class TestMainLoading:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_load(self):
-        dmain = DootMain()
-        dmain._load()
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
 
 class TestMainCLIArgParsing:
 
@@ -76,12 +70,18 @@ class TestMainCLIArgParsing:
 
 class TestMainCmdRun:
 
-    @pytest.mark.skip("TODO")
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
 
 class TestMainShutdown:
 
-    @pytest.mark.skip("TODO")
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

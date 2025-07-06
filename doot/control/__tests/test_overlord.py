@@ -16,6 +16,7 @@ import warnings
 # ##-- 3rd party imports
 import pytest
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli._interface import ParseReport_d, ParseResult_d
 # ##-- end 3rd party imports
 
 import doot._interface as API
@@ -69,12 +70,12 @@ class TestOverlord:
             case x:
                 assert(False), x
 
-class TestOverlordStartup:
+class TestOverlord_Startup:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def basic_ctor(self):
+    def test_basic_ctor(self):
         match DootOverlord():
             case DootOverlord() as do:
                 assert(True)
@@ -88,26 +89,25 @@ class TestOverlordStartup:
 
     @pytest.mark.filterwarnings("ignore")
     def test_load_config_default(self, mocker):
-        do = DootOverlord()
-        default_config = API.template_path / do.constants.paths.TOML_TEMPLATE
+        do              = DootOverlord()
+        default_config  = API.template_path / do.constants.paths.TOML_TEMPLATE
         do.setup(targets=[default_config])
+        assert(do.is_setup)
         assert(bool(do.config))
         do.verify_config_version(do.config.startup.doot_version, source="testing")
         assert(True)
 
     @pytest.mark.filterwarnings("ignore")
     def test_loc_init(self, mocker):
-        do = DootOverlord()
+        do  = DootOverlord()
+        default_config  = API.template_path / do.constants.paths.TOML_TEMPLATE
         assert(not bool(do.locs))
-        do.setup()
+        do.setup(targets=[default_config])
+        assert(do.is_setup)
+        assert(bool(do.config))
         assert(bool(do.locs))
 
-class TestOverlordLogging:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-class TestOverlordVersionCheck:
+class TestOverlord_VersionCheck:
     """
     Test the version checking used for config file and task specs
     """
@@ -139,7 +139,7 @@ class TestOverlordVersionCheck:
         with pytest.raises(doot.errors.VersionMismatchError):
             do.verify_config_version("0.1.1", "test")
 
-class TestOverlordWorkflowUtil:
+class TestOverlord_WorkflowUtil:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -184,8 +184,52 @@ class TestOverlordWorkflowUtil:
         with pytest.raises(doot.errors.GlobalStateMismatch):
             do.update_global_task_state(data2, source="testing")
 
-    def test_set_parsed_cli_args(self):
-        do = DootOverlord()
+
+class TestOverlord_cmd_args:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_set_parsed_cli_args_empty(self):
+        do      = DootOverlord()
+        report  = ParseReport_d(raw=[], remaining=[], help=False,
+                               prog=ParseResult_d("prog", args={}, ref=None),
+                               )
         assert(not bool(do.args))
-        do.set_parsed_cli_args(ChainGuard({"blah": True}))
+        do.update_cmd_args(report)
         assert(bool(do.args))
+
+
+    def test_set_parsed_cli_args_prog(self):
+        do      = DootOverlord()
+        report  = ParseReport_d(raw=[], remaining=[], help=False,
+                               prog=ParseResult_d("prog", args={"blah":2}, ref=None),
+                               )
+        assert(not bool(do.args))
+        do.update_cmd_args(report)
+        assert(bool(do.args))
+        assert(do.args.prog.args.blah == 2)
+
+
+    def test_set_parsed_cli_args_cmds(self):
+        do      = DootOverlord()
+        report  = ParseReport_d(raw=[], remaining=[], help=False,
+                               prog=ParseResult_d("prog", args={}, ref=None),
+                               )
+        report.cmds['blah'] = (ParseResult_d(name="blah", args={"aweg":2}), )
+        assert(not bool(do.args))
+        do.update_cmd_args(report)
+        assert(bool(do.args))
+        assert(do.args.cmds.blah[0].args.aweg== 2)
+
+
+    def test_set_parsed_args_subs(self):
+        do      = DootOverlord()
+        report  = ParseReport_d(raw=[], remaining=[], help=False,
+                               prog=ParseResult_d("prog", args={}, ref=None),
+                               )
+        report.subs['blah'] = (ParseResult_d(name="blah", args={"aweg":2}), )
+        assert(not bool(do.args))
+        do.update_cmd_args(report)
+        assert(bool(do.args))
+        assert(do.args.subs.blah[0].args.aweg== 2)
