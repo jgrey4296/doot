@@ -23,6 +23,15 @@ from typing import override
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+
+# -- Classes
+"BackendError", "DootError", "FrontendError", "UserError",
+
+)
+# ##-- end Generated Exports
+
 # Global Vars:
 
 # Body:

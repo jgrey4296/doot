@@ -118,6 +118,7 @@ class ExecutionPolicy_e(enum.Enum):
     default = PRIORITY
 
 ##--| Data
+
 class SpecMeta_d:
     """
     Registry data for a spec.
@@ -145,7 +146,6 @@ class SpecMeta_d:
         self.injection_source   = None
         self.injection_targets  = set()
 
-
 class ArtifactMeta_d:
     __slots__ = ("artifact", "blocked_by", "builders", "consumers")
 
@@ -159,7 +159,6 @@ class ArtifactMeta_d:
         self.blocked_by  = set()
         self.builders    = set()
         self.consumers   = set()
-
 
 class Registry_d:
 
@@ -177,11 +176,11 @@ class Registry_d:
         self.abstract   = set()
         self.concrete   = set()
 
-
 ##--| components
 
 @runtime_checkable
 class Registry_p(Protocol):
+
     def register_spec(self, *specs:TaskSpec_i) -> None: ...
 
     def instantiate_spec(self, name:Abstract[TaskName_p], *, force:Maybe[bool|int]=None, extra:Maybe[dict|ChainGuard|bool]=None) -> Maybe[Concrete[TaskName_p]]: ...
@@ -224,6 +223,7 @@ class TaskTracker_p(Protocol):
     Does not execute anything itself
     """
     ##--| properties
+
     @property
     def active(self) -> set[TaskName_p]: ...
 
@@ -235,8 +235,10 @@ class TaskTracker_p(Protocol):
 
     @property
     def concrete(self) -> set[TaskName_p|Artifact_i]: ...
+
     @property
     def abstract(self) -> set[TaskName_p|Artifact_i]: ...
+
     @property
     def network(self) -> Mapping: ...
 
@@ -249,11 +251,11 @@ class TaskTracker_p(Protocol):
 
     def queue(self, name:str|Ident|Concrete[TaskSpec_i]|DelayedSpec, *, from_user:int|bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]: ...
 
-    def build(self) -> None: ...
+    def build(self, *, sources:Maybe[Literal[True]|list[Concrete[TaskName_p]|Artifact_i]]=None) -> None: ...
 
     def plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[TaskName_p|Artifact_i]: ...
 
-    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Concrete[TaskName_p]|Artifact_i]: ...
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Task_p|Artifact_i]: ...
 
     def clear(self) -> None: ...
     ##--| inspection. TODO to remove

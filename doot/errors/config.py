@@ -19,6 +19,14 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+
+# -- Classes
+"ConfigError", "InvalidConfigError", "MissingConfigError", "VersionMismatchError",
+
+)
+# ##-- end Generated Exports
 from ._base import DootError, UserError
 
 class ConfigError(UserError):
@@ -32,7 +40,6 @@ class InvalidConfigError(ConfigError):
     """
     general_msg = "Invalid Doot Config:"
     pass
-
 
 class MissingConfigError(ConfigError):
     """ An expecting core config value was not found """

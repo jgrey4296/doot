@@ -21,7 +21,7 @@ from .command import CommandError
 from .config import ConfigError, InvalidConfigError, MissingConfigError, VersionMismatchError
 from .control import (ActionCallError, ActionStateError,
                       ControlError, TaskExecutionError,
-                      TrackingError)
+                      TrackingError, JobExpansionError)
 from .parse import ParseError
 from .plugin import AliasSearchError, PluginError, PluginLoadError
 from .state import (StateError, InjectionError, KeyAccessError,
@@ -31,6 +31,15 @@ from .struct import StructError, StructLoadError
 from .task import TaskError, TaskFailed, TaskTrackingError, ActionError
 
 # ##-- end 1st party imports
+
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+
+# -- Classes
+"EarlyExit", "Interrupt",
+
+)
+# ##-- end Generated Exports
 
 class EarlyExit(Exception):  # noqa: N818
     """ Doot was instructed to shut down before completing the requested comand """

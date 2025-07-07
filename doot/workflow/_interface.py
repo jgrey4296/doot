@@ -407,6 +407,8 @@ class Task_p(Protocol):
 
     def prepare_actions(self) -> None: ...
 
+    def get_action_group(self, group_name:str) -> list[ActionSpec_i]: ...
+
 @runtime_checkable
 class Job_p(Task_p, Protocol):
     """

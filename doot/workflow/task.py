@@ -211,13 +211,6 @@ class DootTask:
     _internal_state  : dict
 
     def __init__(self, spec:TaskSpec_i, *, action_ctor:Maybe[Callable]=None, **kwargs:Any):  # noqa: ARG002
-        match spec:
-            case TaskSpec_i():
-                pass
-            case x:
-                breakpoint()
-                pass
-
         self.flags                               = TaskMeta_e.TASK
         self._internal_state                     = dict(spec.extra)
         self._spec                               = spec
