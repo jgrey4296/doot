@@ -105,7 +105,7 @@ class AppendAction(IOBase):
                     case _:
                         arg = str(arg)
 
-                doot.report.act("Append", "%s chars to %s" % (len(arg), loc))
+                doot.report.wf.act("Append", "%s chars to %s" % (len(arg), loc))
                 if sep:
                     f.write(sep)
 
@@ -138,22 +138,22 @@ class WriteAction(IOBase):
 
         match data:
             case None:
-                doot.report.act("Write", "Nothing to Write")
+                doot.report.wf.act("Write", "Nothing to Write")
             case _ if not bool(data):
-                doot.report.act("Write", "Nothing to Write")
+                doot.report.wf.act("Write", "Nothing to Write")
             case [*xs]:
                 text = "\n".join(xs)
                 loc.write_text(text)
-                doot.report.act("Write", "%s chars to %s" % (len(text), loc))
+                doot.report.wf.act("Write", "%s chars to %s" % (len(text), loc))
             case bytes():
-                doot.report.act("Write", "%s bytes to %s" % (len(data), loc))
+                doot.report.wf.act("Write", "%s bytes to %s" % (len(data), loc))
                 loc.write_bytes(data)
             case str():
-                doot.report.act("Write", "%s chars to %s" % (len(data), loc))
+                doot.report.wf.act("Write", "%s chars to %s" % (len(data), loc))
                 loc.write_text(data)
             case _:
                 as_str = str(data)
-                doot.report.act("Write", "%s chars to %s" % (len(as_str), loc))
+                doot.report.wf.act("Write", "%s chars to %s" % (len(as_str), loc))
                 loc.write_text(as_str)
 
         return None
@@ -172,7 +172,7 @@ class ReadAction(IOBase):
         loc = _from
         read_binary = as_bytes
         read_lines  = _type
-        doot.report.act("Read", "%s into %s" % (loc, _update))
+        doot.report.wf.act("Read", "%s into %s" % (loc, _update))
         if read_binary:
             with loc.open("rb") as f:
                 return { _update : f.read() }
@@ -280,14 +280,14 @@ class DeleteAction(IOBase):
                 raise LocationError("Tried to write a protected location", loc)
 
             if not loc.exists():
-                doot.report.act("Delete", "Does Not Exist: %s" % loc)
+                doot.report.wf.act("Delete", "Does Not Exist: %s" % loc)
                 continue
 
             if loc.is_dir() and rec:
-                doot.report.act("Delete", "Directory: %s" % loc)
+                doot.report.wf.act("Delete", "Directory: %s" % loc)
                 shutil.rmtree(loc)
             else:
-                doot.report.act("Delete", "File: %s" % loc)
+                doot.report.wf.act("Delete", "File: %s" % loc)
                 loc.unlink(missing_ok=lax)
 
 class BackupAction(IOBase):
@@ -321,7 +321,7 @@ class BackupAction(IOBase):
         if dest_loc.exists() and ((not source_newer) or below_tolerance):
             return None
 
-        doot.report.act("Backup", "%s -> %s" % (source_loc, dest_loc))
+        doot.report.wf.act("Backup", "%s -> %s" % (source_loc, dest_loc))
         shutil.copy2(source_loc,dest_loc)
         return None
 
@@ -336,7 +336,7 @@ class EnsureDirectory(IOBase):
         for arg in args:
             loc = DKey[pl.Path](arg).expand(spec, state)
             if not loc.exists():
-                doot.report.act("MkDir", str(loc))
+                doot.report.wf.act("MkDir", str(loc))
             loc.mkdir(parents=True, exist_ok=True)
 
 class UserInput(IOBase):
@@ -420,10 +420,10 @@ class LinkAction(IOBase):
             x_path.unlink()
         if hard:
             x_path.hardlink_to(y_path)
-            doot.report.act("Link", "Hard: %s -> %s" % (x_path, y_path))
+            doot.report.wf.act("Link", "Hard: %s -> %s" % (x_path, y_path))
         else:
             x_path.symlink_to(y_path)
-            doot.report.act("Link", "Symbolic: %s -> %s" % (x_path, y_path))
+            doot.report.wf..act("Link", "Symbolic: %s -> %s" % (x_path, y_path))
 
 class ListFiles(IOBase):
     """ add a list of all files in a path (recursively) to the state """
@@ -437,5 +437,5 @@ class ListFiles(IOBase):
         result = sh.fdfind("--color", "never", "-t", "f", "--base-directory",  str(base), ".", target, _return_cmd=True)
         filelist = result.stdout.decode().split("\n")
 
-        doot.report.act("List", "%s files in %s" % (len(filelist), target))
+        doot.report.wf.act("List", "%s files in %s" % (len(filelist), target))
         return { _update : filelist }

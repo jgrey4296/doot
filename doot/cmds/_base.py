@@ -126,11 +126,11 @@ class BaseCommand:
         for line in text:
             match line:
                 case str():
-                    doot.report.user(line)
+                    doot.report.gen.user(line)
                 case (str() as s, dict() as d):
-                    doot.report.user(s, extra=d)
+                    doot.report.gen.user(s, extra=d)
                 case None:
-                    doot.report.user("")
+                    doot.report.gen.user("")
 
 
 

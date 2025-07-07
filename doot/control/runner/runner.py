@@ -121,7 +121,7 @@ class ActionExecutor:
                     group_result = ActRE.FAIL
                     break
                 case ActRE.SKIP:
-                    doot.report.act("skip", skip_msg)
+                    doot.report.wf.act("skip", skip_msg)
                     group_result = ActRE.SKIP
                     break
 
@@ -155,9 +155,9 @@ class ActionExecutor:
         task.internal_state['_action_step'] = count
         match group:
             case str():
-                doot.report.act(f"{large_step}.{group}.{count}", str(action.do))
+                doot.report.wf.act(f"{large_step}.{group}.{count}", str(action.do))
             case None:
-                doot.report.act(f"{large_step}._.{count}", str(action.do))
+                doot.report.wf.act(f"{large_step}._.{count}", str(action.do))
 
         logging.debug("Action Executing for Task: %s", task.name)
         logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", large_step, count, action.args, dict(action.kwargs), len(task.internal_state.keys()))
@@ -255,14 +255,14 @@ class DootRunner:
                 case Task_p():
                     self.execute_task(task)
                 case x:
-                    doot.report.error("Unknown Value provided to runner: %s", x)
+                    doot.report.gen.error("Unknown Value provided to runner: %s", x)
         except doot.errors.TaskError as err:
             err.task = task
             self.handle_failure(err)
         except doot.errors.DootError as err:
             self.handle_failure(err)
         except Exception as err:
-            doot.report.fail()
+            doot.report.wf.fail()
             self.tracker.clear()
             raise
         else:
@@ -275,7 +275,7 @@ class DootRunner:
         logmod.debug("-- Expanding Job %s: %s", self.large_step, job.name)
         assert(isinstance(job, Job_p))
         try:
-            doot.report.branch(job.spec.name, info=f"Job {self.large_step}")
+            doot.report.wf.branch(job.spec.name, info=f"Job {self.large_step}")
             if not self.executor.test_conditions(job, large_step=self.large_step):
                 return
 
@@ -294,7 +294,7 @@ class DootRunner:
         logmod.debug("-- Expanding Task %s: %s", self.large_step, task.name)
         assert(not isinstance(task, Job_p))
         try:
-            doot.report.branch(task.spec.name, info=f"Task {self.large_step}")
+            doot.report.wf.branch(task.spec.name, info=f"Task {self.large_step}")
             if not self.executor.test_conditions(task, large_step=self.large_step):
                 return
 

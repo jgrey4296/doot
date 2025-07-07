@@ -320,6 +320,12 @@ class InjectSpec(BaseModel):
         logging.debug("Applying literal injection")
         data = {}
         for x,_y in self.literal.items():
-            data[str(x)] = val or _y
+            match val, _y:
+                case None, None:
+                    pass
+                case None, v:
+                    data[str(x)] = v
+                case v, _:
+                    data[str(x)] = v
         else:
             return data

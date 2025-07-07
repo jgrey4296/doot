@@ -22,7 +22,7 @@ from doot.util.factory import TaskFactory
 from .. import TaskSpec, DootTask
 from .. import _interface as API
 
-basic_action  = lambda x: ftz.partial(lambda val, state: doot.report.user("Got: %s : %s", val, state), x)
+basic_action  = lambda x: ftz.partial(lambda val, state: doot.report.gen.user("Got: %s : %s", val, state), x)
 factory       = TaskFactory()
 
 class TestBaseTask:

@@ -82,7 +82,6 @@ if TYPE_CHECKING:
 
     from jgdv import Maybe
     from doot.errors import DootError
-    from doot.reporters._interface import Reporter_i
 
     type Loadable = DootAPI.Loadable
 
@@ -124,7 +123,7 @@ class StartupController:
         targets=False is for loading nothing, for testing
         """
         if obj.is_setup:
-            obj.report.user("doot.setup called even though doot is already set up")
+            obj.report.gen.user("doot.setup called even though doot is already set up")
 
         self._load_config(obj, targets=targets, prefix=prefix or DootAPI.TOOL_PREFIX)
         self._load_constants(obj,
@@ -196,7 +195,7 @@ class StartupController:
             case None:
                 pass
             case pl.Path() as const_file if const_file.exists():
-                obj.report.trace("Loading Constants")
+                obj.report.gen.trace("Loading Constants")
                 base_data = ChainGuard.load(const_file)
                 obj.verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
                 obj.constants = base_data.remove_prefix(DootAPI.CONSTANT_PREFIX)
@@ -218,16 +217,16 @@ class StartupController:
             case True, _:
                 raise RuntimeError("Tried to re-initialise aliases")
 
-        obj.report.trace("Initalising Aliases")
+        obj.report.gen.trace("Initalising Aliases")
         match target:
             case pl.Path() as source if source.exists():
-                obj.report.trace("Loading Aliases: %s", source) # type: ignore[arg-type]
+                obj.report.gen.trace("Loading Aliases: %s", source) # type: ignore[arg-type]
                 base_data = ChainGuard.load(source)
                 assert(isinstance(base_data, ChainGuard))
                 obj.verify_config_version(base_data.on_fail(None).doot_version(), source=source)
                 base_data = base_data.remove_prefix(DootAPI.ALIAS_PREFIX)
             case pl.Path() as source:
-                obj.report.user("Alias File Not Found: %s", source)
+                obj.report.gen.user("Alias File Not Found: %s", source)
             case x:
                 raise TypeError(type(x))
 
@@ -242,15 +241,15 @@ class StartupController:
     def _load_locations(self, obj:DO) -> None:
         """ Load and update the JGDVLocator db
         """
-        obj.report.trace("Loading Locations")
+        obj.report.gen.trace("Loading Locations")
         # Load Initial locations
         for loc in obj.config.on_fail([]).locations():
             try:
                 for name in loc.keys():
-                    obj.report.trace("+ %s", name)
+                    obj.report.gen.trace("+ %s", name)
                     obj.locs.update(loc, strict=False)
             except (JGDVError, ValueError) as err:
-                obj.report.error("Location Loading Failed: %s (%s)", loc, err)
+                obj.report.gen.error("Location Loading Failed: %s (%s)", loc, err)
 
 class PluginsController:
     type DO = DootOverlord
@@ -272,7 +271,7 @@ class PluginsController:
             obj.loaded_plugins = plugin_loader.load()
             obj.update_aliases(data=obj.loaded_plugins) # type: ignore[attr-defined]
         except DErr.PluginError as err:
-            obj.report.error("Plugins Not Loaded Due to Error: %s", err) # type: ignore[attr-defined]
+            obj.report.gen.error("Plugins Not Loaded Due to Error: %s", err) # type: ignore[attr-defined]
             raise
 
     def _load_commands(self, obj:DootOverlord, *, loader:str="default") -> None:
@@ -295,7 +294,7 @@ class PluginsController:
                     cmd_loader.setup(obj.loaded_plugins)
                     obj.loaded_cmds = cmd_loader.load()
                 except DErr.PluginError as err:
-                    obj.report.error("Commands Not Loaded due to Error: %s", err) # type: ignore[attr-defined]
+                    obj.report.gen.error("Commands Not Loaded due to Error: %s", err) # type: ignore[attr-defined]
                     obj.loaded_cmds = ChainGuard()
             case x:
                 raise TypeError("Unrecognized loader type", x)
@@ -448,7 +447,7 @@ class DootOverlord:
         if source is None:
             raise ValueError("Updating Global Task State must  have a source")
 
-        self.report.detail("Updating Global State from: %s", source)
+        self.report.gen.detail("Updating Global State from: %s", source)
         if not isinstance(data, dict|ChainGuard):
             raise DErr.GlobalStateMismatch("Not a dict", data)
 
@@ -480,7 +479,7 @@ class DootOverlord:
             return [self.locs[y] for y in x]
 
         ##--|
-        self.report.trace("Updating Import Path")
+        self.report.gen.trace("Updating Import Path")
         match paths:
             case None | []:
                 task_sources  = self.config.on_fail([self.locs[".tasks"]], list).startup.sources.tasks(wrapper=loc_wrapper)
@@ -506,10 +505,10 @@ class DootOverlord:
                 case x if x in sys.path:
                     continue
                 case str():
-                    self.report.trace("sys.path += %s", str(source))
+                    self.report.gen.trace("sys.path += %s", str(source))
                     sys.path.append(source_str)
         else:
-            self.report.trace("Import Path Updated")
+            self.report.gen.trace("Import Path Updated")
 
     def update_cmd_args(self, data:ParseReport_d|dict, *,  override:bool=False) -> None:
         """ update global args that cmd's use for control flow """

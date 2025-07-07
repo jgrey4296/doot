@@ -39,7 +39,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, DateTime
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Self, Literal
@@ -59,8 +59,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-SEGMENT_SIZES : Final[tuple[int,int,int]] = (1, 3, 1)
-GAP      : Final[str] = " "*SEGMENT_SIZES[1]
+SEGMENT_SIZES  : Final[tuple[int,int,int]]  = (1, 3, 1)
+GAP            : Final[str]                 = " "*SEGMENT_SIZES[1]
 ##-- segment dicts
 TRACE_LINES_ASCII     : Final[dict[str, str|tuple]] = {
     "root"            : "T",
@@ -91,7 +91,19 @@ ACT_SPACING              : Final[int] = 4
 MSG_SPACING              : Final[int] = 6
 # Body:
 
+class TraceRecord_d:
+    """ For Storing what happened, where, and why """
+
+    __slots__ = ("what", "when", "where", "why")
+
+    def __init__(self, *, what:str, where:str, why:str, when:DateTime) -> None:
+        self.what   = what
+        self.where  = where
+        self.why    = why
+        self.when   = when
+
 class ReportStackEntry_d:
+    """ Data for storing the context of the reporter """
     __slots__ = ("data", "depth", "extra", "log_extra", "log_level", "prefix", "state")
     log_extra  : dict
     log_level  : int
@@ -118,17 +130,20 @@ class ReportStackEntry_d:
 
 # Sub Protocols
 
-class _WorkflowReporter_p(Protocol):
+##--|
+
+@runtime_checkable
+class ReportGroup_p(Protocol):
+
+    def _out(self, key:str, *, info:Maybe=None, msg:Maybe=None, level:int=0) -> None: ...
+
+class WorkflowGroup_p(ReportGroup_p, Protocol):
     """
     A Re-entrant ctx manager,
     used for reporting user-level information about a
     task workflow run.
 
     """
-
-    def __enter__(self) -> Self: ...
-
-    def __exit__(self, *exc:Any) -> bool: ...
 
     def root(self) -> Self: ...
 
@@ -154,14 +169,13 @@ class _WorkflowReporter_p(Protocol):
 
     def line(self, msg:Maybe[str]=None, char:Maybe[str]=None) -> Self: ...
 
-class _GeneralReporter_p(Protocol):
+class GeneralGroup_p(ReportGroup_p, Protocol):
     """ Reporter Methods for general user facing messages """
 
     def header(self) -> Self: ...
 
-    def summary(self) -> Self: ...
-
     def user(self, msg:str, *rest:Any, **kwargs:Any) -> Self: ...
+
     def trace(self, msg:str, *rest:Any, **kwargs:Any) -> Self: ...
 
     def failure(self, msg:str, *rest:Any, **kwargs:Any) -> Self: ...
@@ -169,6 +183,7 @@ class _GeneralReporter_p(Protocol):
     def detail(self, msg:str, *rest:Any, **kwargs:Any) -> Self: ...
 
     def warn(self, msg:str, *rest:Any, **kwargs:Any) -> Self: ...
+
     def error(self, msg:str, *rest:Any, **kwargs:Any) -> Self: ...
     ##--|
 
@@ -178,17 +193,53 @@ class _GeneralReporter_p(Protocol):
 
 # Main Protocols
 
+class TreeGroup_p(ReportGroup_p, Protocol):
+    pass
+
+class SummaryGroup_p(ReportGroup_p, Protocol):
+
+    def start(self) -> None: ...
+
+    def finish(self) -> None: ...
+
+    def add(self, key:str, *vals:Any) -> Self: ...
+
+    def summarise(self) -> Self: ...
+
+    pass
+##--|
+
 @runtime_checkable
-class Reporter_p(_WorkflowReporter_p, _GeneralReporter_p, Protocol):
-    _entry_count    : int
-    _fmt            : TraceFormatter_p
-    _logger         : Logger
-    _stack          : list[ReportStackEntry_d]
+class Reporter_p(Protocol):
+    """
+    Reporters provide attr access to any registered ReportGroup_p's,
+    for formatted printing of workflow information
+    """
+    _entry_count  : int
+    _fmt          : ReportFormatter_p
+    _logger       : Logger
+    _stack        : list[ReportStackEntry_d]
 
     @property
     def state(self) -> ReportStackEntry_d: ...
 
-    def add_trace(self, msg:str, *args:Any, flags:Any=None) -> None: ...
+    @property
+    def wf(self) -> WorkflowGroup_p: ...
+
+    @property
+    def gen(self) -> GeneralGroup_p: ...
+
+    @property
+    def tree(self) -> TreeGroup_p: ...
+
+    @property
+    def summary(self) -> SummaryGroup_p: ...
+
+    ##--|
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(self, *exc:Any) -> bool: ...
 
     def push_state(self, state:str, **kwargs:Any) -> Self: ...
 
@@ -196,11 +247,8 @@ class Reporter_p(_WorkflowReporter_p, _GeneralReporter_p, Protocol):
 
     def active_level(self, level:int) -> None: ...
 
-class Reporter_i(Reporter_p, Protocol):
-    pass
-
 @runtime_checkable
-class TraceFormatter_p(Protocol):
+class ReportFormatter_p(Protocol):
 
     def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str: ...
 

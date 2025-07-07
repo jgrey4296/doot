@@ -56,7 +56,7 @@ class DootBaseAction:
 
     def __call__(self, spec:ActionSpec, state:dict) -> Maybe[dict|bool]:
         logging.debug("Base Action Called: %s", state.get("count", 0))
-        doot.report.detail("Base Action Called: %s", state.get("count", 0))
+        doot.report.gen.detail("Base Action Called: %s", state.get("count", 0))
         if spec.args:
-            doot.report.user(" ".join(spec.args))
+            doot.report.gen.user(" ".join(spec.args))
         return { "count" : state.get("count", 0) + 1 }

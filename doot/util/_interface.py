@@ -72,12 +72,12 @@ logging = logmod.getLogger(__name__)
 class DelayedSpec:
     __slots__ = ("applied", "base", "inject", "overrides", "target")
 
-    base    : TaskName_p
-    target  : TaskName_p
+    base       : TaskName_p
+    target     : TaskName_p
     # For from_spec injection
-    inject   : list[InjectSpec_i]
+    inject     : list[InjectSpec_i]
     # injection values applied from the creator
-    applied  : dict
+    applied    : dict
     # Raw data applied over source
     overrides  : dict
 

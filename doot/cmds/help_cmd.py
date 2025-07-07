@@ -276,7 +276,7 @@ class HelpCmd(BaseCommand):
                 self._print_text(result)
                 return
             case [*xs]:
-                doot.report.error("To print help for a command, choose 1 command at a time")
+                doot.report.gen.error("To print help for a command, choose 1 command at a time")
                 return
 
         match task_targets:

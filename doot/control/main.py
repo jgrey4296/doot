@@ -318,7 +318,7 @@ class ShutdownController:
 
         self.record_defaulted_config_values()
 
-        doot.report.line()
+        doot.report.gen.line()
         match obj._errored:
             case doot.errors.DootError() as err:
                 logging.exception("fail")
@@ -327,7 +327,7 @@ class ShutdownController:
             case None:
                 pass
 
-        doot.report.summary()
+        doot.report.summary.summarise()
 
     def install_handler(self, obj:DM) -> None:
         """ Install an exit handler """
@@ -341,7 +341,7 @@ class ShutdownController:
                 report_val = x
 
         def goodbye(*args, **kwargs) -> None: # noqa: ARG001, ANN002, ANN003
-            doot.report.line(report_val)
+            doot.report.gen.line(report_val)
 
         atexit.register(goodbye)
 
@@ -597,7 +597,7 @@ class DootMain(ParamSpecMaker_m):
             return API.ExitCodes.SUCCESS
 
         if not doot.args.on_fail(False).prog.args.suppress_header(): # noqa: FBT003
-             doot.report.header()
+             doot.report.gen.header()
 
         if not bool(doot.args.on_fail({}).cmds()) and doot.args.on_fail(False).help(): # noqa: FBT003
             helptxt = self.help()

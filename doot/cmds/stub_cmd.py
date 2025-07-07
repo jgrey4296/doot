@@ -112,7 +112,7 @@ class _StubDoot_m:
         with doot_toml.open("a") as f:
             f.write(data_text)
 
-        doot.report.user("doot.toml stub")
+        doot.report.gen.user("doot.toml stub")
         return []
 
 class _StubParam_m:
@@ -220,7 +220,7 @@ class _StubTask_m:
         task_file = pl.Path(doot.args.cmd.args.out)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
-        doot.report.user("Stubbing task %s into file: %s", stub['name'], task_file)
+        doot.report.gen.user("Stubbing task %s into file: %s", stub['name'], task_file)
         with task_file.open("a") as f:
             f.write("\n")
             f.write(stub.to_toml())

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -66,10 +65,9 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-@Proto(API.TraceFormatter_p)
-class TraceFormatter:
-    """ TraceFormatter abstracts the logic of creating a contextual message.
-
+@Proto(API.ReportFormatter_p)
+class ReportFormatter:
+    """ ReportFormatter abstracts the logic of creating a contextual message.
 
     """
 
@@ -78,41 +76,6 @@ class TraceFormatter:
         self.line_fmt          = API.LINE_PASS_FMT
         self.msg_fmt           = API.LINE_MSG_FMT
         self._process_segments()
-
-    def _process_segments(self):
-        """ Ensure all needed segments exist and are the right size
-
-        if any are missing, use doot.reporters._interface.TRACE_LINES_ASCII's values
-        """
-        processed = {}
-        for x,y in API.TRACE_LINES_ASCII.items():
-            processed.setdefault(x, y)
-        else:
-            start_i, mid_i, end_i = API.SEGMENT_SIZES
-            just_char = self._segments.get("just_char", API.TRACE_LINES_ASCII["just_char"])
-        for x,y in self._segments.items():
-            match y:
-                case str():
-                    processed[x] = y
-                case start, mid, end:
-                    processed[x] = (start.ljust(start_i, just_char),
-                                    mid.ljust(mid_i, just_char),
-                                    end.ljust(end_i, just_char))
-                case other:
-                    raise ValueError("Unexpected segment", other)
-
-        else:
-            self._segments = processed
-
-    def _build_ctx(self, ctx:Maybe[list]) -> str:
-        """ Given a current context list, builds a prefix string for the current print call """
-        match ctx:
-            case None | []:
-                return ""
-            case list():
-                return API.GAP.join(ctx) + API.GAP
-            case x:
-                raise TypeError(type(x))
 
     def __call__(self, key:str, *, info:Maybe[str]=None, msg:Maybe[str]=None, ctx:Maybe[list]=None) -> str:
         """ Build the formatted report line.
@@ -160,3 +123,39 @@ class TraceFormatter:
                 return None
             case _:
                 raise ValueError("Unexpected value in reporter segments", key)
+
+    ##--|
+    def _process_segments(self):
+        """ Ensure all needed segments exist and are the right size
+
+        if any are missing, use doot.reporters._interface.TRACE_LINES_ASCII's values
+        """
+        processed = {}
+        for x,y in API.TRACE_LINES_ASCII.items():
+            processed.setdefault(x, y)
+        else:
+            start_i, mid_i, end_i = API.SEGMENT_SIZES
+            just_char = self._segments.get("just_char", API.TRACE_LINES_ASCII["just_char"])
+        for x,y in self._segments.items():
+            match y:
+                case str():
+                    processed[x] = y
+                case start, mid, end:
+                    processed[x] = (start.ljust(start_i, just_char),
+                                    mid.ljust(mid_i, just_char),
+                                    end.ljust(end_i, just_char))
+                case other:
+                    raise ValueError("Unexpected segment", other)
+
+        else:
+            self._segments = processed
+
+    def _build_ctx(self, ctx:Maybe[list]) -> str:
+        """ Given a current context list, builds a prefix string for the current print call """
+        match ctx:
+            case None | []:
+                return ""
+            case list():
+                return API.GAP.join(ctx) + API.GAP
+            case x:
+                raise TypeError(type(x))

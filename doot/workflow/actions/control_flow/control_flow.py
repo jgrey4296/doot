@@ -176,7 +176,7 @@ class LogAction(DootBaseAction):
                 pass
             case str():
                 level = logmod._nameToLevel.get(level, 0)
-        doot.report.act(info=prefix, msg=msg, level=level)
+        doot.report.wf.act(info=prefix, msg=msg, level=level)
 
 class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """

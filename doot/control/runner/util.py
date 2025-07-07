@@ -89,20 +89,20 @@ class _RunnerCtx_m:
 
     def __enter__(self:WorkflowRunner_p) -> WorkflowRunner_p:
         logging.info("Entering Runner Control")
-        doot.report.trace("Building Task Network...")
-        doot.report.gap()
+        doot.report.gen.trace("Building Task Network...")
+        doot.report.gen.gap()
         self.tracker.build()
-        doot.report.trace("Task Network Built.")
-        doot.report.detail("Network Composition: %s Nodes, %s Edges, %s Edges from Root.",
+        doot.report.gen.trace("Task Network Built.")
+        doot.report.gen.detail("Network Composition: %s Nodes, %s Edges, %s Edges from Root.",
                            len(self.tracker.network.nodes),
                            len(self.tracker.network.edges),
                            len(self.tracker.network.pred[self.tracker._root_node]))
-        doot.report.trace("Validating Task Network...")
-        doot.report.gap()
+        doot.report.gen.trace("Validating Task Network...")
+        doot.report.gen.gap()
         self.tracker.validate()
-        doot.report.trace("Validation Complete.")
-        doot.report.line(self._enter_msg)
-        doot.report.root()
+        doot.report.gen.trace("Validation Complete.")
+        doot.report.gen.line(self._enter_msg)
+        doot.report.wf.root()
         return self
 
     def __exit__(self:WorkflowRunner_p, exc_type:type[Exception], exc_value:Exception, exc_traceback:Traceback) -> Literal[False]:
@@ -117,9 +117,9 @@ class _RunnerCtx_m:
         """
         logging.info("Running Completed")
         if self.large_step >= max_steps:
-            doot.report.warn("Runner Hit the Step Limit: %s", max_steps)
+            doot.report.gen.warn("Runner Hit the Step Limit: %s", max_steps)
 
-        doot.report.finished().gap().line(self._exit_msg)
+        doot.report.wf.finished().gap().line(self._exit_msg)
         match self._signal_failure:
             case None:
                 return
@@ -137,9 +137,9 @@ class _RunnerHandlers_m:
             case None:
                 pass
             case TaskArtifact() as art:
-                doot.report.result([str(art.path)], info="Success")
+                doot.report.wf.result([str(art.path)], info="Success")
             case Task_p():
-                doot.report.result([task.name[:]], info="Success")
+                doot.report.wf.result([task.name[:]], info="Success")
                 self.tracker.set_status(task.name, TaskStatus_e.SUCCESS)
         return task
 
@@ -159,30 +159,30 @@ class _RunnerHandlers_m:
                 pass
             case doot.errors.TaskFailed() as err:
                 self._signal_failure = err
-                doot.report.warn("%s Halting: %s", fail_prefix, err)
+                doot.report.gen.warn("%s Halting: %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.TaskError() as err:
-                doot.report.fail()
+                doot.report.wf.fail()
                 self._signal_failure = err
                 self.tracker.set_status(err.task, TaskStatus_e.FAILED)
                 raise err
             case doot.errors.TrackingError() as err:
-                doot.report.fail()
+                doot.report.wf.fail()
                 self._signal_failure = err
                 raise err
             case doot.errors.DootError() as err:
-                doot.report.fail()
+                doot.report.wf.fail()
                 self._signal_failure = err
                 raise err
             case err:
-                doot.report.fail()
+                doot.report.wf.fail()
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
-                doot.report.error("%s Unknown failure occurred: %s", fail_prefix, failure)
+                doot.report.gen.error("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
 
     def notify_artifact(self:WorkflowRunner_p, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
-        doot.report.result(["Artifact: %s", art])
+        doot.report.wf.result(["Artifact: %s", art])
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
     def sleep_after(self:WorkflowRunner_p, task:Maybe[Task_p|Artifact_i]) -> None:
@@ -197,5 +197,5 @@ class _RunnerHandlers_m:
 
         assert(isinstance(task, Task_p))
         sleep_len = task.spec.extra.on_fail(DEFAULT_SLEEP_LENGTH, int|float).sleep()
-        doot.report.detail("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
+        doot.report.gen.detail("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
         time.sleep(sleep_len)

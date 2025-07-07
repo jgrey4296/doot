@@ -186,8 +186,8 @@ class Tracker_abs:
         match name:
             case str() | TaskName_p() | Artifact_i():
                 pass
-            case DelayedSpec():
-                self.register(name)
+            case DelayedSpec() as dspec:
+                self.register(dspec)
                 name = name.target
             case TaskSpec_i():
                 self.register(name)
@@ -259,6 +259,7 @@ class Tracker_abs:
         data    : dict  = {}
         match spec:
             case DelayedSpec(base=TaskName_p() as base_name,
+                             target=TaskName_p() as target_name,
                              applied=dict() as applied,
                              inject=list() as injections,
                              overrides=dict() as overrides,
@@ -279,9 +280,11 @@ class Tracker_abs:
             # apply_from_spec
             data |= inj.apply_from_spec(base)
         else:
-            data |= spec.overrides
-            data['name'] = spec.target
-            result = self._factory.merge(bot=base, top=data)
+            data |= overrides
+            data['name'] = target_name
+            result = self._factory.merge(bot=base, top=data, suffix=False)
+            assert(result.name == target_name)
+            assert(not result.name.uuid())
             return result
 
     def _reify_partial_spec(self, spec:TaskSpec_i) -> TaskSpec_i:

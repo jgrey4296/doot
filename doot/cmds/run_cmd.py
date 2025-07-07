@@ -105,8 +105,8 @@ class RunCmd(BaseCommand):
         doot.load_reporter(target=reporter_target)
 
         doot.report.active_level(logmod.INFO)
-        doot.report.gap()
-        doot.report.line(f"Starting Run Cmd ({idx})", char="=")
+        doot.report.gen.gap()
+        doot.report.gen.line(f"Starting Run Cmd ({idx})", char="=")
         tracker, runner = self._create_tracker_and_runner(idx, plugins)
         interrupt       = self._choose_interrupt_handler(idx)
 
@@ -151,10 +151,10 @@ class RunCmd(BaseCommand):
             case None:
                 return None
             case True:
-                doot.report.trace("Setting default interrupt handler")
+                doot.report.gen.trace("Setting default interrupt handler")
                 return True
             case str():
-                doot.report.trace("Loading custom interrupt handler")
+                doot.report.gen.trace("Loading custom interrupt handler")
                 ref = CodeReference(interrupt_handler)
                 return ref(raise_error=True)
             case _:
@@ -162,7 +162,7 @@ class RunCmd(BaseCommand):
 
 
     def _register_specs(self, idx:int, tracker:WorkflowTracker_p, tasks:ChainGuard) -> None:
-        doot.report.trace("Registering Task Specs: %s", len(tasks))
+        doot.report.gen.trace("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
             tracker.register(task)
 
@@ -173,8 +173,8 @@ class RunCmd(BaseCommand):
                 pass
 
     def _queue_tasks(self, idx:int, tracker:WorkflowTracker_p) -> None:
-        doot.report.trace("Queuing Initial Tasks...")
-        doot.report.gap()
+        doot.report.gen.trace("Queuing Initial Tasks...")
+        doot.report.gen.gap()
 
         for sub, calls in doot.args.on_fail({}).subs().items():
             for i,_ in enumerate(calls, 1):
@@ -184,7 +184,7 @@ class RunCmd(BaseCommand):
                     logging.exception("Failed to Queue Target: %s : %s", sub, err.args, exc_info=None)
                     return
         else:
-            doot.report.trace("%s Tasks Queued", len(tracker.active))
+            doot.report.gen.trace("%s Tasks Queued", len(tracker.active))
 
     def _confirm_plan(self, idx:int, runner:WorkflowRunner_p) -> bool:
         """ Generate and Confirm the plan from the tracker"""
@@ -194,13 +194,13 @@ class RunCmd(BaseCommand):
         tracker  = runner.tracker
         plan     = tracker.generate_plan()
         for i,(depth,node,_desc) in enumerate(plan):
-            doot.report.trace("(D:%s) Step %-4s: %s", depth, i, node)
+            doot.report.gen.trace("(D:%s) Step %-4s: %s", depth, i, node)
         else:
             match input("Confirm Execution Plan (Y/*): "):
                 case str() as x if x == CONFIRM:
                     return True
                 case _:
-                    doot.report.trace("Cancelling")
+                    doot.report.gen.trace("Cancelling")
                     return False
 
     def _accept_subcmds(self) -> Literal[True]:

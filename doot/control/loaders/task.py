@@ -133,7 +133,11 @@ class TaskLoader:
 
     def setup(self, plugins:ChainGuard, extra:Maybe[ChainGuard]=None) -> Self:
         logging.debug("---- Registering Task Builders")
-        self.cmd_names     = {x.name for x in plugins.get("command", [])}
+        match plugins.get("command", []):
+            case [*xs]:
+                self.cmd_names     = {x.name for x in xs}
+            case x:
+                raise TypeError(type(x))
         self.tasks         = {}
         self.plugins       = plugins
         self.task_builders = {}
@@ -165,7 +169,12 @@ class TaskLoader:
         return self
 
     def load(self) -> ChainGuard:
-        assert(hasattr(doot.report, "user"))
+        assert(hasattr(doot.report, "gen"))
+
+        def loc_wrapper(xs:str) -> list[pl.Path]:
+            return [doot.locs[x] for x in xs]
+
+
         with TimeBlock_ctx(logger=logging, enter="---- Loading Tasks",  exit="---- Task Loading Time"):
             logging.debug("Loading Tasks from Config files")
             for source in doot.configs_loaded_from: # type: ignore[attr-defined]
@@ -184,7 +193,7 @@ class TaskLoader:
                 raw = self._get_raw_specs_from_data(self.extra, "(extra)")
                 self._build_task_specs(raw)
 
-            task_sources = doot.config.on_fail([doot.locs[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])  # type: ignore[index, union-attr]
+            task_sources = doot.config.on_fail([doot.locs[".tasks"]], list).startup.sources.tasks.sources(wrapper=loc_wrapper)  # type: ignore[index, union-attr]
             logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
             for path in task_sources:
                 self._load_specs_from_path(path)
@@ -195,16 +204,16 @@ class TaskLoader:
                 # After everything is loaded, raise a total failure if necessary
                 raise doot.errors.StructLoadError("Loading Tasks Failed", self.failures)
             case dict() if bool(self.failures):
-                doot.report.user("!!!! Loading Tasks Failed: %s", len(self.failures))
-                doot.report.user("")
+                doot.report.gen.user("!!!! Loading Tasks Failed: %s", len(self.failures))
+                doot.report.gen.user("")
                 for x,msgs in self.failures.items():
-                    doot.report.user("- %s:",  x)
+                    doot.report.gen.user("- %s:",  x)
                     for y in msgs:
-                        doot.report.user("-- %s", y)
+                        doot.report.gen.user("-- %s", y)
                     else:
-                        doot.report.user("")
+                        doot.report.gen.user("")
                 else:
-                    doot.report.user("Continuing...")
+                    doot.report.gen.user("Continuing...")
 
 
 
@@ -325,8 +334,8 @@ class TaskLoader:
             try:
                 doot.locs.Current.update(group, strict=False)
             except KeyError as err:
-                doot.report.warn("Locations Already Defined: %s : %s", err.args, source)
+                doot.report.gen.warn("Locations Already Defined: %s : %s", err.args, source)
             except TypeError as err:
-                doot.report.warn("Location failed to validate: %s : %s", err.args, source)
+                doot.report.gen.warn("Location failed to validate: %s : %s", err.args, source)
             except LocationError as err:
-                doot.report.warn("%s : %s", str(err), source)
+                doot.report.gen.warn("%s : %s", str(err), source)
