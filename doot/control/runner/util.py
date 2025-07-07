@@ -32,6 +32,7 @@ import doot.errors
 from doot.workflow._interface import ActionResponse_e as ActRE
 from doot.workflow._interface import TaskStatus_e
 from doot.workflow import ActionSpec, TaskSpec, TaskArtifact
+from doot.workflow._interface import Task_p, Artifact_i
 
 # ##-- end 1st party imports
 
@@ -45,7 +46,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from doot.workflow._interface import Task_p
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Traceback
@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from ._interface import TaskRunner_p
+
 
 ##--|
 # isort: on
@@ -130,7 +131,7 @@ class _RunnerHandlers_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def handle_task_success[T:Maybe[Task_p|TaskArtifact]](self:TaskRunner_p, task:T) -> T:
+    def handle_success[T:Maybe[Task_p|TaskArtifact]](self:TaskRunner_p, task:T) -> T:
         """ The basic success handler. just informs the tracker of the success """
         match task:
             case None:
@@ -184,7 +185,7 @@ class _RunnerHandlers_m:
         doot.report.result(["Artifact: %s", art])
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
-    def sleep_after(self:TaskRunner_p, task:Maybe[Task_p|TaskArtifact]) -> None:
+    def sleep_after(self:TaskRunner_p, task:Maybe[Task_p|Artifact_i]) -> None:
         """
           The runner's sleep method, which spaces out tasks
         """
@@ -194,6 +195,7 @@ class _RunnerHandlers_m:
             case TaskArtifact():
                 return
 
+        assert(isinstance(task, Task_p))
         sleep_len = task.spec.extra.on_fail(DEFAULT_SLEEP_LENGTH, int|float).sleep()
         doot.report.detail("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
         time.sleep(sleep_len)

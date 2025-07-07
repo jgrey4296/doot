@@ -59,6 +59,7 @@ from typing import no_type_check, final, override, overload
 if TYPE_CHECKING:
     from doot.util.factory import DelayedSpec
     from doot.control.tracker._interface import TaskTracker_p
+    from doot.workflow._interface import Artifact_i
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -88,16 +89,16 @@ DEPENDS_GROUP       : Final[str]   = "depends_on"
 
 ##--|
 
-class _ActionExecution_m:
+class ActionExecutor:
     """ Covers the nuts and bolts of executing an action group """
 
-    def _execute_action_group(self, task:Task_p, *, allow_queue:bool=False, group:str) -> Maybe[tuple[int, ActRE]]:
+    def execute_action_group(self, task:Task_p, *, group:str, large_step:int) -> Maybe[tuple[int, ActRE, list]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
         to_queue        : list[TaskName_p|TaskSpec_i|DelayedSpec]
         group_result    : ActRE
-        actions         : list[ActionSpec_i]
+        actions         : Iterable[ActionSpec_i]
         executed_count  : int
         ##--|
         actions  = task.get_action_group(group)
@@ -109,11 +110,8 @@ class _ActionExecution_m:
         to_queue        =  []
         executed_count  = 0
 
-        for action in actions:
-            if self._skip_relation_specs(action):
-                continue
-
-            match self._execute_action(executed_count, action, task, group=group):
+        for action in self.skip_relation_specs(actions):
+            match self.execute_action(large_step, executed_count, action, task, group=group):
                 case True | None:
                     continue
                 case list() as result:
@@ -129,25 +127,22 @@ class _ActionExecution_m:
             executed_count += 1
 
         else: # no break.
-            match self._maybe_queue_more_tasks(to_queue, allowed=allow_queue):
-                case None:
-                    pass
-                case x:
-                    group_result = x
+            pass
 
-        return executed_count, group_result
+        return executed_count, group_result, to_queue
 
-    def _skip_relation_specs(self, action:RelationSpec_i|ActionSpec_i) -> bool:
+    def skip_relation_specs(self, actions:Iterable) -> Iterator:
         """ return of True signals the action is a relationspec, so is to be ignored """
-        match action:
-            case RelationSpec():
-                return True
-            case ActionSpec():
-                return False
-            case _:
-                raise doot.errors.TaskError("Task Failed: Bad Action: %s", repr(action))
+        for action in actions:
+            match action:
+                case RelationSpec():
+                    pass
+                case ActionSpec() as act:
+                    yield act
+                case _:
+                    raise doot.errors.TaskError("Task Failed: Bad Action: %s", repr(action))
 
-    def _execute_action(self, count:int, action:ActionSpec_i, task:Task_p, group:Maybe[str]=None) -> ActRE|list:
+    def execute_action(self, large_step:int, count:int, action:ActionSpec_i, task:Task_p, group:Maybe[str]=None) -> ActRE|list:
         """ Run the given action of a specific task.
 
           returns either a list of specs to (potentially) queue,
@@ -159,12 +154,12 @@ class _ActionExecution_m:
         task.internal_state['_action_step'] = count
         match group:
             case str():
-                doot.report.act(f"{self.step}.{group}.{count}", str(action.do))
+                doot.report.act(f"{large_step}.{group}.{count}", str(action.do))
             case None:
-                doot.report.act(f"{self.step}._.{count}", str(action.do))
+                doot.report.act(f"{large_step}._.{count}", str(action.do))
 
         logging.debug("Action Executing for Task: %s", task.name)
-        logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.internal_state.keys()))
+        logging.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", large_step, count, action.args, dict(action.kwargs), len(task.internal_state.keys()))
         response = action(task.internal_state)
         match response:
             case None | True:
@@ -177,56 +172,44 @@ class _ActionExecution_m:
             case dict() as data: # update the task's state
                 task.internal_state.update({str(k):v for k,v in data.items()})
                 result = ActRE.SUCCESS
-            case _:
-                raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
+            case list() as data if isinstance(task, Job_p):
+                result = data
+            case x:
+                raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, x, task=task.spec)
 
         return result
 
-    def _maybe_queue_more_tasks(self, new_tasks:list, *, allowed:bool=False) -> Maybe[ActRE]:
-        """ When 'allowed', an action group can queue more tasks in the tracker,
-        can return a new ActRE to describe the result status of this group
+    def test_conditions(self, task:Task_p, *, large_step:int) -> bool:
+        """ run a task's depends_on group, coercing to a bool
+        returns False if the runner should skip the rest of the task
         """
-        if bool(new_tasks) and not allowed:
-            doot.report.error("Tried to Queue additional tasks from a bad action group")
-            return ActRE.FAIL
-
-        new_nodes = []
-        failures  = []
-        for spec in new_tasks:
-            match self.tracker.queue_entry(spec):
-                case None:
-                    failures.append(spec.name)
-                case TaskName_p() as x:
-                    new_nodes.append(x)
-
-        if bool(failures):
-            doot.report.error("Queuing a generated specs failed: %s", failures)
-            return ActRE.FAIL
-
-        if bool(new_nodes):
-            self.tracker.build_network(sources=new_nodes)
-            # doot.report.result([f"{len(new_nodes)} Tasks"], info="Queued")  # noqa: ERA001
-
-        return None
-
+        match self.execute_action_group(task, group=DEPENDS_GROUP, large_step=large_step):
+            case None:
+                return True
+            case _, ActRE.SKIP | ActRE.FAIL, _:
+                return False
+            case _:
+                return True
 ##--|
 
 @Proto(TaskRunner_p, check=False)
-@Mixin(_ActionExecution_m, RU._RunnerCtx_m, RU._RunnerHandlers_m)
+@Mixin(RU._RunnerCtx_m, RU._RunnerHandlers_m)
 class DootRunner:
     """ The simplest single threaded task runner """
 
-    step          : int
-    tracker       : TaskTracker_p
-    teardown_list : list
+    large_step     : int
+    tracker        : TaskTracker_p
+    teardown_list  : list
+    executor       : ActionExecutor
 
-    def __init__(self:Self, *, tracker:TaskTracker_p):
+    def __init__(self:Self, *, tracker:TaskTracker_p, executor:Maybe[ActionExecutor]=None):
         super().__init__()
-        self.step          = 0
-        self.tracker       = tracker
-        self.teardown_list = [] # list of tasks to teardown
+        self.large_step           = 0
+        self.tracker        = tracker
+        self.executor       = executor or ActionExecutor()
+        self.teardown_list  = []                                                                   # list of tasks to teardown
 
-    def __call__(self, *tasks:str, handler:Maybe[bool|type[ContextManager]|ContextManager]=None): #noqa: ARG002
+    def __call__(self, *tasks:str, handler:Maybe[bool|type[ContextManager]|ContextManager]=None):  #noqa: ARG002
         """ tasks are initial targets to run.
           so loop on the tracker, getting the next task,
           running its actions,
@@ -249,7 +232,7 @@ class DootRunner:
 
         assert(isinstance(handler, ContextManager))
         with handler:
-            while bool(self.tracker) and self.step < max_steps:
+            while bool(self.tracker) and self.large_step < max_steps:
                 self.run_next_task()
             else:
                 pass
@@ -259,7 +242,7 @@ class DootRunner:
           Get the next task from the tracker, expand/run it,
           and handle the result/failure
         """
-        task = None
+        task : Maybe[Task_p|Artifact_i] = None
         try:
             match (task:=self.tracker.next_for()):
                 case None:
@@ -282,48 +265,69 @@ class DootRunner:
             self.tracker.clear()
             raise
         else:
-            self.handle_task_success(task)
+            self.handle_success(task)
             self.sleep_after(task)
-            self.step += 1
+            self.large_step += 1
 
     def expand_job(self, job:Job_p) -> None:
         """ turn a job into all of its tasks, including teardowns """
-        logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
+        logmod.debug("-- Expanding Job %s: %s", self.large_step, job.name)
         assert(isinstance(job, Job_p))
         try:
-            doot.report.branch(job.spec.name, info=f"Job {self.step}")
-            if not self.test_conditions(job):
+            doot.report.branch(job.spec.name, info=f"Job {self.large_step}")
+            if not self.executor.test_conditions(job, large_step=self.large_step):
                 return
 
-            self._execute_action_group(job, group=SETUP_GROUP)
-            self._execute_action_group(job, allow_queue=True, group=ACTION_GROUP)
+            self.executor.execute_action_group(job, group=SETUP_GROUP, large_step=self.large_step)
+            match self.executor.execute_action_group(job, group=ACTION_GROUP, large_step=self.large_step):
+                case None:
+                    pass
+                case int(), ActRE(), [*xs]:
+                    self._queue_more_tasks(job.name, xs)
         except doot.errors.DootError as err:
-            self._execute_action_group(job, group=FAIL_GROUP)
+            self.executor.execute_action_group(job, group=FAIL_GROUP, large_step=self.large_step)
             raise
 
     def execute_task(self, task:Task_p) -> None:
         """ execute a single task's actions """
-        logmod.debug("-- Expanding Task %s: %s", self.step, task.name)
+        logmod.debug("-- Expanding Task %s: %s", self.large_step, task.name)
         assert(not isinstance(task, Job_p))
         try:
-            doot.report.branch(task.spec.name, info=f"Task {self.step}")
-            if not self.test_conditions(task):
+            doot.report.branch(task.spec.name, info=f"Task {self.large_step}")
+            if not self.executor.test_conditions(task, large_step=self.large_step):
                 return
 
-            self._execute_action_group(task, group=SETUP_GROUP)
-            self._execute_action_group(task, group=ACTION_GROUP)
+            self.executor.execute_action_group(task, group=SETUP_GROUP, large_step=self.large_step)
+            self.executor.execute_action_group(task, group=ACTION_GROUP, large_step=self.large_step)
         except doot.errors.DootError as err:
-            self._execute_action_group(task, group=FAIL_GROUP)
+            self.executor.execute_action_group(task, group=FAIL_GROUP, large_step=self.large_step)
             raise
 
-    def test_conditions(self, task:Task_p) -> bool:
-        """ run a task's depends_on group, coercing to a bool
-        returns False if the runner should skip the rest of the task
+    def _queue_more_tasks(self, source:TaskName_p, new_tasks:list) -> None:
+        """ When 'allowed', an action group can queue more tasks in the tracker,
+        can return a new ActRE to describe the result status of this group
         """
-        match self._execute_action_group(task, group=DEPENDS_GROUP):
-            case None:
-                return True
-            case _, ActRE.SKIP | ActRE.FAIL:
-                return False
-            case _:
-                return True
+        new_nodes : list[TaskName_p] = []
+        failures  = []
+        for spec in new_tasks:
+            match self.tracker.queue(spec):
+                case None:
+                    failures.append(spec.name)
+                case TaskName_p() as x:
+                    new_nodes.append(x)
+
+        if bool(failures):
+            raise doot.errors.JobExpansionError("Queuing generated specs failed", source, failures)
+
+        if bool(new_nodes):
+            self.tracker.build(sources=new_nodes) # type: ignore[arg-type]
+
+    ##--| handlers
+    def handle_success[T:Task_p|Artifact_i](self, task:Maybe[T]) -> Maybe[T]:
+        pass
+
+    def handle_failure(self, failure:Exception) -> None:
+        pass
+
+    def sleep_after[T:Task_p|Artifact_i](self, task:Maybe[T]) -> None:
+        pass

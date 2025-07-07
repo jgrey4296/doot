@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, ANN001, ARG002, ARG001, E712
 # Imports:
 from __future__ import annotations
 
@@ -62,6 +63,7 @@ from doot.control.runner._interface import TaskRunner_p
 # ##-- end types
 
 logging = logmod.root
+logmod.getLogger("jgdv").propagate = False
 factory = TaskFactory()
 
 class _MockObjs_m:
@@ -85,13 +87,19 @@ class TestRunner(_MockObjs_m):
     def test_sanity(self, ctor):
         assert(True is not False) # noqa: PLR0133
 
-    def test_initial(self, ctor, mocker, setup_config, runner):
+    def test_initial(self, ctor):
         # Check:
-        assert(isinstance(runner, TaskRunner_p))
+        assert(isinstance(ctor, TaskRunner_p))
+
+@pytest.mark.parametrize("ctor", [DootRunner])
+class TestRunner_Jobs(_MockObjs_m):
+
+    def test_sanity(self, ctor):
+        assert(True is not False) # noqa: PLR0133
 
     def test_expand_job(self, ctor, mocker, setup_config, runner):
-        test_cond_spy         = mocker.spy(runner, "test_conditions")
-        exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
+        test_cond_spy         = mocker.spy(runner.executor, "test_conditions")
+        exec_action_group_spy = mocker.spy(runner.executor, "execute_action_group")
 
         spec                  = factory.build("basic::job")
         job                   = DootJob(spec)
@@ -108,24 +116,30 @@ class TestRunner(_MockObjs_m):
             runner.expand_job(task)
 
     def test_expand_job_fails_conditions(self, ctor, mocker, setup_config, runner):
-        exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
+        exec_action_group_spy  = mocker.spy(runner.executor, "execute_action_group")
+        orig_method            = runner.executor.test_conditions
 
-        orig_method = runner.test_conditions
-
-        def override_tests(self, job):
-            orig_method(job)
+        def override_tests(self, job, *, large_step:int):
+            orig_method(job, large_step=large_step)
             return False
 
-        runner.test_conditions = MethodType(override_tests, runner)
+        runner.executor.test_conditions = MethodType(override_tests, runner)
 
         spec                  = factory.build("basic::job")
         job                   = DootJob(spec)
         runner.expand_job(job)
-        exec_action_group_spy.assert_called_with(job, group="depends_on")
+        exec_action_group_spy.assert_called()
+        exec_action_group_spy.assert_called_with(job, group="depends_on", large_step=0)
+
+@pytest.mark.parametrize("ctor", [DootRunner])
+class TestRunner_Tasks(_MockObjs_m):
+
+    def test_sanity(self, ctor):
+        assert(True is not False) # noqa: PLR0133
 
     def test_execute_task(self, ctor, mocker, setup_config, runner):
-        test_cond_spy         = mocker.spy(runner, "test_conditions")
-        exec_action_group_spy = mocker.spy(runner, "_execute_action_group")
+        test_cond_spy         = mocker.spy(runner.executor, "test_conditions")
+        exec_action_group_spy = mocker.spy(runner.executor, "execute_action_group")
 
         spec                  = factory.build("basic::job")
         task                  = DootTask(spec)
@@ -142,17 +156,17 @@ class TestRunner(_MockObjs_m):
             runner.execute_task(job)
 
     def test_execute_task_fails_conditions(self, ctor, mocker, setup_config, runner):
-        exec_action_group_spy   = mocker.spy(runner, "_execute_action_group")
+        exec_action_group_spy   = mocker.spy(runner.executor, "execute_action_group")
 
-        orig_method = runner.test_conditions
+        orig_method = runner.executor.test_conditions
 
-        def override_tests(self, job):
-            orig_method(job)
+        def override_tests(self, job, **kwargs):
+            orig_method(job, **kwargs)
             return False
 
-        runner.test_conditions = MethodType(override_tests, runner)
+        runner.executor.test_conditions = MethodType(override_tests, runner)
 
         spec = factory.build("basic::job")
         task = DootTask(spec)
         runner.execute_task(task)
-        exec_action_group_spy.assert_called_with(task, group="depends_on")
+        exec_action_group_spy.assert_called_with(task, group="depends_on", large_step=0)
