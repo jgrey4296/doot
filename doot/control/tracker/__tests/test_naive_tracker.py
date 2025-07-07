@@ -83,7 +83,7 @@ class TestTracker:
         assert(not False)
 
     def test_ctor(self):
-        assert(isinstance(NaiveTracker, API.TaskTracker_p))
+        assert(isinstance(NaiveTracker, API.WorkflowTracker_p))
 
     def test_basic(self, tracker):
         assert(isinstance(tracker, NaiveTracker))

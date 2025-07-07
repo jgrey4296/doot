@@ -82,7 +82,7 @@ if TYPE_CHECKING:
 
 ##--|
 from doot.workflow._interface import Task_p
-from ._interface import TaskTracker_p
+from ._interface import WorkflowTracker_p
 # isort: on
 # ##-- end types
 

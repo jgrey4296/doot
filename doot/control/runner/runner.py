@@ -33,7 +33,7 @@ from jgdv.debugging import NullHandler, SignalHandler
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.control.runner._interface import TaskRunner_p
+from doot.control.runner._interface import WorkflowRunner_p
 from doot.workflow import (ActionSpec, RelationSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.workflow._interface import ActionResponse_e as ActRE
 from doot.workflow._interface import Job_p, Task_p, TaskName_p, TaskSpec_i, ActionSpec_i, RelationSpec_i
@@ -41,6 +41,7 @@ from doot.workflow._interface import Job_p, Task_p, TaskName_p, TaskSpec_i, Acti
 # ##-- end 1st party imports
 
 # ##-| Local
+from . import _interface as API # noqa: N812
 from . import util as RU
 
 # # End of Imports.
@@ -58,7 +59,7 @@ from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
     from doot.util.factory import DelayedSpec
-    from doot.control.tracker._interface import TaskTracker_p
+    from doot.control.tracker._interface import WorkflowTracker_p
     from doot.workflow._interface import Artifact_i
     from jgdv import Maybe
     from typing import Final
@@ -90,7 +91,7 @@ DEPENDS_GROUP       : Final[str]   = "depends_on"
 ##--|
 
 class ActionExecutor:
-    """ Covers the nuts and bolts of executing an action group """
+    """ An internal object handling the logic of running action(groups) of a task """
 
     def execute_action_group(self, task:Task_p, *, group:str, large_step:int) -> Maybe[tuple[int, ActRE, list]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
@@ -192,24 +193,24 @@ class ActionExecutor:
                 return True
 ##--|
 
-@Proto(TaskRunner_p, check=False)
+@Proto(WorkflowRunner_p, check=False)
 @Mixin(RU._RunnerCtx_m, RU._RunnerHandlers_m)
 class DootRunner:
     """ The simplest single threaded task runner """
 
     large_step     : int
-    tracker        : TaskTracker_p
+    tracker        : WorkflowTracker_p
     teardown_list  : list
     executor       : ActionExecutor
 
-    def __init__(self:Self, *, tracker:TaskTracker_p, executor:Maybe[ActionExecutor]=None):
+    def __init__(self:Self, *, tracker:WorkflowTracker_p, executor:Maybe[ActionExecutor]=None):
         super().__init__()
         self.large_step           = 0
         self.tracker        = tracker
         self.executor       = executor or ActionExecutor()
         self.teardown_list  = []                                                                   # list of tasks to teardown
 
-    def __call__(self, *tasks:str, handler:Maybe[bool|type[ContextManager]|ContextManager]=None):  #noqa: ARG002
+    def __call__(self, *tasks:str, handler:Maybe[API.Handler]=None):  #noqa: ARG002
         """ tasks are initial targets to run.
           so loop on the tracker, getting the next task,
           running its actions,
@@ -323,6 +324,7 @@ class DootRunner:
             self.tracker.build(sources=new_nodes) # type: ignore[arg-type]
 
     ##--| handlers
+
     def handle_success[T:Task_p|Artifact_i](self, task:Maybe[T]) -> Maybe[T]:
         pass
 

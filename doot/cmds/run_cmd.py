@@ -59,8 +59,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from jgdv.structs.chainguard import ChainGuard
-    from doot.control.runner._inteface import TaskRunner_p
-    from doot.control.tracker._interface import TaskTracker_p
+    from doot.control.runner._inteface import WorkflowRunner_p
+    from doot.control.tracker._interface import WorkflowTracker_p
 
 # isort: on
 # ##-- end types
@@ -98,8 +98,8 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, *, idx:int, tasks:ChainGuard, plugins:ChainGuard):
-        tracker    : TaskTracker_p
-        runner     : TaskRunner_p
+        tracker    : WorkflowTracker_p
+        runner     : WorkflowRunner_p
         interrupt  : Maybe[bool|type[ContextManager]|ContextManager]
         ##--|
         doot.load_reporter(target=reporter_target)
@@ -123,7 +123,7 @@ class RunCmd(BaseCommand):
                 return
             runner(handler=interrupt)
 
-    def _create_tracker_and_runner(self, idx:int, plugins:ChainGuard) -> tuple[TaskTracker_p, TaskRunner_p]:
+    def _create_tracker_and_runner(self, idx:int, plugins:ChainGuard) -> tuple[WorkflowTracker_p, WorkflowRunner_p]:
         # Note the final parens to construct:
         trackers  = plugins.on_fail([], list).tracker()
         runners   = plugins.on_fail([], list).runner()
@@ -161,7 +161,7 @@ class RunCmd(BaseCommand):
                 return None
 
 
-    def _register_specs(self, idx:int, tracker:TaskTracker_p, tasks:ChainGuard) -> None:
+    def _register_specs(self, idx:int, tracker:WorkflowTracker_p, tasks:ChainGuard) -> None:
         doot.report.trace("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
             tracker.register(task)
@@ -172,7 +172,7 @@ class RunCmd(BaseCommand):
             case _:
                 pass
 
-    def _queue_tasks(self, idx:int, tracker:TaskTracker_p) -> None:
+    def _queue_tasks(self, idx:int, tracker:WorkflowTracker_p) -> None:
         doot.report.trace("Queuing Initial Tasks...")
         doot.report.gap()
 
@@ -186,7 +186,7 @@ class RunCmd(BaseCommand):
         else:
             doot.report.trace("%s Tasks Queued", len(tracker.active))
 
-    def _confirm_plan(self, idx:int, runner:TaskRunner_p) -> bool:
+    def _confirm_plan(self, idx:int, runner:WorkflowRunner_p) -> bool:
         """ Generate and Confirm the plan from the tracker"""
         if not doot.args.on_fail(False).cmd[self.name][idx].args.confirm():  # noqa: FBT003
             return True

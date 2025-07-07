@@ -50,7 +50,7 @@ from doot.workflow._interface import (CLI_K, MUST_INJECT_K, Artifact_i,
 # ##-| Local
 from . import _interface as API # noqa: N812
 from ._base import Tracker_abs
-from ._interface import TaskTracker_p
+from ._interface import WorkflowTracker_p
 from .network import TrackNetwork
 from .queue import TrackQueue
 from .registry import TrackRegistry
@@ -93,7 +93,7 @@ logging    = logmod.getLogger(__name__)
 assert(isinstance(TrackRegistry, API.Registry_p))
 ##--|
 
-@Proto(API.TaskTracker_p)
+@Proto(WorkflowTracker_p)
 class NaiveTracker(Tracker_abs):
     """ Specific implementations for the default naive tracker """
     _registry : TrackRegistry

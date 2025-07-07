@@ -82,12 +82,12 @@ class TrackQueue:
     active_set       : set[Concrete[TaskName_p]|Artifact_i]
     execution_trace  : list[Concrete[TaskName_p|Artifact_i]]
     # TODO use this instead of _tracker._registry and _tracker._network
-    _tracker         : API.TaskTracker_i
+    _tracker         : API.WorkflowTracker_i
     _queue           : boltons.queueutils.HeapPriorityQueue
 
-    def __init__(self, *, tracker:API.TaskTracker_p) -> None:
+    def __init__(self, *, tracker:API.WorkflowTracker_p) -> None:
         match tracker:
-            case API.TaskTracker_i():
+            case API.WorkflowTracker_i():
                 self._tracker = tracker
             case x:
                 raise TypeError(type(x))

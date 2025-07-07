@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 
 ##--|
 from doot.workflow._interface import (Job_p, Task_p)
-from doot.control.tracker._interface import TaskTracker_p
+from doot.control.tracker._interface import WorkflowTracker_p
 # isort: on
 # ##-- end types
 
@@ -162,7 +162,7 @@ def mock_param_spec(name, val, type=Any):
     return m
 
 def mock_tracker(tasks):
-    tracker_m        = MagicMock(spec=TaskTracker_p)
+    tracker_m        = MagicMock(spec=WorkflowTracker_p)
     local_tasks      = tasks[:]
 
     def simple_pop():

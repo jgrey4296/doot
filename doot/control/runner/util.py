@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import TaskRunner_p
+    from ._interface import WorkflowRunner_p
 
 
 ##--|
@@ -81,13 +81,13 @@ class _RunnerCtx_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def __init__(self:TaskRunner_p, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+    def __init__(self:WorkflowRunner_p, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs) # type: ignore[safe-super]
         self._enter_msg      = loop_entry_msg
         self._exit_msg       = loop_exit_msg
         self._signal_failure = None
 
-    def __enter__(self:TaskRunner_p) -> TaskRunner_p:
+    def __enter__(self:WorkflowRunner_p) -> WorkflowRunner_p:
         logging.info("Entering Runner Control")
         doot.report.trace("Building Task Network...")
         doot.report.gap()
@@ -105,13 +105,13 @@ class _RunnerCtx_m:
         doot.report.root()
         return self
 
-    def __exit__(self:TaskRunner_p, exc_type:type[Exception], exc_value:Exception, exc_traceback:Traceback) -> Literal[False]:
+    def __exit__(self:WorkflowRunner_p, exc_type:type[Exception], exc_value:Exception, exc_traceback:Traceback) -> Literal[False]:
         logging.info("Exiting Runner Control")
         # TODO handle exc_types?
         self._finish()
         return False
 
-    def _finish(self:TaskRunner_p) -> None:
+    def _finish(self:WorkflowRunner_p) -> None:
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
@@ -131,7 +131,7 @@ class _RunnerHandlers_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def handle_success[T:Maybe[Task_p|TaskArtifact]](self:TaskRunner_p, task:T) -> T:
+    def handle_success[T:Maybe[Task_p|TaskArtifact]](self:WorkflowRunner_p, task:T) -> T:
         """ The basic success handler. just informs the tracker of the success """
         match task:
             case None:
@@ -143,7 +143,7 @@ class _RunnerHandlers_m:
                 self.tracker.set_status(task.name, TaskStatus_e.SUCCESS)
         return task
 
-    def handle_failure(self:TaskRunner_p, failure:Exception) -> None:
+    def handle_failure(self:WorkflowRunner_p, failure:Exception) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.
@@ -180,12 +180,12 @@ class _RunnerHandlers_m:
                 doot.report.error("%s Unknown failure occurred: %s", fail_prefix, failure)
                 raise err
 
-    def notify_artifact(self:TaskRunner_p, art:TaskArtifact) -> None:
+    def notify_artifact(self:WorkflowRunner_p, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         doot.report.result(["Artifact: %s", art])
         raise doot.errors.StateError("Artifact resolutely does not exist", art)
 
-    def sleep_after(self:TaskRunner_p, task:Maybe[Task_p|Artifact_i]) -> None:
+    def sleep_after(self:WorkflowRunner_p, task:Maybe[Task_p|Artifact_i]) -> None:
         """
           The runner's sleep method, which spaces out tasks
         """

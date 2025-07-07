@@ -39,7 +39,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, Traceback
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Self, Literal, ContextManager
@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from doot.control.tracker._interface import TaskTracker_p
+    from doot.control.tracker._interface import WorkflowTracker_p
     from doot.workflow._interface import Artifact_i, Task_p
 ##--|
 
@@ -59,9 +59,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+type Handler = bool|type[ContextManager]|ContextManager
 # Body:
 
+@runtime_checkable
 class RunnerHandlers_p(Protocol):
 
     def run_next_task(self) -> None: ...
@@ -75,19 +76,13 @@ class RunnerHandlers_p(Protocol):
     def sleep_after(self, task:Maybe[Task_p|Artifact_i]) -> None: ...
 
 @runtime_checkable
-class TaskRunner_p(Protocol):
+class WorkflowRunner_p(Protocol):
     """
     Run tasks, actions, and jobs
     """
 
-    def __enter__(self) -> Self:
-        pass
+    def __init__(self, *, tracker:WorkflowTracker_p): ...
+    def __call__(self, *tasks:str, handler:Maybe[Handler]=None) -> bool: ...
+    def __enter__(self) -> Self: ...
 
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:  # noqa: ANN001
-        pass
-
-    def __init__(self, *, tracker:TaskTracker_p):
-        pass
-
-    def __call__(self, *tasks:str, handler:Maybe[bool|type[ContextManager]|ContextManager]=None) -> bool:
-        pass
+    def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool: ...

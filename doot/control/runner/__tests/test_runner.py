@@ -29,12 +29,16 @@ from jgdv.structs.chainguard import ChainGuard
 import doot
 from doot.control.runner.runner import DootRunner
 from doot.control.tracker import NaiveTracker
-from doot.util.factory import TaskFactory
 from doot.util.dkey import DKey
+from doot.util.factory import TaskFactory
 from doot.workflow import ActionSpec, DootJob, DootTask, TaskName, TaskSpec
 from doot.workflow._interface import TaskStatus_e
 
 # ##-- end 1st party imports
+
+from .. import _interface as API # noqa: N812
+from doot.workflow._interface import Action_p
+from doot.control.runner._interface import WorkflowRunner_p
 
 # ##-- types
 # isort: off
@@ -57,8 +61,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from doot.workflow._interface import Action_p
-from doot.control.runner._interface import TaskRunner_p
 # isort: on
 # ##-- end types
 
@@ -89,7 +91,8 @@ class TestRunner(_MockObjs_m):
 
     def test_initial(self, ctor):
         # Check:
-        assert(isinstance(ctor, TaskRunner_p))
+        assert(isinstance(ctor, API.WorkflowRunner_p))
+        assert(isinstance(ctor, API.RunnerHandlers_p))
 
 @pytest.mark.parametrize("ctor", [DootRunner])
 class TestRunner_Jobs(_MockObjs_m):
@@ -160,7 +163,7 @@ class TestRunner_Tasks(_MockObjs_m):
 
         orig_method = runner.executor.test_conditions
 
-        def override_tests(self, job, **kwargs):
+        def override_tests(self, job, **kwargs:Any):
             orig_method(job, **kwargs)
             return False
 

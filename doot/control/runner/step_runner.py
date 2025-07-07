@@ -44,7 +44,7 @@ from typing import TYPE_CHECKING, cast, assert_type, assert_never
 from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
-from doot.control.runner._interface import TaskRunner_p
+from doot.control.runner._interface import WorkflowRunner_p
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
@@ -280,7 +280,7 @@ class _Stepper_m:
 
 
 ##--|
-@Proto(TaskRunner_p)
+@Proto(WorkflowRunner_p)
 @Mixin(_Instructions_m, _Stepper_m)
 class DootStepRunner(DootRunner):
     """ extends the default runner with step control """

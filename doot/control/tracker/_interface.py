@@ -162,14 +162,14 @@ class ArtifactMeta_d:
 
 class Registry_d:
 
-    _tracker   : TaskTracker_p
+    _tracker   : WorkflowTracker_p
     specs      : dict[TaskName_p, SpecMeta_d]
     artifacts  : dict[Artifact_i, ArtifactMeta_d]
 
     abstract   : set[Abstract[TaskName_p] | Artifact_i]
     concrete   : set[Abstract[TaskName_p] | Artifact_i]
 
-    def __init__(self, *, tracker:TaskTracker_p) -> None:
+    def __init__(self, *, tracker:WorkflowTracker_p) -> None:
         self._tracker   = tracker
         self.specs      = {}
         self.artifacts  = {}
@@ -216,7 +216,7 @@ class Queue_p(Protocol):
 ##--| Tracker
 
 @runtime_checkable
-class TaskTracker_p(Protocol):
+class WorkflowTracker_p(Protocol):
     """
     Track tasks that have run, need to run, are running,
     and have failed.
@@ -278,7 +278,7 @@ class TaskTracker_p(Protocol):
     def _successor_states_of(self, focus:TaskName_p) -> list[tuple]: ...
 
 @runtime_checkable
-class TaskTracker_i(TaskTracker_p, Protocol):
+class WorkflowTracker_i(WorkflowTracker_p, Protocol):
     _root_node          : TaskName_p
     _factory            : TaskFactory_p
     _subfactory         : SubTaskFactory_p

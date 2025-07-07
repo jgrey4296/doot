@@ -98,7 +98,7 @@ DRAW_OPTIONS : Final[dict]  = dict(
 
 class _Expansion_m:
 
-    _tracker  : API.TaskTracker_i
+    _tracker  : API.WorkflowTracker_i
     pred      : Mapping
     succ      : Mapping
     nodes     : Mapping
@@ -360,7 +360,7 @@ class _Expansion_m:
 
 class _Validation_m:
 
-    _tracker  : API.TaskTracker_i
+    _tracker  : API.WorkflowTracker_i
     _graph    : Any
     nodes     : Mapping
     edges     : Mapping
@@ -452,13 +452,13 @@ class _Validation_m:
 class TrackNetwork:
     """ The _graph of concrete tasks and their dependencies """
     # TODO use this instaed of _tracker._registry
-    _tracker      : API.TaskTracker_p
+    _tracker      : API.WorkflowTracker_p
     _graph        : nx.DiGraph[Concrete[TaskName_p]|TaskArtifact]
 
     non_expanded  : set[TaskName_p|Artifact_i]
-    def __init__(self, *, tracker:API.TaskTracker_p) -> None:
+    def __init__(self, *, tracker:API.WorkflowTracker_p) -> None:
         match tracker:
-            case API.TaskTracker_p():
+            case API.WorkflowTracker_p():
                 self._tracker = tracker
             case x:
                 raise TypeError(type(x))
