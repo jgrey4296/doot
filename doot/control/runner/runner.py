@@ -171,7 +171,7 @@ class _ActionExecution_m:
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
                 raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.name, action.do, task=task.spec)
-            case ActRE.SKIP:
+            case ActRE.SKIP as result:
                 # result will be returned, and expand_job/execute_task will handle it
                 pass
             case dict() as data: # update the task's state
