@@ -141,7 +141,6 @@ class NaiveTracker(Tracker_abs):
             logging.info("[Next.For] <- %s", result)
             return result
 
-
     def _next_for_task(self, focus:TaskName_p) -> Maybe[Task_p]:  # noqa: PLR0912, PLR0915
         """ logic for handling a dequed task """
         x : Any
@@ -260,92 +259,13 @@ class NaiveTracker(Tracker_abs):
         parent  = kwargs.pop("parent", None)
         match super()._instantiate(target, *args, task=task, **kwargs):
             case TaskName_p() as result if task:
-                self._late_inject(result, parent=parent)
+                self._apply_injections(result, parent=parent)
             case result:
                 pass
 
         return result
 
     ##--| internal
-
-    def _late_inject(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:  # noqa: PLR0912, PLR0915
-        """ After a task is created, values can be injected into it.
-        these include, in order:
-        - parent internal_state,
-        - cli params
-        - instantiator internal_state injection
-        """
-        x            : Any
-        meta         : API.SpecMeta_d
-        task         : Task_p
-        task_args    : dict
-        inj_control  : Maybe[TaskName_p]
-        inj          : InjectSpec_i
-        ##--|
-        match self.specs[name]:
-            case API.SpecMeta_d(task=Task_p() as task) as meta:
-                pass
-            case x:
-                raise TypeError(type(x))
-        ##--| Get parent data (for cleanup tasks
-        match self.specs.get(parent, None): # type: ignore[arg-type]
-            case None:
-                pass
-            case API.SpecMeta_d(task=Task_p() as p_task):
-                task.internal_state.update(p_task.internal_state) # type: ignore[attr-defined]
-
-        ##--| apply CLI params
-        assert(hasattr(task, "param_specs"))
-        match task.param_specs():
-            case []:
-                pass
-            case [*xs]:
-                # Apply CLI passed params, but only as the default
-                # So if override values have been injected, they are preferred
-                target     = task.name.pop(top=True)[:,:]
-                match doot.args.on_fail([]).subs[target]():
-                    case [x]:
-                        task_args = x.args
-                    case []:
-                        task_args = {}
-                    case x:
-                        raise TypeError(type(x))
-
-                for cli in xs:
-                    task.internal_state.setdefault(cli.name, task_args.get(cli.name, cli.default)) # type: ignore[attr-defined]
-
-                if CLI_K in task.internal_state: # type: ignore[attr-defined]
-                    del task.internal_state[CLI_K] # type: ignore[attr-defined]
-
-        ##--| apply late injections
-        match meta.injection_source:
-            case None:
-                inj_control = None
-            case TaskName_p() as inj_control, _ if inj_control not in self.specs:
-                raise ValueError("Late Injection source is not a task", inj_control)
-            case TaskName_p() as inj_control, InjectSpec_i() as inj:
-                pass
-
-        match self.specs.get(inj_control, None): # type: ignore[arg-type]
-            case None:
-                pass
-            case API.SpecMeta_d(task=Task_p() as control):
-                task.internal_state.update(inj.apply_from_state(control))
-                if not inj.validate(cast("Task_i", control), task):
-                    raise doot.errors.TrackingError("Late Injection Failed")
-                # TODO remvoe  the injection from the registry
-            case x:
-                raise TypeError(type(x))
-
-        ##--| validate
-        match task.spec.extra.on_fail([])[MUST_INJECT_K](): # type: ignore[attr-defined]
-            case []:
-                pass
-            case [*xs] if bool(missing:=[x for x in xs if x not in task.internal_state]): # type: ignore[attr-defined]
-                raise doot.errors.TrackingError("Task did not receive required injections", task.name, xs, task.internal_state.keys()) # type: ignore[attr-defined]
-
-        ##--| prep actions
-        task.prepare_actions()
 
     def _dependency_states_of(self, focus:TaskName_p|Artifact_i) -> list[tuple]:
         return [(x, self.get_status(target=x)[0]) for x in self._network.pred[focus]]
@@ -370,10 +290,95 @@ class NaiveTracker(Tracker_abs):
 
         return focus
 
-
     ##--| utils
+
     def get_status(self, *, target:Maybe[Concrete[TaskName_p]|Artifact_i]=None) -> tuple[TaskStatus_e|ArtifactStatus_e, int]:
         return self._registry.get_status(target)
 
     def set_status(self, task:Concrete[TaskName_p]|Artifact_i|Task_p, internal_state:TaskStatus_e) -> bool:
         return self._registry.set_status(task, internal_state) # type: ignore[attr-defined]
+
+    def _apply_injections(self, name:TaskName_p, *, parent:Maybe[TaskName_p]=None) -> None:
+        """ After a task is created, values can be injected into it.
+        these include, in order:
+        - parent internal_state,
+        - cli params
+        - instantiator internal_state injection
+        """
+        x            : Any
+        meta         : API.SpecMeta_d
+        task         : Task_p
+        idx          : int = 0
+        ##--|
+        match self.specs[name]:
+            case API.SpecMeta_d(task=Task_p() as task) as meta:
+                pass
+            case x:
+                raise TypeError(type(x))
+        ##--| Get parent data (for cleanup tasks
+        match self._get_parent_data(parent):
+            case None:
+                pass
+            case dict() as pdata:
+                task.internal_state.update(pdata)
+        ##--| apply CLI params
+        match self._get_cli_data(name):
+            case None:
+                pass
+            case dict() as cdata:
+                # Apply CLI passed params, but only as the default
+                # So if override values have been injected, they are preferred
+                for x,y in cdata.items():
+                    task.internal_state.setdefault(x, y)
+
+        ##--| apply late injections
+        match self._get_inject_data(name):
+            case None:
+                pass
+            case dict() as idata:
+                task.internal_state.update(idata)
+
+        ##--| validate
+        if CLI_K in task.internal_state: # type: ignore[attr-defined]
+            del task.internal_state[CLI_K] # type: ignore[attr-defined]
+        match task.spec.extra.on_fail([])[MUST_INJECT_K](): # type: ignore[attr-defined]
+            case []:
+                pass
+            case [*xs] if bool(missing:=[x for x in xs if x not in task.internal_state]): # type: ignore[attr-defined]
+                raise doot.errors.TrackingError("Task did not receive required injections", task.name, xs, task.internal_state.keys()) # type: ignore[attr-defined]
+
+        ##--| prep actions
+        task.prepare_actions()
+
+    def _get_parent_data(self, parent:Maybe[TaskName_p]=None) -> Maybe[dict]:
+        match self.specs.get(parent, None): # type: ignore[arg-type]
+            case None:
+                return None
+            case API.SpecMeta_d(task=Task_p() as p_task):
+                return dict(p_task.internal_state)
+
+    def _get_cli_data(self, name:TaskName_p) -> Maybe[dict]:
+        idx = 0
+        target = name.pop()[:,:]
+        return doot.args.on_fail({}).subs[target][idx]['args']()
+
+    def _get_inject_data(self, name:TaskName_p) -> Maybe[dict]:
+        inj_control  : TaskName_p
+        inj          : InjectSpec_i
+        meta  = self.specs[name]
+
+        match meta.injection_source:
+            case None:
+                inj_control = None
+            case TaskName_p() as inj_control, _ if inj_control not in self.specs:
+                raise ValueError("Late Injection source is not a task", inj_control)
+            case TaskName_p() as inj_control, InjectSpec_i() as inj:
+                pass
+
+        match self.specs.get(inj_control, None): # type: ignore[arg-type]
+            case None:
+                return None
+            case API.SpecMeta_d(task=Task_p() as control):
+                return inj.apply_from_state(control)
+            case x:
+                raise TypeError(type(x))
