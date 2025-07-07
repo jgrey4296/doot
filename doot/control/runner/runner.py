@@ -194,7 +194,7 @@ class ActionExecutor:
 ##--|
 
 @Proto(WorkflowRunner_p, check=False)
-@Mixin(RU._RunnerCtx_m, RU._RunnerHandlers_m)
+@Mixin(RU._RunnerCtx_m, RU._RunnerHandlers_m, None)
 class DootRunner:
     """ The simplest single threaded task runner """
 
@@ -326,10 +326,10 @@ class DootRunner:
     ##--| handlers
 
     def handle_success[T:Task_p|Artifact_i](self, task:Maybe[T]) -> Maybe[T]:
-        pass
+        raise NotImplementedError()
 
     def handle_failure(self, failure:Exception) -> None:
-        pass
+        raise NotImplementedError()
 
     def sleep_after[T:Task_p|Artifact_i](self, task:Maybe[T]) -> None:
-        pass
+        raise NotImplementedError()

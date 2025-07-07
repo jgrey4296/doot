@@ -81,7 +81,7 @@ class _RunnerCtx_m:
 
     _signal_failure : Maybe[doot.errors.DootError]
 
-    def __init__(self:WorkflowRunner_p, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs) # type: ignore[safe-super]
         self._enter_msg      = loop_entry_msg
         self._exit_msg       = loop_exit_msg
@@ -116,7 +116,7 @@ class _RunnerCtx_m:
           separate from __exit__ to allow it to be overridden
         """
         logging.info("Running Completed")
-        if self.step >= max_steps:
+        if self.large_step >= max_steps:
             doot.report.warn("Runner Hit the Step Limit: %s", max_steps)
 
         doot.report.finished().gap().line(self._exit_msg)
