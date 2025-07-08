@@ -512,28 +512,44 @@ class DootOverlord:
 
     def update_cmd_args(self, data:ParseReport_d|dict, *,  override:bool=False) -> None:
         """ update global args that cmd's use for control flow """
+        prepared : dict
         ##--|
         match data:
             case _ if bool(self.args) and not override:
                 raise ValueError("Setting Parsed args but its already set")
-            case {"prog": dict() as prog, "cmds": dict() as cmds, "subs": list() as subs, "help": bool() as help}:
-                data = {
+            case {"prog": dict() as prog, "cmds": dict() as cmds, "subs": list() as subs, "help": bool() as _help}:
+                prepared = {
                     "prog" : prog,
                     "cmds" : cmds,
                     "subs" : subs,
-                    "help" : help,
+                    "help" : _help,
                 }
             case ParseReport_d():
-                data = data.to_dict()
+                prepared = data.to_dict()
             case x:
                 raise TypeError(type(x))
 
         ##--|
-        assert(bool(data))
-        assert(all(x in data for x in ["prog", "cmds", "subs", "help"]))
-        assert(isinstance(data['cmds'], dict))
-        assert(isinstance(data['subs'], dict))
-        self.args = ChainGuard(data)
+        assert(bool(prepared))
+        assert(all(x in prepared for x in ["prog", "cmds", "subs", "help"]))
+        assert(isinstance(prepared['cmds'], dict))
+        assert(isinstance(prepared['subs'], dict))
+        # Handle 'help'
+        match prepared:
+            case _ if not prepared['help']:
+                pass
+            case {"subs": _subs} if bool(_subs):
+                prepared['cmds'].clear()
+                prepared['cmds']['help'] = []
+                prepared['cmds']['help'] += [{"name":"help", "args":{"target": x}} for x in _subs.keys()]
+            case {"cmds": _cmds} if bool(_cmds):
+                keys = list(_cmds.keys())
+                prepared['cmds'].clear()
+                prepared['cmds']['help'] = []
+                prepared['cmds']['help'] += [{"name":"help", "args":{"target": x}} for x in keys]
+
+
+        self.args = ChainGuard(prepared)
 
 ##--| Facade
 

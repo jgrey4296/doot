@@ -192,8 +192,8 @@ class TestOverlord_cmd_args:
 
     def test_set_parsed_cli_args_empty(self):
         do      = DootOverlord()
-        report  = ParseReport_d(raw=[], remaining=[], help=False,
-                               prog=ParseResult_d("prog", args={}, ref=None),
+        report  = ParseReport_d(raw=[], remaining=[], _help=False,
+                                prog=ParseResult_d("prog", args={}, ref=None),
                                )
         assert(not bool(do.args))
         do.update_cmd_args(report)
@@ -202,7 +202,7 @@ class TestOverlord_cmd_args:
 
     def test_set_parsed_cli_args_prog(self):
         do      = DootOverlord()
-        report  = ParseReport_d(raw=[], remaining=[], help=False,
+        report  = ParseReport_d(raw=[], remaining=[], _help=False,
                                prog=ParseResult_d("prog", args={"blah":2}, ref=None),
                                )
         assert(not bool(do.args))
@@ -213,7 +213,7 @@ class TestOverlord_cmd_args:
 
     def test_set_parsed_cli_args_cmds(self):
         do      = DootOverlord()
-        report  = ParseReport_d(raw=[], remaining=[], help=False,
+        report  = ParseReport_d(raw=[], remaining=[], _help=False,
                                prog=ParseResult_d("prog", args={}, ref=None),
                                )
         report.cmds['blah'] = (ParseResult_d(name="blah", args={"aweg":2}), )
@@ -225,7 +225,7 @@ class TestOverlord_cmd_args:
 
     def test_set_parsed_args_subs(self):
         do      = DootOverlord()
-        report  = ParseReport_d(raw=[], remaining=[], help=False,
+        report  = ParseReport_d(raw=[], remaining=[], _help=False,
                                prog=ParseResult_d("prog", args={}, ref=None),
                                )
         report.subs['blah'] = (ParseResult_d(name="blah", args={"aweg":2}), )

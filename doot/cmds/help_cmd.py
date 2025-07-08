@@ -162,7 +162,6 @@ class _HelpTask_m:
             case _:
                 ctor = spec.ctor
 
-        assert(isinstance(ctor, Task_p))
         if ctor is not None:
             result.append(f"{GROUP_INDENT} Ctor Class:")
             result += ctor.class_help()
@@ -182,7 +181,7 @@ class _HelpTask_m:
             result.append(f"{GROUP_INDENT} Task Actions: ")
             sub_indent = (1 + len(ITEM_INDENT)) * " "
             for action in spec.actions:
-                result.append(f"{ITEM_INDENT} {action.do:-30}:")
+                result.append(f"{ITEM_INDENT} {action.do[1:,:]:>60} :")
 
         result += self._task_param_assignments(spec)
 
@@ -249,7 +248,7 @@ class HelpCmd(BaseCommand):
         task_targets = []
         cmd_targets  = []
         self_help    = False
-        match dict(doot.args.cmds[self.name][idx].args[self.name][idx]):
+        match dict(doot.args.cmds[self.name][idx].args):
             case {"target": ""|None} if bool(doot.args.subs):
                 # No target, generate list of all tasks
                 task_targets += [tasks[x] for x in doot.args.subs.keys()]

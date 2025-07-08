@@ -222,9 +222,7 @@ class CLIController:
                 case None:
                     # cmd name is not an alias
                     result.append(x)
-                case list() if 0 < i and sep not in raw[i-1:i]:
-                    result.append(x)
-                case [name, *_] as args:
+                case [name, *_] as args if name in doot.loaded_cmds:
                     # is an alias
                     logging.debug("Using Alias: %s -> %s", x, args)
                     result += args
@@ -238,6 +236,8 @@ class CLIController:
         match doot.config.on_fail(DEFAULT_IMPLICIT_CMD, list).startup.implicit_cmd():
             case [x, *_] as xs:
                 result[x] = xs
+            case []:
+                pass
             case x:
                 raise TypeError(type(x))
         return result
@@ -275,14 +275,15 @@ class CmdController:
 
     def get_cmd_instance(self, obj:DM, *, cmd:str) -> Command_p:
         """ Uses the full command name to get the instance of the command """
-        x : Any
+        x       : Any
+        target  : str
         ##--|
         logging.debug("Initial Retrieval attempt: %s", cmd)
         match doot.loaded_cmds.get(cmd, None):
             case Command_p() as x:
                 return x
             case x:
-                raise TypeError(type(x), cmd)
+                raise TypeError(type(x), x)
 
     def run_cmd(self, *, idx:int, cmd:Command_p) -> int:
         """

@@ -129,7 +129,7 @@ class _StubParam_m:
         result = [
             "# - CLI Arg Form. Add to task spec: cli=[]",
             '{',
-            'name="{}",'.format(doot.args.on_fail("default").cmd.args.name()),
+            'name="{}",'.format(doot.args.on_fail("default").cmds.args.name()),
             'prefix="-", ',
             'type="str", ',
             'default="",',
@@ -150,7 +150,7 @@ class _StubAction_m:
     def _stub_action(self, idx:int, plugins:ChainGuard) -> list[Maybe[str]]:
         logging.info("---- Stubbing Actions")
         result : list[Maybe[str]] = []
-        target_name = doot.args.cmd[self.name][idx].args.name
+        target_name = doot.args.cmds[self.name][idx].args.name
         unaliased = doot.aliases.on_fail(target_name).action[target_name]
         matched = [x for x in plugins.action
                    if x.name == target_name
@@ -209,15 +209,17 @@ class _StubTask_m:
 
         # Create stub toml, with some basic information
         stub                  = TaskStub()
-        stub['name'].default  = self._stub_task_name(tasks)
-        self._add_ctor_specific_stub_fields(stub)
+        stub['name'].default  = self._stub_task_name(idx, tasks)
+        self._add_ctor_specific_stub_fields(idx, stub)
 
         # Output to doot.report/stdout, or file
-        if doot.args.cmd.args.out == "":
-            result.append(stub.to_toml())
-            return result
+        match doot.args.on_fail("").cmds[self.name][idx].args.out():
+            case "":
+                result.append(stub.to_toml())
+                return result
+            case str() as x:
+                task_fail = pl.Path(x)
 
-        task_file = pl.Path(doot.args.cmd.args.out)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
         doot.report.gen.user("Stubbing task %s into file: %s", stub['name'], task_file)
@@ -227,8 +229,8 @@ class _StubTask_m:
 
         return []
 
-    def _stub_task_name(self, tasks:ChainGuard) -> str:
-        match doot.args.on_fail(None).cmd.args.name():
+    def _stub_task_name(self, idx:int, tasks:ChainGuard) -> str:
+        match doot.args.on_fail(None).cmds[self.name][idx].args.name():
             case None:
                 raise doot.errors.CommandError("No Name Provided for Stub")
             case x:
@@ -243,14 +245,14 @@ class _StubTask_m:
         else:
             return name
 
-    def _add_ctor_specific_stub_fields(self, stub:TaskStub) -> None:
+    def _add_ctor_specific_stub_fields(self, idx:int, stub:TaskStub) -> None:
         """ add ctor specific fields,
         such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
         """
         task_mro : Iterable
         ##--|
-        match  doot.aliases.task.get((ctor:=doot.args.on_fail("task").cmd.args.ctor()), None):
+        match  doot.aliases.task.get((ctor:=doot.args.on_fail("task").cmds[self.name][idx].args.ctor()), None):
             case None:
                 raise doot.errors.CommandError("Task Ctor was not appliable", ctor)
             case x:
@@ -322,17 +324,17 @@ class StubCmd(BaseCommand):
             self.build_param(name="--suppress-header",  default=True, implicit=True),
         ]
 
-    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        match dict(doot.args.cmd.args):
+    def __call__(self, *, idx:int, tasks:ChainGuard, plugins:ChainGuard):
+        match dict(doot.args.cmds[self.name][idx].args):
             case {"config": True}:
                 result = self._stub_doot_toml()
             case {"action": True}:
-                result = self._stub_action(plugins)
+                result = self._stub_action(idx, plugins)
             case {"param": True}:
                 result = self._stub_cli_param()
             case {"doot.report": True}:
                 result = self._stub_printer()
             case _:
-                result = self._stub_task_toml(tasks, plugins)
+                result = self._stub_task_toml(idx, tasks, plugins)
         ##--|
         self._print_text(result)
