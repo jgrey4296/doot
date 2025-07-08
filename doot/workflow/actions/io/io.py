@@ -423,7 +423,7 @@ class LinkAction(IOBase):
             doot.report.wf.act("Link", "Hard: %s -> %s" % (x_path, y_path))
         else:
             x_path.symlink_to(y_path)
-            doot.report.wf..act("Link", "Symbolic: %s -> %s" % (x_path, y_path))
+            doot.report.wf.act("Link", "Symbolic: %s -> %s" % (x_path, y_path))
 
 class ListFiles(IOBase):
     """ add a list of all files in a path (recursively) to the state """
