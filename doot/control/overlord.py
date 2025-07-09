@@ -71,18 +71,18 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, overload
 
 if TYPE_CHECKING:
-    from importlib.meta import EntryPoint
+    from importlib.metadata import EntryPoint
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from logmod import Logger
 
     from jgdv import Maybe
     from doot.errors import DootError
 
+    type Logger = logmod.Logger
     type Loadable = DootAPI.Loadable
 
 ##--|

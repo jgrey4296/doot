@@ -1,5 +1,4 @@
 # Librarian-envs spec file
-# mamba doot-dev312
 venv
 lsp
 py-lsp

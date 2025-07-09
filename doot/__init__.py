@@ -35,6 +35,7 @@ if typing.TYPE_CHECKING:
     ##--| methods
     load            : Callable
     load_reporter   : Callable
+    update_aliases  : Callable
 
 
 ##-- logging
