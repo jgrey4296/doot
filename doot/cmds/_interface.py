@@ -62,7 +62,7 @@ class Command_p(CLIParamProvider_p, Protocol):
     @property
     def helpline(self) -> str: ...
     ##--|
-    def __call__(self, *, idx:int, jobs:ChainGuard, plugins:ChainGuard):
+    def __call__(self, *, idx:int, tasks:ChainGuard, plugins:ChainGuard):
         pass
 
     def shutdown(self, tasks:ChainGuard, plugins:ChainGuard, errored:Maybe[Exception]=None) -> None:

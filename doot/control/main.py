@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from logmod import Logger
+    from logging import Logger
     from jgdv import Maybe
     from jgdv.cli import ParamSource_p, ParseMachine
     from doot.errors import DootError
@@ -355,9 +355,9 @@ class ShutdownController:
             case _ if "PRE_COMMIT" in env:
                 return
             case "linux":
-                sh.espeak(message)
+                sh.espeak(message) # type: ignore[attr-defined]
             case "darwin":
-                sh.say("-v", "Moira", "-r", "50", message)
+                sh.say("-v", "Moira", "-r", "50", message) # type: ignore[attr-defined]
 
     def record_defaulted_config_values(self) -> None:
         if not doot.config.on_fail(False).shutdown.write_defaulted_values():  # noqa: FBT003
@@ -591,7 +591,7 @@ class DootMain(ParamSpecMaker_m):
         # type: ignore[attr-defined]
         if doot.args.on_fail(False).prog.args.verbose():  # noqa: FBT003
             logging.info("Switching to Verbose Output")
-            doot.log_config.set_level("DEBUG")
+            self.log_config.set_level("DEBUG")
 
         if doot.args.on_fail(False).prog.args.version(): # noqa: FBT003
             logging.info(_version_template, API.__version__)

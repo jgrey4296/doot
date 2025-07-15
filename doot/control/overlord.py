@@ -172,11 +172,11 @@ class StartupController:
             else:
                 match existing:
                     case x if x.name == DootAPI.PYPROJ_TOML and DootAPI.TOOL_PREFIX not in config:
-                        raise DErr.MissingConfigError("Pyproject has no doot config")
+                        logging.debug("Pyproject has no doot config, ignoring")
+                        continue
                     case x if x.name == DootAPI.DOOT_TOML:
                         chopped = config
-                    case x if prefix not in config:
-                        logging.warning("No Root element or prefix found in config: %s", existing)
+                    case x:
                         chopped   = config.remove_prefix(prefix)
                         if not bool(chopped):
                             continue
