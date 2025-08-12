@@ -1,29 +1,17 @@
-
-{% block vis_classes %}
-
+{# vis_classes.rst.jinja<2> -*- mode: Jinja2 -*- #}
+{% import "python/utils.jinja" as utils %}
 {% set viable_classes = visible_classes|rejectattr("obj.bases", "contains", "enum", "Protocol")|list %}
+{% set show_classes_sum = viable_classes and "show-module-summary" in autoapi_options %}
 
-{% if viable_classes %}
-    {% if "class" in own_page_types or "show-module-summary" in autoapi_options %}
-Classes
--------
+{% if show_classes_sum %}
+  {% set mod_ns.children = mod_ns.children + viable_classes %}
 
-    {% if "class" in own_page_types %}
-.. toctree::
-   :hidden:
 
-        {% for klass in viable_classes %}
-   {{ klass.include_path }}
-        {% endfor %}
+  {{ utils.heading("Classes", "-") }}
 
-    {% endif %}
 .. autoapisummary::
 
-        {% for klass in viable_classes %}
-   {{ klass.id }}
-        {% endfor %}
-    {% endif %}
-
-
+    {% for klass in viable_classes %}
+    {{ klass.id }}
+    {% endfor %}
 {% endif %}
-{% endblock vis_classes %}

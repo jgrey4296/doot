@@ -26,6 +26,7 @@ from weakref import ref
 import atexit # for @atexit.register
 import faulthandler
 from importlib.resources import files
+from importlib.metadata import version
 # ##-- end stdlib imports
 
 # ##-- types
@@ -63,7 +64,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-__version__ : Final[str] = "1.1.1"
+__version__ : Final[str] = version("doot")
 
 # -- data
 data_path                  = files("doot.__data")

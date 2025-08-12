@@ -1,27 +1,17 @@
-
-{% block vis_excs %}
+{# vis_excs.rst.jinja -*- mode: Jinja2 -*- #}
 {% set visible_exceptions = visible_children|selectattr("type", "equalto", "exception")|list %}
+{% set show_excs_sum = visible_exceptions and "show-module-summary" in autoapi_options %}
 
-{% if visible_exceptions %}
-   {% if "exception" in own_page_types or "show-module-summary" in autoapi_options %}
+{% if show_excs_sum %}
+   {% set mod_ns.children = mod_ns.children + visible_exceptions %}
+
 Exceptions
 ----------
 
-   {% if "exception" in own_page_types %}
-.. toctree::
-   :hidden:
-
-      {% for exception in visible_exceptions %}
-   {{ exception.include_path }}
-      {% endfor %}
-
-   {% endif %}
 .. autoapisummary::
 
-      {% for exception in visible_exceptions %}
+   {% for exception in visible_exceptions %}
    {{ exception.id }}
-      {% endfor %}
-   {% endif %}
-{% endif %}
+   {% endfor %}
 
-{% endblock vis_excs %}
+{% endif %}

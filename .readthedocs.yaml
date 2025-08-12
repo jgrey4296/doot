@@ -6,21 +6,32 @@
 # Required
 version: 2
 
-# Set the version of Python and other tools you might need
+sphinx:
+  configuration: jgdv/_docs/conf.py
+
 build:
   os: ubuntu-22.04
   tools:
     python: "3.12"
-
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-  configuration: doot/_docs/conf.py
-
-# We recommend specifying your dependencies to enable reproducible builds:
-# https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-python:
-  install:
-  - method: pip
-    path: .
-    extra_requirements:
-      - dev
+  jobs:
+    pre_create_environment:
+      - mkdir -p .temp/egg-info
+      - asdf plugin add uv
+      - asdf install uv 0.8.9
+      - asdf global uv 0.8.9
+    create_environment:
+      - uv lock --no-sources
+      - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
+    install:
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs
+    build:
+      html:
+        - echo "Building HTML"
+        - mkdir -p $READTHEDOCS_OUTPUT/html
+        - >
+          UV_NO_SYNC=1
+          UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}"
+          OUTDIR="${READTHEDOCS_OUTPUT}/html/"
+          DOCTREE="_build/doctrees"
+          uv run --frozen
+          tox -e docs

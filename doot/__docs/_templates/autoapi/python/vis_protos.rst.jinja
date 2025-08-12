@@ -1,17 +1,18 @@
+{# vis_protos.rst.jinja -*- mode: Jinja2 -*- #}
 
-{% block vis_protos %}
 {% set visible_protos  = visible_classes|selectattr("obj.bases", "contains", "Protocol")|list %}
+{% set show_protos_sum = visible_protos %}
 
-{% if visible_protos %}
+{% if show_protos_sum %}
+   {% set mod_ns.children = mod_ns.children + visible_protos %}
 
 Protocols
 ---------
 
 .. autoapisummary::
 
-      {% for proto in visible_protos %}
+   {% for proto in visible_protos %}
    {{ proto.id }}
-      {% endfor %}
+   {% endfor %}
 
 {% endif %}
-{% endblock vis_protos %}

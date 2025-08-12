@@ -8,13 +8,12 @@
 # https://github.com/actions/download-artifact
 # https://github.com/pypa/gh-action-pypi-publish
 
-name: Upload Python Package
+name: Run Tests
 
 on:
-  workflow_dispatch: # for manual triggers
-  release:
-    types: [published]
-
+  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -39,36 +38,3 @@ jobs:
       - name: test
         run: |
           UV_NO_SYNC=1 uv run tox -e test
-
-  build:
-    needs:
-      - test
-    runs-on: ubuntu-latest
-    environment: publishing
-    steps:
-      - name: Build package
-        run: |
-          UV_NO_SYNC=1 uv build .
-      - name: Store dist packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-
-  publish:
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    environment:
-      name: publishing
-      url: https:://pypi.org/p/jgdv
-    permissions:
-      id-token: write
-    steps:
-      - name: get dists
-        uses: actions/download-artifact@v5
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: push
-        uses: pypa/gh-action-pypi-publish@release/v1

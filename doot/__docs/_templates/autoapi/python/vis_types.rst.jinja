@@ -1,9 +1,11 @@
-
-{% block vis_types %}
+{# vis_types.rst.jinja -*- mode: Jinja2 -*- #}
 
 {% set visible_types = visible_data|selectattr("obj.annotation", "equalto", "TypeAlias")|list %}
+{% set show_types_sum = visible_types %}
 
-{% if visible_types %}
+{% if show_types_sum %}
+   {% set mod_ns.children = mod_ns.children + visible_types %}
+
 Type Aliases
 ------------
 
@@ -14,4 +16,3 @@ Type Aliases
       {% endfor %}
 
 {% endif %}
-{% endblock vis_types %}

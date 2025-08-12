@@ -97,35 +97,6 @@ log_file_format   = "%(asctime)s %(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
 
-##-- bumpver
-# https://github.com/mbarkhau/bumpver
-[tool.bumpver]
-current_version    = "1.1.1"
-version_pattern    = "MAJOR.MINOR.PATCH"
-commit_message     = "[bump]: version {old_version} -> {new_version}"
-tag_message        = "{new_version}"
-tag_scope          = "default"
-commit             = true
-tag                = false
-# push             = true
-# pre_commit_hook  = ""
-# post_commit_hook = ""
-
-[tool.bumpver.file_patterns]
-"pyproject.toml"   = [
-                   '^version\s+=\s+"{version}"',
-                   '^current_version\s+=\s+"{version}"'
-]
-"doot/_interface.py"          = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
-"README.md"                   = ["^Version : {version}  "]
-"doot/__docs/conf.py"         = ['^release\s+=\s+"{version}"']
-"doot/__data/aliases.toml"    = ['^doot_version\s+=\s+"{version}"']
-"doot/__data/constants.toml"  = ['^doot_version\s+=\s+"{version}"']
-"doot/__data/templates/basic_config_toml"  = ['^doot_version\s+=\s+"{version}"']
-"doot/__data/templates/tasks_toml"  = ['^doot_version\s+=\s+"{version}"']
-
-##-- end bumpver
-
 ##-- isort
 # https://pycqa.github.io/isort/docs/configuration/options.html
 [tool.isort]
@@ -236,6 +207,16 @@ warn_unused_configs  = true
 
 ##-- end mypy
 
+##-- towncrier
+[tool.towncrier]
+package    = "doot"
+directory  = "doot/_docs/_news"
+filename   = "CHANGELOG.md"
+template   = "doot/_docs/_templates/news.md"
+create_add_extension = true
+
+##-- end towncrier
+
 ##-- uv
 [tool.uv.sources]
 jgdv = { path = "../jgdv", editable = true }
@@ -243,15 +224,27 @@ dootle = { path = "related_/dootle", editable = true }
 
 [dependency-groups]
 dev = [
-    "dootle>=0.3.0",
-    "jgdv",
-    "myst-parser>=4.0.1",
+    "ipython>=9.4.0",
+    "sh>=2.2.2",
+    "towncrier>=24.8.0",
+]
+test =[
+    "pydot>=4.0.1",
     "pytest>=8.3.5",
-    "pytest-cov>=6.2.1",
+    "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
+    "tox>=4.28.4",
+    "tox-uv>=1.27.0",
+    "ruff>=0.12.8",
+]
+docs = [
+    "myst-parser>=4.0.1",
     "sphinx>=8.2.3",
     "sphinx-autoapi>=3.6.0",
     "sphinx-rtd-theme>=3.0.2",
+    "pydot>=4.0.1",
+    "tox>=4.28.4",
+    "tox-uv>=1.27.0",
 ]
 
 ##-- end uv
