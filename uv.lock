@@ -302,7 +302,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "boltons", specifier = ">=23.0.0" },
-    { name = "jgdv", specifier = ">=1.3.0" },
+    { name = "jgdv", specifier = ">=1.3" },
     { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "networkx", specifier = ">3.0" },
     { name = "packaging", specifier = ">=24.2" },
@@ -454,7 +454,7 @@ wheels = [
 
 [[package]]
 name = "jgdv"
-version = "1.3.1"
+version = "1.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "networkx" },
@@ -466,9 +466,9 @@ dependencies = [
     { name = "stackprinter" },
     { name = "sty" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/7c/72bf30064c36ca9478dafb5ecb0fe56663a9b36fd2755f8bf254db0be9d9/jgdv-1.3.1.tar.gz", hash = "sha256:64cea2e4f22d11ed549f240d58daad398c8c3f84e44617346d843653c41c0b12", size = 203627, upload-time = "2025-08-14T22:49:38.596Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/1d/1acbca481c95c73741836a50050ad7528e6d3b3d0f21779b4c8a86ad8aed/jgdv-1.3.2.tar.gz", hash = "sha256:df908783022f3ebee446d51daf1f10371e41c4f93ffcabc78e33698564f5992e", size = 204656, upload-time = "2025-08-15T03:36:08.34Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/5b/e0e50c78a583a3a6c30245b65d525e56e3aeca0e4ecaa9764f5dae85be26/jgdv-1.3.1-py3-none-any.whl", hash = "sha256:b165e5fb69a70622f369c115b566bb082753d1626415fc2fea1030230e944e14", size = 319844, upload-time = "2025-08-14T22:49:36.783Z" },
+    { url = "https://files.pythonhosted.org/packages/45/71/462cca6df6bf3ae7cbfccb3dc91222a801d2a7edbe4bcece5a92e18b510b/jgdv-1.3.2-py3-none-any.whl", hash = "sha256:21ae22c082983746fdffe064c831ea7b287d4f4caf665758d629643848950a15", size = 320754, upload-time = "2025-08-15T03:36:06.492Z" },
 ]
 
 [[package]]
