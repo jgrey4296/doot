@@ -30,7 +30,7 @@ from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed
 from jgdv.structs.dkey import ExpInst_d
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols.general import SpecStruct_p, Buildable_p
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -60,7 +60,7 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
    from jgdv.structs.dkey import Key_p
-   from jgdv.structs.dkey._util._interface import SourceChain_d
+   from jgdv.structs.dkey._util._interface import SourceChain_d, InstructionFactory_p, ExpOpts, ExpInstChain_d
 
 # isort: on
 # ##-- end types

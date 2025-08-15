@@ -28,8 +28,8 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference, Strang
 from jgdv.structs.strang._interface import StrangMarkAbstract_e
 from jgdv.structs.locator import Location
-from jgdv._abstract.protocols import Buildable_p
-from jgdv._abstract.pydantic_proto import ProtocolModelMeta
+from jgdv._abstract.protocols.general import Buildable_p
+from jgdv._abstract.protocols.pydantic import ProtocolModelMeta
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

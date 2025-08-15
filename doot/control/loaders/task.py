@@ -24,7 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Proto
-from jgdv.debugging.timeblock_ctx import TimeBlock_ctx
+from jgdv.debugging.timing import TimeCtx
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.locator.errors import LocationError, StrangError
 from jgdv.structs.strang import CodeReference
@@ -175,7 +175,8 @@ class TaskLoader:
             return [doot.locs[x] for x in xs]
 
 
-        with TimeBlock_ctx(logger=logging, enter="---- Loading Tasks",  exit="---- Task Loading Time"):
+        logging.info("---- Loading Tasks from Config Files")
+        with TimeCtx(logger=logging) as timer:
             logging.debug("Loading Tasks from Config files")
             for source in doot.configs_loaded_from: # type: ignore[attr-defined]
                 try:
@@ -197,6 +198,8 @@ class TaskLoader:
             logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
             for path in task_sources:
                 self._load_specs_from_path(path)
+
+        logging.info("---- Loading Tasks took: %s", timer.total_s)
 
 
         match self.failures:

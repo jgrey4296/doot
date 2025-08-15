@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv._abstract.protocols import SpecStruct_p
+    from jgdv._abstract.protocols.general import SpecStruct_p
     from jgdv.cli import ParamSpec
     from doot.cmds.structs.task_stub import TaskStub
     from . import TaskSpec

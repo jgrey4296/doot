@@ -43,8 +43,8 @@ from jgdv.structs.locator import Location
 # ##-- 1st party imports
 import doot
 import doot.errors
-from jgdv._abstract.protocols import (Buildable_p, StubStruct_p)
-from jgdv._abstract.pydantic_proto import ProtocolModelMeta
+from jgdv._abstract.protocols.general import (Buildable_p, StubStruct_p)
+from jgdv._abstract.protocols.pydantic import ProtocolModelMeta
 from doot.workflow.structs.task_name import TaskName
 from doot.workflow.structs.task_spec import TaskSpec, TaskMeta_e
 from doot.workflow._interface import QueueMeta_e

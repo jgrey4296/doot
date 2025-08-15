@@ -52,7 +52,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 # Other:
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols.general import SpecStruct_p, Buildable_p
 
 if TYPE_CHECKING:
     from jgdv.structs.chainguard import ChainGuard
@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from jgdv.cli._interface import ParamSpec_p
-    from jgdv._abstract.protocols import StubStruct_p
+    from jgdv._abstract.protocols.general import StubStruct_p
 
     from doot.workflow import ActionSpec, TaskName
     type ActionReturn = Maybe[dict|bool|ActionResponse_e]

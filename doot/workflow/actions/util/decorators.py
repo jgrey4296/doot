@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from jgdv._abstract.protocols import SpecStruct_p
+from jgdv._abstract.protocols.general import SpecStruct_p
 # isort: on
 # ##-- end types
 

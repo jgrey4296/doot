@@ -25,7 +25,7 @@ dependencies   = [
     "sty >= 1.0.0",
     "boltons >= 23.0.0",
     "pydantic >= 2.7.0",
-    "jgdv>=1.2.0",
+    "jgdv>=1.3.0",
     "matplotlib>=3.10.1",
     "packaging>=24.2",
 ]
@@ -210,7 +210,7 @@ warn_unused_configs  = true
 ##-- towncrier
 [tool.towncrier]
 package    = "doot"
-directory  = "doot/_docs/_news"
+directory  = "doot/_docs/_changes"
 filename   = "CHANGELOG.md"
 template   = "doot/_docs/_templates/news.md"
 create_add_extension = true
@@ -219,7 +219,6 @@ create_add_extension = true
 
 ##-- uv
 [tool.uv.sources]
-jgdv = { path = "../jgdv", editable = true }
 dootle = { path = "related_/dootle", editable = true }
 
 [dependency-groups]

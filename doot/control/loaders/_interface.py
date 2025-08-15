@@ -26,7 +26,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 from importlib.metadata import EntryPoint
-from jgdv._abstract.protocols import SpecStruct_p
+from jgdv._abstract.protocols.general import SpecStruct_p
 import doot
 from doot.cmds._interface import Command_p
 

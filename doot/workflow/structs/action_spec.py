@@ -27,8 +27,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from jgdv import Maybe, Proto
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
-from jgdv._abstract.pydantic_proto import ProtocolModelMeta
+from jgdv._abstract.protocols.general import SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols.pydantic import ProtocolModelMeta
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

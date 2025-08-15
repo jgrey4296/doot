@@ -21,7 +21,7 @@ permissions:
 
 # --------------------------------------------------
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     environment: publishing
     steps:
@@ -39,13 +39,6 @@ jobs:
       - name: test
         run: |
           UV_NO_SYNC=1 uv run tox -e test
-
-  build:
-    needs:
-      - test
-    runs-on: ubuntu-latest
-    environment: publishing
-    steps:
       - name: Build package
         run: |
           UV_NO_SYNC=1 uv build .

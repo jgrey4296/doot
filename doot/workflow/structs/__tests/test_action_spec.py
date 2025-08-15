@@ -15,7 +15,7 @@ import pytest
 logging = logmod.root
 
 from jgdv.structs.strang import CodeReference
-from jgdv._abstract.protocols import SpecStruct_p
+from jgdv._abstract.protocols.general import SpecStruct_p
 import doot
 from ..action_spec import ActionSpec
 

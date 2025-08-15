@@ -20,7 +20,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv import Proto
-from jgdv.debugging.timeblock_ctx import TimeBlock_ctx
+from jgdv.debugging.timing import TimeCtx
 from jgdv.structs.strang import CodeReference
 from jgdv.util.plugins.selector import plugin_selector
 
@@ -113,15 +113,16 @@ class RunCmd(BaseCommand):
         self._register_specs(idx, tracker, tasks)
         self._queue_tasks(idx, tracker)
 
-        with (TimeBlock_ctx(logger=logging,
-                            enter="--- Runner Entry",
-                            exit="--- Runner Exit",
-                            level=20),
+        logging.info("---- Starting Runner")
+        with (TimeCtx(logger=logging,
+                      level=21) as timer,
               runner,
               ):
             if not self._confirm_plan(idx, runner):
                 return
             runner(handler=interrupt)
+
+        logging.info("---- Runner took: %s seconds", timer.total_s)
 
     def _create_tracker_and_runner(self, idx:int, plugins:ChainGuard) -> tuple[WorkflowTracker_p, WorkflowRunner_p]:
         # Note the final parens to construct:

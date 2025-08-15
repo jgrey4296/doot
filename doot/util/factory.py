@@ -27,8 +27,8 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import jgdv.structs.strang.errors as StrangErrs
 from jgdv import Mixin, Proto
-from jgdv._abstract.protocols import Buildable_p, SpecStruct_p
-from jgdv._abstract.pydantic_proto import ProtocolModelMeta
+from jgdv._abstract.protocols.general import Buildable_p, SpecStruct_p
+from jgdv._abstract.protocols.pydantic import ProtocolModelMeta
 from jgdv.cli import ParamSpec, ParamSpecMaker_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey

@@ -60,7 +60,7 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, MutableMapping, Hashable
 
    from .. import TaskSpec
-   from jgdv._abstract.protocols import SpecStruct_p
+   from jgdv._abstract.protocols.general import SpecStruct_p
    from .. import TaskName
    type ConstraintData = TaskSpec | dict | ChainGuard
 
