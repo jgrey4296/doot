@@ -101,26 +101,18 @@ class DootPathDKey(DKey[pl.Path], mark=pl.Path, ctor=pl.Path, convert="p", overw
     def exp_extra_sources_h(self, current:SourceChain_d) -> SourceChain_d:
         return current.extend(doot.locs.Current)
 
-    def exp_generate_alternatives_h(self, sources:SourceChaind_d, opts:dict) -> list[list[ExpInst_d]]:
-        result = super().exp_generate_alternatives_h(sources, opts)
-        if not bool(result):
-            result.append([
-                ExpInst_d(value=self[:], literal=True),
-            ])
-        return result
-
-
-    def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]:
+    def exp_final_h(self, inst:ExpInst_d, root:Maybe[ExpInst_d], factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]:
         relative = opts.get("relative", False)
-        match val:
+        match inst:
             case ExpInst_d(value=pl.Path() as x) if relative and x.is_absolute():
-                raise ValueError("Produced an absolute path when it is marked as relative", x)
+                as_relative = x.relative_to(doot.locs.root)
+                return factory.literal_inst(as_relative)
             case ExpInst_d(value=pl.Path()) as x if relative:
                 return x
             case ExpInst_d(value=pl.Path() as x) as v:
                 logging.debug("Normalizing Single Path Key: %s", x)
-                v.value = doot.locs.Current.normalize(x) # type: ignore[attr-defined]
-                return v
+                normed = doot.locs.Current.normalize(x) # type: ignore[attr-defined]
+                return factory.literal_inst(normed)
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 

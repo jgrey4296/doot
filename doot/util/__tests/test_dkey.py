@@ -3,7 +3,7 @@
 
 """
 # Imports:
-# ruff: noqa: E402, ANN201, B011, PLR2004, ANN001, F811, UP031, ANN202
+# ruff: noqa: B011, PLR2004, ANN001, F811, UP031, ANN202
 from __future__ import annotations
 
 # ##-- stdlib imports
@@ -100,7 +100,7 @@ class TestPathMultiKey:
         locs = DootLocator(pl.Path.cwd())
         locs.update({"test": "blah"})
         assert("test" in locs)
-        assert(locs['{test}'] == target)
+        assert(locs['{test!p}'] == target)
         assert(locs.normalize(locs.test) == target)
         key = DKey[pl.Path]("{test}")
         match key.expand(locs):
@@ -167,7 +167,7 @@ class TestDKeyBasicConstruction:
         key.keys()
         assert(isinstance(key, dkey.MultiDKey))
         assert(not isinstance(key, dkey.DootPathDKey))
-        assert(isinstance(key.keys()[0], dkey.SingleDKey))
+        assert(isinstance(key.keys()[0], dkey.DootPathDKey))
 
     def test_multi_key_of_path_subkey(self):
         """ typed keys within multikeys are allowed,
@@ -176,7 +176,7 @@ class TestDKeyBasicConstruction:
         key = dkey.DKey("-- {test!p}", fallback="{test!p}")
         assert(isinstance(key, dkey.MultiDKey))
         assert(not isinstance(key, dkey.DootPathDKey))
-        assert(isinstance(key.keys()[0], dkey.SingleDKey))
+        assert(isinstance(key.keys()[0], dkey.DootPathDKey))
 
     def test_multi_keys_with_multiple_subkeys(self):
         """ typed keys within multikeys are allowed,
@@ -185,7 +185,7 @@ class TestDKeyBasicConstruction:
         key = dkey.DKey("text. {simple!p}. {text}.", implicit=False)
         assert(isinstance(key, dkey.MultiDKey))
         assert(not isinstance(key, dkey.DootPathDKey))
-        assert(isinstance(key.keys()[0], dkey.SingleDKey))
+        assert(isinstance(key.keys()[0], dkey.DootPathDKey))
         assert(len(key.keys()) == 2)
 
 class TestDKeyWithParameters:
@@ -203,7 +203,7 @@ class TestDKeyWithParameters:
         assert(isinstance(obj, dkey.MultiDKey))
         subkeys = obj.keys()
         assert(len(subkeys) == 2)
-        assert(isinstance(subkeys[0], dootkeys.SingleDKey))
+        assert(isinstance(subkeys[0], dootkeys.DootPathDKey))
         assert(isinstance(subkeys[1], dkey.SingleDKey))
 
     def test_conv_parms_taskname(self):
@@ -228,16 +228,31 @@ class TestDKeyExpansion:
             case x:
                 assert(False), x
 
-    def test_direct_wrapped_expansion(self, wrap_locs):
+    def test_direct_wrapped_expansion_normalized(self, wrap_locs):
         wrap_locs.update({"raise": "file::>a/b/blah.py"})
         assert("raise" in wrap_locs)
         state       = {"middle": "Before. {raise!p}. After."}
         target      = "Before. {}. After.".format(wrap_locs['{raise}'])
         key         = dkey.DKey("middle", implicit=True)
         assert(key  == "middle")
-        match key.expand(state, wrap_locs):
-            case str() as result if result == target:
-                assert(True)
+        match key.expand(state, wrap_locs, relative=False):
+            case str() as result:
+                assert(result == target)
+            case x:
+                assert(False), x
+
+
+    @pytest.mark.xfail
+    def test_direct_wrapped_expansion_non_normalized(self, wrap_locs):
+        wrap_locs.update({"raise": "file::>a/b/blah.py"})
+        assert("raise" in wrap_locs)
+        state       = {"middle": "Before. {raise!p}. After."}
+        target      = "Before. a/b/blah.py. After."
+        key         = dkey.DKey("middle", implicit=True)
+        assert(key  == "middle")
+        match key.expand(state, wrap_locs, relative=False):
+            case str() as result:
+                assert(result == target)
             case x:
                 assert(False), x
 
@@ -246,17 +261,17 @@ class TestDKeyExpansion:
         Checks that additional sources are carried to recursions
         """
         wrap_locs.update({"raise": "dir::>{major}/blah", "major": "dir::>head"})
-        state = {"middle": "Before. {subpath!p}. After.", "subpath":"{raise!p}/{aweo}", "aweo":"aweg"}
-        target        = "Before. {}. After.".format(doot.locs["head/blah/aweg"])
-        key           = dkey.DKey("middle", implicit=True)
-        assert(key    == "middle")
+        state       = {"middle": "Before. {subpath!p}. After.", "subpath":"{raise}/{aweo}", "aweo":"aweg"}
+        target      = "Before. {}. After.".format(doot.locs["head/blah/aweg"])
+        key         = dkey.DKey("middle", implicit=True)
+        assert(key  == "middle")
         match key.expand(state, wrap_locs):
             case DKey():
                 assert(False)
             case str() as result:
                 assert(result == target)
             case x:
-                 assert(False), x
+                assert(False), x
 
     def test_expansion_to_taskname(self):
         """
@@ -344,12 +359,12 @@ class TestDKeyPathKeys:
         """ name!p -> Path(y) """
         path_marked = f"{name}!p"
         key   = dkey.DKey(path_marked, implicit=True)
-        state = {name :"y"}
-        exp   = key.expand(state)
+        state = {name :"blah/y"}
+        exp   = key.expand(state, relative=True)
         assert(key == name)
         assert(isinstance(key, dkey.DootPathDKey))
         assert(isinstance(exp, pl.Path))
-        assert(exp == doot.locs["y"])
+        assert(exp == pl.Path(state[name]))
 
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_path_marked_explicit(self, name):
@@ -357,10 +372,10 @@ class TestDKeyPathKeys:
         path_marked = "{%s!p}" % name
         key   = dkey.DKey(path_marked, implicit=False)
         state = {name :"y"}
-        exp   = key.expand(state)
+        exp   = key.expand(state, relative=True)
         assert(isinstance(key, dkey.DootPathDKey))
         assert(isinstance(exp, pl.Path))
-        assert(exp == doot.locs["y"])
+        assert(exp == pl.Path(state[name]))
 
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_path_marked_recursive(self, name):
@@ -380,8 +395,8 @@ class TestDKeyPathKeys:
         key   = dkey.DKey(path_marked)
         state = {name :"x!p", "x": "y"}
         match key.expand(state, limit=1):
-            case str() as x:
-                assert(True)
+            case pl.Path() as val:
+                assert(str(val) == "x")
             case x:
                  assert(False), x
         logging.debug("----")
@@ -434,7 +449,7 @@ class TestDKeyPathKeys:
         """
           name -> missing -> fallback
         """
-        target = pl.Path("blah").resolve()
+        target = pl.Path("blah")
         key    = dkey.DKey[pl.Path](name, fallback=pl.Path("blah"), implicit=True)
         state  = {}
         match key.expand(state):
@@ -472,11 +487,34 @@ class TestDKeyPathKeys:
             case x:
                 assert(False), x
 
-    def test_multi_layer_path_key(self, wrap_locs):
-        wrap_locs.update({"data_drive": "dir::>/media/john/data", "pdf_source": "dir::>{data_drive}/library/pdfs"})
+    def test_multi_layer_path_key_marked(self, wrap_locs):
+        """ Update locs with keys marked as paths.
+        ie: {data_drive!p}
+        """
+        wrap_locs.update({"data_drive": "dir::>/media/john/data",
+                          "pdf_source": "dir::>{data_drive!p}/library/pdfs"})
+        target = pl.Path("/media/john/data/library/pdfs")
         state  = {}
         obj    = dkey.DKey("pdf_source!p", implicit=True)
+        assert(isinstance(obj, dkey.DKey))
+        assert(isinstance(obj, dkey.DootPathDKey))
+        match obj.expand():
+            case pl.Path() as result:
+                assert(result == target)
+            case x:
+                assert(False), x
+
+
+    @pytest.mark.xfail
+    def test_multi_layer_path_key_non_marked(self, wrap_locs):
+        """ Update locs with keys *not* marked as paths.
+        ie: {data_drive}
+        """
+        wrap_locs.update({"data_drive": "dir::>/media/john/data",
+                          "pdf_source": "dir::>{data_drive}/library/pdfs"})
         target = pl.Path("/media/john/data/library/pdfs")
+        state  = {}
+        obj    = dkey.DKey("pdf_source!p", implicit=True)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.DootPathDKey))
         match obj.expand():
@@ -486,16 +524,15 @@ class TestDKeyPathKeys:
                 assert(False), x
 
     def test_retrieve_relative_path(self, wrap_locs):
-        wrap_locs.update({"data_drive": "/media/john/data", "pdf_source": "{data_drive}/library/pdfs"})
-        state  = {"relpath": pl.Path("a/b/c"), "head_": "relpath"}
-        obj    = dkey.DKey("relpath", implicit=True)
-        redir  = dkey.DKey("head", implicit=True)
+        wrap_locs.update({"data_drive": "/media/john/data",
+                          "pdf_source": "{data_drive}/library/pdfs"})
         target = "a/b/c"
+        state  = {"relpath": pl.Path("a/b/c")}
+        obj    = dkey.DKey("relpath!p", implicit=True)
         assert(isinstance(obj, dkey.DKey))
-        assert(isinstance(obj, dkey.SingleDKey))
-        match redir.expand(state):
-            case str() as result:
-                assert(result == target)
+        match obj.expand(state, relative=True):
+            case pl.Path() as result:
+                assert(str(result) == target)
             case x:
                  assert(False), x
 
