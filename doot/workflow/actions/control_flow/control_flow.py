@@ -19,6 +19,7 @@ import shutil
 import time
 import types
 from time import sleep
+from os import environ
 
 # ##-- end stdlib imports
 
@@ -220,3 +221,22 @@ class TriggerActionGroup(DootBaseAction):
 
     def __call__(self, spec, state):
         raise NotImplementedError()
+
+class EnvVarCheck(DootBaseAction):
+    """ Check the shell environment for the presence of certain args """
+
+    @DKeyed.args
+    @DKeyed.types("not", check=bool, fallback=False)
+    @DKeyed.types("fail", check=bool, fallback=False)
+    def __call__(self, spec, state, _args, _invert, _fail) -> bool:
+        fail = self.ActRE.FAIL if _fail else self.ActRE.SKIP
+        for arg in _args:
+            exists = arg in environ
+            if _invert:
+                exists = not exists
+            match exists:
+                case True:
+                    continue
+                case False:
+                    doot.report.wf.fail(info="EnvCheck", msg=f"Failed On: {arg}")
+                    return fail

@@ -133,20 +133,19 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
     match group: # Build initial Relation/Action Specs
         case None | []:
             return []
-        case [*xs] if info.field_name in TaskSpec._blocking_groups:
+        case [*_] if info.field_name in TaskSpec._blocking_groups:
             relation_type = RelationMeta_e.blocks
-            results = _raw_data_to_specs(cast("list[str|dict]", group), relation=relation_type)
-        case [*xs]:
-            relation_type = RelationMeta_e.needs
-            results = _raw_data_to_specs(cast("list[str|dict]", group), relation=relation_type)
+        case [*_]:
+            relation_type  = RelationMeta_e.needs
 
-    for x in results[:]: # Build Implicit Relations.
+    results = _raw_data_to_specs(cast("list[str|dict]", group), relation=relation_type)
+    for x in results[:]:  # Build Implicit Relations.
         match x:
             case RelationSpec(target=TaskName() as target, relation=rel) if target.is_cleanup(): # type: ignore[misc]
                 rel_root = target.pop(top=True)
                 results.append(RelationSpec.build(rel_root, relation=rel))
             case RelationSpec(target=TaskName() as target, relation=rel) if target.is_head():
-                rel_root = target.pop(top=True)
+                rel_root = target.pop(top=False)
                 results.append(RelationSpec.build(rel_root, relation=rel))
             case _:
                 pass

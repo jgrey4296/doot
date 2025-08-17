@@ -96,6 +96,7 @@ DEFAULT_EMPTY_CMD     : Final[list[str]]  = ["--help"]
 DEFAULT_IMPLICIT_CMD  : Final[list[str]]  = ["run"]
 PROG_NAME             : Final[str]        = "doot"
 PARSER_FALLBACK       : Final[str]        = "doot.control.arg_parser_model:DootArgParserModel"
+PRE_COMMIT_K          : Final[str]        = "PRE_COMMIT"
 ##--| controllers
 
 class LoadingController:
@@ -352,7 +353,7 @@ class ShutdownController:
             return
 
         match sys.platform:
-            case _ if "PRE_COMMIT" in env:
+            case _ if PRE_COMMIT_K in env:
                 return
             case "linux":
                 sh.espeak(message) # type: ignore[attr-defined]
@@ -588,8 +589,7 @@ class DootMain(ParamSpecMaker_m):
         _version_template : str
         ##--|
         _version_template = doot.constants.printer.version_template # type: ignore[attr-defined]
-        # type: ignore[attr-defined]
-        if doot.args.on_fail(False).prog.args.verbose():  # noqa: FBT003
+        if doot.args.on_fail(False).prog.args.verbose():  # noqa: FBT4
             logging.info("Switching to Verbose Output")
             self.log_config.set_level("DEBUG")
 

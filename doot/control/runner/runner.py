@@ -262,7 +262,7 @@ class DootRunner:
         except doot.errors.DootError as err:
             self.handle_failure(err)
         except Exception as err:
-            doot.report.wf.fail()
+            doot.report.wf.fail(info="Exception", msg=str(err))
             self.tracker.clear()
             raise
         else:

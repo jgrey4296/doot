@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, N812, PLR2004
 from __future__ import annotations
 
 import logging as logmod
@@ -127,6 +128,10 @@ class TestTaskSpec:
         assert(obj.sources[0] == pl.Path("a/path.txt"))
         assert(obj.sources[1] == "other::task")
 
+    def test_requires_head(self):
+        obj = factory.build({"name":"agroup::atask", "required_for":["agroup::ajob..$head$"]})
+        assert(len(obj.required_for) == 2)
+
 class TestTaskSpec_Validation:
     """ Tests the validation methods of the spec
 
@@ -159,7 +164,7 @@ class TestTaskSpec_Validation:
                                    {"do":"blah:bloo"},
                                    {"do":"aweg:aweg"},
                                ]})
-        for x,y in zip(spec.actions, ["log:log", "blah:bloo", "aweg:aweg"]):
+        for x,y in zip(spec.actions, ["log:log", "blah:bloo", "aweg:aweg"], strict=True):
             assert(x.do[:] == y)
 
     def test_implicit_job_relations(self):
