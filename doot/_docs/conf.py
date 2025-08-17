@@ -363,26 +363,25 @@ try:
 except ImportError:
     jinja2 = None # type: ignore[assignment]
 else:
-
-def filter_contains(val:list|str, *needles:str) -> bool:
-    match val:
-        case str():
-            return any(x in val for x in needles)
-        case list():
-            joined = " ".join(val)
-            return any(x in joined for x in needles)
-        case _:
-            return False
-
-def autoapi_prepare_jinja_env(jinja_env: jinja2.Environment) -> None:
-    jinja_env.add_extension("jinja2.ext.debug")
-    jinja_env.tests['contains'] = filter_contains
-
+    def filter_contains(val:list|str, *needles:str) -> bool:
+        match val:
+            case str():
+                return any(x in val for x in needles)
+            case list():
+                joined = " ".join(val)
+                return any(x in joined for x in needles)
+            case _:
+                return False
+    
+    def autoapi_prepare_jinja_env(jinja_env: jinja2.Environment) -> None:
+        jinja_env.add_extension("jinja2.ext.debug")
+        jinja_env.tests['contains'] = filter_contains
+    
     def add_jinja_ext(app):
         app.builder.templates.environment.add_extension("jinja2.ext.debug")
-
+    
 # ##-- Sphinx and Jinja configuration ------------
 
 def setup(app):
     if jinja2 is not None:
-    app.events.connect("builder-inited", add_jinja_ext, 1)
+        app.events.connect("builder-inited", add_jinja_ext, 1)

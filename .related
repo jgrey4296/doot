@@ -8,7 +8,6 @@
 :doot        : doot.toml
 :pyproject   : pyproject.toml
 :data        : data
-:docs        : docs
 :tasks       : .tasks
 :tempD       : .temp
 :coverage    : .temp/coverage
@@ -23,3 +22,6 @@
 :structs     : doot/_structs
 :stubs       : doot/__templates
 :data        : doot/__data
+:docs        : doot/_docs
+:docs-build  : .temp/docs
+:changes     : doot/_docs/_changes

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Doot : An Opinionated refactor of the Doit Task Runner.
+Doot : An Opinionated toml based task runner
 
 """
 # Imports:
