@@ -130,7 +130,7 @@ class TestTaskSpec:
 
     def test_requires_head(self):
         obj = factory.build({"name":"agroup::atask", "required_for":["agroup::ajob..$head$"]})
-        assert(len(obj.required_for) == 2)
+        assert(len(obj.required_for) == 1)
 
 class TestTaskSpec_Validation:
     """ Tests the validation methods of the spec
@@ -171,14 +171,12 @@ class TestTaskSpec_Validation:
         spec = factory.build({"name":"simple::test",
                                "depends_on" : ["simple::+.job..$head$"],
                                })
-        assert(len(spec.depends_on) == 2)
-        assert(spec.depends_on[0].target == "simple::+.job")
-        assert(spec.depends_on[1].target == "simple::+.job..$head$")
+        assert(len(spec.depends_on) == 1)
+        assert(spec.depends_on[0].target == "simple::+.job..$head$")
 
     def test_implicit_cleanup_relations(self):
         spec = factory.build({"name":"simple::test",
                                "depends_on" : ["simple::task..$cleanup$"],
                                })
-        assert(len(spec.depends_on) == 2)
-        assert(spec.depends_on[0].target == "simple::task")
-        assert(spec.depends_on[1].target == "simple::task..$cleanup$")
+        assert(len(spec.depends_on) == 1)
+        assert(spec.depends_on[0].target == "simple::task..$cleanup$")

@@ -579,7 +579,7 @@ class TestTracker_delayed:
         delayed = tracker._factory.delay(base="blah::bloo", target="blah::bloo..custom", overrides={})
         base_spec = tracker._factory.build({"name":"blah::bloo", "value":25})
         tracker.register(base_spec)
-        assert(len(tracker.specs) == 1)
+        assert(len(tracker.specs) == 2) # The base spec, and its cleanup
         match tracker._upgrade_delayed_to_actual(delayed):
             case TaskSpec_i() as actual:
                 assert(delayed.target <= actual.name)

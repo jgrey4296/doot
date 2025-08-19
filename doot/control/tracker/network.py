@@ -175,7 +175,6 @@ class _Expansion_m:
             case x:
                 self._add_node(right)
 
-
         if left in self.succ and right in self.succ[left]:
             # nothing to do
             return
@@ -261,10 +260,6 @@ class _Expansion_m:
                     assert(target in self._tracker.artifacts)
                     self.connect(*rel.to_ordered_pair(name)) # type: ignore[arg-type]
                     to_expand.add(target)
-                case RelationSpec_i(target=TaskName_p() as target) if target.is_head() and target not in self._tracker.specs:
-                    pass
-                case RelationSpec_i(target=TaskName_p() as target) if target.is_cleanup() and target not in self._tracker.specs:
-                    pass
                 case RelationSpec_i(target=TaskName_p() as target):
                     # Get specs and instances with matching target
                     instance = self._tracker._instantiate(rel, control=name)
@@ -275,6 +270,7 @@ class _Expansion_m:
             self.nodes[name][API.EXPANDED] = True
             self.non_expanded.remove(name)
 
+        to_expand.update(self._generate_blockers(name))
         to_expand.update(self._generate_successor_nodes(spec))
         logging.debug("[Build.Expand.Task] <- %s : %s", name, to_expand)
         return to_expand
@@ -295,13 +291,37 @@ class _Expansion_m:
         names = self._tracker._subfactory.generate_names(spec)
         assert(len(names) <= 1)
         for x in names:
-            logging.debug("[Successor] : %s", x)
             assert(x.uuid() == spec.name.uuid())
             assert(x in self._tracker.specs)
             self.connect(spec.name, x)
             result.append(x)
         else:
+            logging.debug("[Successors] : %s", result)
             return result
+
+    def _generate_blockers(self, name:TaskName_p) -> set[Concrete[TaskName_p]|Artifact_i]:
+        x       : Any
+        target  : TaskName_p
+        ##--|
+        results   = []
+        blockers = set()
+        logging.info("[Blockers] : %s", name)
+        if name in self._tracker.specs:
+            blockers.update(self._tracker.specs[name].blocked_by)
+        if (x:=name.de_uniq()) in self._tracker.specs:
+            blockers.update(self._tracker.specs[x].blocked_by)
+        for blocker in blockers:
+            if blocker in self.pred[name]:
+                continue
+            instance = self._tracker._instantiate(blocker)
+            if instance in self.pred[name]:
+                continue
+            self.connect(instance, name)
+            results.append(instance)
+            logging.info("[Blocker.Connect] %s -> %s", instance, name)
+        else:
+            logging.debug("[Build.Generate.Blockers] %s -> %s", name, results)
+            return results
 
     def _expand_artifact(self, artifact:Artifact_i) -> set[Concrete[TaskName_p]|Artifact_i]:
         """ expand _tracker._registry.artifacts, instantiating related tasks,
@@ -424,6 +444,7 @@ class _Validation_m:
             })
 
     def report_tree(self) -> None:
+        """ Use networkx + plt's graph drawing to inspect the constructed graph """
         mapping : dict[TaskName_p|Artifact_i, str]
         if not show_graph:
             return
@@ -456,6 +477,7 @@ class TrackNetwork:
     _graph        : nx.DiGraph[Concrete[TaskName_p]|TaskArtifact]
 
     non_expanded  : set[TaskName_p|Artifact_i]
+
     def __init__(self, *, tracker:API.WorkflowTracker_p) -> None:
         match tracker:
             case API.WorkflowTracker_p():
@@ -465,7 +487,6 @@ class TrackNetwork:
         self._graph        = nx.DiGraph()
         self.non_expanded  = set()
         self._add_node(self._tracker._root_node)  # type: ignore[attr-defined]
-
 
     ##--| properties
 

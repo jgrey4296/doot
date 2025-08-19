@@ -108,19 +108,31 @@ class _Registration_m(API.Registry_d):
                     self.specs[gen_base].related.add(spec.name)
                 if x.uuid() and (originator:=x.pop_generated()) in self.specs:
                     self.specs[originator].related.add(spec.name)
+                self.specs[spec.name] = API.SpecMeta_d(spec=spec)
+                self._register_spec_artifacts(spec)
+                self._register_blocking_relations(spec)
+                self._register_delayed_blockers(spec)
+                self._register_implicit_tasks(spec)
             case TaskName_p() if x.uuid():
                 logging.info("[+.Concrete] : %s", spec.name)
                 self.concrete.add(spec.name.de_uniq())
+                self.specs[spec.name] = API.SpecMeta_d(spec=spec)
+                self._register_spec_artifacts(spec)
+                self._register_blocking_relations(spec)
+                self._register_delayed_blockers(spec)
+                self._register_implicit_tasks(spec)
                 self.specs[spec.name.de_uniq()].related.add(spec.name)
             case TaskName_p():
                 logging.info("[+.Abstract] : %s", spec.name)
                 self.abstract.add(spec.name)
+                self.specs[spec.name] = API.SpecMeta_d(spec=spec)
+                self._register_spec_artifacts(spec)
                 self._register_blocking_relations(spec)
+                self._register_delayed_blockers(spec)
+                self._register_implicit_tasks(spec)
             case x:
                 raise TypeError(type(x))
 
-        self.specs[spec.name] = API.SpecMeta_d(spec=spec)
-        self._register_spec_artifacts(spec)
 
     def _register_artifact(self, art:Artifact_i, *tasks:TaskName_p, relation:Maybe[S_API.RelationMeta_e]=None) -> None:
         logging.info("[+] Artifact: %s, %s", art, tasks)
@@ -164,23 +176,40 @@ class _Registration_m(API.Registry_d):
         This is the reverse mapping to allow for that
 
         """
-        assert(not spec.name.uuid())
+        # assert(not spec.name.uuid())
         assert(hasattr(self._tracker, "_factory"))
         # Register Indirect dependencies:
         # So if spec blocks target,
         # record that target needs spec
         for rel in self._tracker._factory.action_group_elements(spec):
             match rel:
-                case RelationSpec_i(target=TaskName_p() as target, relation=RelationMeta_e.blocks) if spec.name.uuid(): # type: ignore[attr-defined]
+                case RelationSpec_i(target=TaskName_p() as target, relation=RelationMeta_e.blocks) if target in self.specs: # type: ignore[attr-defined]
                     logging.info("[Requirement]: %s : %s", target, spec.name)
                     self.specs[target].blocked_by.add(spec.name)
-                case RelationSpec_i(target=Artifact_i() as target, relation=RelationMeta_e.blocks) if spec.name.uuid(): # type: ignore[attr-defined]
+                case RelationSpec_i(target=Artifact_i() as target, relation=RelationMeta_e.blocks) if target in self.artifacts: # type: ignore[attr-defined]
                     logging.info("[Requirement]: %s : %s", target, spec.name)
                     self.artifacts[target].blocked_by.add(spec.name)
-                case _: # Ignore action specs and non
+                case RelationSpec_i(target=target, relation=RelationMeta_e.blocks):
+                    logging.info("[Delayed.Requirement]: %s : %s", target, spec.name)
+                    self._delayed_blockers[target].append(spec.name)
+                case _: # Ignore action specs and non blockers
                     pass
         else:
             return
+
+    def _register_delayed_blockers(self, spec:TaskSpec_i) -> None:
+        simple = spec.name.de_uniq()
+        updates = set()
+        updates.update(self._delayed_blockers[spec.name])
+        updates.update(self._delayed_blockers[simple])
+        if not bool(updates):
+            return
+        logging.info("[Applying.Delayed.Requirements]: %s", spec.name)
+        self.specs[spec.name].blocked_by.update(updates)
+        if spec.name in self._delayed_blockers:
+            del self._delayed_blockers[spec.name]
+        if simple in self._delayed_blockers:
+            del self._delayed_blockers[simple]
 
     def _register_late_injection(self, task:TaskName_p, inject:InjectSpec_i, parent:TaskName_p) -> None:
         """ Register an injection to run on task initialisation,
@@ -193,6 +222,14 @@ class _Registration_m(API.Registry_d):
         assert(task.uuid())
         self.specs[task].injection_source = (parent, inject)
 
+    def _register_implicit_tasks(self, spec:TaskSpec_i) -> None:
+        for data in self._tracker._subfactory.generate_specs(spec): # type: ignore[attr-defined]
+            logging.debug("[Implicit]: %s -> %s", spec.name, data["name"])
+            implicit = self._tracker._factory.build(data) # type: ignore[attr-defined]
+            if implicit.name not in self.specs:
+                self._tracker.register(implicit)
+
+    
 class _Instantiation_m(API.Registry_d):
 
     def instantiate_spec(self, name:Abstract[TaskName_p], *, force:Maybe[int|bool]=None, extra:Maybe[dict|ChainGuard]=None) -> Maybe[Concrete[TaskName_p]]:
@@ -254,7 +291,7 @@ class _Instantiation_m(API.Registry_d):
         existing      : TaskName_p
         potentials    : list[TaskName_p]
         ##--|
-        logging.debug("[Instance.Relation] : %s -> %s -> %s", control, rel.relation.name, rel.target)
+        logging.info("[Instance.Relation] : %s -> %s -> %s", control, rel.relation.name, rel.target)
         ##--| guards
         if control not in self.specs:
             raise doot.errors.TrackingError("Unknown control used in relation", control, rel)
@@ -380,6 +417,11 @@ class _Verification_m(API.Registry_d):
 class TrackRegistry(API.Registry_d):
     """ Stores and manipulates specs, tasks, and artifacts """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._delayed_blockers = defaultdict(list)
+
+    
     def get_status(self, target:Concrete[TaskName_p|Artifact_i]) -> tuple[TaskStatus_e|ArtifactStatus_e, int]:
         """ Get the status of a target or artifact """
         assert(hasattr(self._tracker, "_declare_priority"))

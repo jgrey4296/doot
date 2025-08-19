@@ -128,27 +128,19 @@ def _prepare_action_group(group:Maybe[list[str]], handler:ValidatorFunctionWrapH
 
       # TODO handle callables?
     """
-    results   : list
-    rel_root  : TaskName
-    match group: # Build initial Relation/Action Specs
+    results        : list[RelationSpec|ActionSpec]
+    rel_root       : TaskName
+    relation_type  : RelationMeta_e
+    ##--|
+    relation_type = RelationMeta_e.blocks if info.field_name in TaskSpec._blocking_groups else RelationMeta_e.needs
+    match group:
         case None | []:
             return []
-        case [*_] if info.field_name in TaskSpec._blocking_groups:
-            relation_type = RelationMeta_e.blocks
-        case [*_]:
-            relation_type  = RelationMeta_e.needs
+        case _:
+            pass
 
+    # Build initial Relation/Action Specs
     results = _raw_data_to_specs(cast("list[str|dict]", group), relation=relation_type)
-    for x in results[:]:  # Build Implicit Relations.
-        match x:
-            case RelationSpec(target=TaskName() as target, relation=rel) if target.is_cleanup(): # type: ignore[misc]
-                rel_root = target.pop(top=True)
-                results.append(RelationSpec.build(rel_root, relation=rel))
-            case RelationSpec(target=TaskName() as target, relation=rel) if target.is_head():
-                rel_root = target.pop(top=False)
-                results.append(RelationSpec.build(rel_root, relation=rel))
-            case _:
-                pass
 
     action_order        = [x for x in results if isinstance(x, ActionSpec)]
     res                 = sorted(results, key=_action_group_sort_key)

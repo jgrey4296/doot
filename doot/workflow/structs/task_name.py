@@ -180,8 +180,8 @@ class TaskName(Strang):
         """
         if self.is_cleanup():
             return self
-        if not self.uuid():
-            raise ValueError("adding $cleanup$ to a task name requires a uuid in the base", self[:])
+        # if not self.uuid():
+        #     raise ValueError("adding $cleanup$ to a task name requires a uuid in the base", self[:])
 
         return self.push(TaskNameBodyMarks_e.cleanup, uuid=self.uuid())
 
@@ -189,8 +189,8 @@ class TaskName(Strang):
         """ generate a $head$ task name, carrying the uuid along with it """
         if self.is_head():
             return self
-        if not self.uuid():
-            raise ValueError("Adding $head$ to a task name requires a uuid in the base", self[:])
+        # if not self.uuid():
+        #     raise ValueError("Adding $head$ to a task name requires a uuid in the base", self[:])
 
         return self.push(TaskNameBodyMarks_e.head, uuid=self.uuid())
 

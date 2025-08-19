@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, ARG001, ANN001, PLR2004
 from __future__ import annotations
 
 # ##-- stdlib imports
@@ -224,7 +225,7 @@ class TestTrackerNetworkBuild:
         spec         = network._tracker._factory.build({"name":"basic::task"})
         obj._tracker.register(spec)
         assert(len(obj) == 1) # Root node
-        assert(len(obj._tracker.specs) == 1) # Just the spec
+        assert(len(obj._tracker.specs) == 2) # Just the spec and its cleanup
         assert(not bool(obj.adj[obj._tracker._root_node]))
         instance = obj._tracker._instantiate(spec.name)
         obj.connect(instance)
@@ -262,7 +263,7 @@ class TestTrackerNetworkBuild:
         spec2 = network._tracker._factory.build({"name":"basic::dep"})
         obj._tracker.register(spec, spec2)
         assert(len(obj) == 1)
-        assert(len(obj._tracker.specs) == 2)
+        assert(len(obj._tracker.specs) == 4) # specs + cleanup
         assert(not bool(obj.adj[obj._tracker._root_node]))
         instance = obj._tracker._instantiate(spec.name)
         obj.connect(instance)
@@ -385,6 +386,26 @@ class TestTrackerNetworkBuild:
         assert(len(obj._tracker.specs["basic::dep"].related) == 2)
         for dep in obj._tracker.specs["basic::dep"].related:
             assert(len(obj.succ[dep]) == 2)
+
+
+    def test_build_blocking_requirements(self, network):
+        """
+        For a task, T_c with required_for=T_s,
+        T_s,
+        T_c -> T_s
+        """
+        obj       = network
+        T_c_spec  = network._tracker._factory.build({"name":"basic::task", "required_for":["basic::super"]})
+        T_s_spec  = network._tracker._factory.build({"name":"basic::super"})
+        obj._tracker.register(T_s_spec, T_c_spec)
+        T_s = obj._tracker._instantiate(T_s_spec.name)
+        obj.connect(T_s, None)
+        obj.build_network()
+
+        assert(bool(obj.pred[T_s]))
+        t_c_instance = list(obj._tracker.specs[T_c_spec.name].related)[0]
+        assert(t_c_instance in obj.pred[T_s])
+
 
 class TestTrackerNetworkBuild_Constraints:
 
@@ -574,7 +595,7 @@ class TestTrackerNetworkBuild_Jobs:
         spec        = network._tracker._factory.build({"name":"basic::+.job", "meta": ["JOB"]})
         obj._tracker.register(spec)
         assert(len(obj) == 1) # Root node
-        assert(len(obj._tracker.specs) == 1)
+        assert(len(obj._tracker.specs) == 3) # spec, head, and cleanup
         assert(not bool(obj.adj[obj._tracker._root_node]))
         instance = obj._tracker._instantiate(spec.name)
         obj.connect(instance)
@@ -631,7 +652,6 @@ class TestTrackerNetworkBuild_Jobs:
             case x:
                 assert(False), x
 
-
     def test_build_with_cleanup_dep(self, network):
         obj = network
         assert(len(obj) == 1)
@@ -652,6 +672,7 @@ class TestTrackerNetworkBuild_Jobs:
                 assert(len(_rels) == 1)
                 head_inst = _rels.pop()
                 assert(head_inst.uuid())
+                assert(spec.name < head_inst)
             case x:
                 assert(False), x
 

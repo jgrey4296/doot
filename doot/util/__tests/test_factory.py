@@ -395,6 +395,7 @@ class TestSubTaskFactory:
         base_task = factory.build({"name": "agroup::base", "a": 0})
         assert(isinstance(base_task, TaskSpec))
 
+    @pytest.mark.xfail # obsolete
     def test_abstract_spec_dont_generate_extra(self, factory, subfactory):
         base_task = factory.build({"name": "agroup::base", "a": 0})
         assert(isinstance(base_task, TaskSpec))

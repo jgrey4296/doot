@@ -352,7 +352,7 @@ class SubTaskFactory:
         if not isinstance(obj, TaskSpec_i):
             return result
 
-        logging.debug("[Generate] : %s (%s)", obj.name, len(obj.generated_names))
+        logging.debug("[Task.Factory.Generate] : %s (%s)", obj.name, len(obj.generated_names))
         # Jobs generate their head
         result += self._gen_job_head(obj)
         result += self._gen_cleanup_task(obj)
@@ -449,8 +449,8 @@ class SubTaskFactory:
         return results
 
     def _job_head_p(self, obj:TaskSpec_i) -> Maybe[TaskName_p]:
-        if not obj.name.uuid():
-            return None
+        # if not obj.name.uuid():
+        #     return None
         if TaskMeta_e.JOB not in obj.meta:
             return None
         if obj.name.is_head():
@@ -460,8 +460,8 @@ class SubTaskFactory:
 
 
     def _cleanup_p(self, obj:TaskSpec_i) -> Maybe[TaskName_p]:
-        if not obj.name.uuid():
-            return None
+        # if not obj.name.uuid():
+        #     return None
         if self._job_head_p(obj) or obj.name.is_cleanup():
             return None
 

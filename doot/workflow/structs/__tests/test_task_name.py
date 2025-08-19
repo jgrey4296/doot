@@ -225,6 +225,7 @@ class TestTaskName_Comparison:
         assert(instance < with_head)
 
 
+    @pytest.mark.xfail # obsolete
     def test_head_must_have_base(self):
         name      = TaskName("simple::task")
         with pytest.raises(ValueError):
