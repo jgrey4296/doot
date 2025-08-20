@@ -238,6 +238,34 @@ class ActionResponse_e(enum.Enum):
     # Aliases
     SUCCESS  = SUCCEED
 
+##--| data
+
+class DelayedSpec:
+    __slots__ = ("applied", "base", "inject", "overrides", "target")
+
+    base       : TaskName_p
+    target     : TaskName_p
+    # For from_spec injection
+    inject     : list[InjectSpec_i]
+    # injection values applied from the creator
+    applied    : dict
+    # Raw data applied over source
+    overrides  : dict
+
+    def __init__(self, **kwargs:Any) -> None:
+        self.base       = kwargs.pop("base")
+        self.target     = kwargs.pop("target")
+        self.inject     = []
+        self.applied    = kwargs.pop("applied", None) or {}
+        self.overrides  = kwargs.pop("overrides")
+        match kwargs.pop("inject", []):
+            case None:
+                pass
+            case [*xs]:
+                self.inject += xs
+            case x:
+                self.inject.append(x)
+        assert(not bool(kwargs))
 ##--| Spec Interfaces
 
 @runtime_checkable
@@ -360,6 +388,30 @@ class TaskName_p(Strang_p, Protocol):
         pass
 
     def pop_generated(self) -> Self: ...
+
+##--| Factory protocols
+
+class TaskFactory_p(Protocol):
+
+    def __init__(self, *, spec_ctor:Maybe[type]=None, task_ctor:Maybe[type]=None, job_ctor:Maybe[type]=None): ...
+
+    def build(self, data:ChainGuard|dict|TaskName_p|str) -> TaskSpec_i: ...
+
+    def instantiate(self, obj:TaskSpec_i, *, extra:Maybe[Mapping|bool]=None) -> TaskSpec_i: ...
+
+    def merge(self, *, bot:dict|TaskSpec_i, top:dict|TaskSpec_i, suffix:Maybe[str|Literal[False]]=None) -> TaskSpec_i: ...
+
+    def make(self, obj:TaskSpec_i, *, ensure:Maybe=None, inject:Maybe[tuple[InjectSpec_i, Task_i]]=None, parent:Maybe[Task_i]=None) -> Task_i:  ...
+
+    def action_group_elements(self, obj:TaskSpec_i) -> Iterable[ActionSpec_i|RelationSpec_i]: ...
+
+@runtime_checkable
+class SubTaskFactory_p(Protocol):
+
+    def generate_names(self, obj:TaskSpec_i) -> list[TaskName_p]: ...
+
+    def generate_specs(self, obj:TaskSpec_i|Artifact_i|DelayedSpec) -> list[dict]: ...
+
 ##--|
 
 @runtime_checkable

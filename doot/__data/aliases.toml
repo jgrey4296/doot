@@ -15,8 +15,8 @@ default = "doot.reporters:BasicReporter"
 [[doot.aliases.tracker]]
 # Map {alias} -> CodeRef String
 default  = "doot.control.tracker:NaiveTracker"
-naive    =  "doot.control.tracker:NaiveTracker"
-factory  = "doot.util.factory:TaskFactory"
+naive    = "doot.control.tracker:NaiveTracker"
+factory  = "doot.workflow.factory:TaskFactory"
 
 [[doot.aliases.runner]]
 # Map {alias} -> CodeRef String

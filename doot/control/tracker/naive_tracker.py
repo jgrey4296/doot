@@ -36,14 +36,14 @@ from jgdv import Proto
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.util._interface import DelayedSpec
-from doot.util.factory import SubTaskFactory, TaskFactory
+from doot.workflow.factory import SubTaskFactory, TaskFactory
 from doot.workflow import (ActionSpec, DootTask, InjectSpec, RelationSpec,
                            TaskArtifact, TaskName, TaskSpec)
 from doot.workflow._interface import (CLI_K, MUST_INJECT_K, Artifact_i,
                                       ArtifactStatus_e, InjectSpec_i,
                                       RelationSpec_i, Task_i, Task_p,
-                                      TaskName_p, TaskSpec_i, TaskStatus_e)
+                                      TaskName_p, TaskSpec_i, TaskStatus_e,
+                                      DelayedSpec)
 
 # ##-- end 1st party imports
 
@@ -78,7 +78,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from networkx import DiGraph
 
-    from doot.util._interface import TaskFactory_p, SubTaskFactory_p
+    from doot.workflow._interface import TaskFactory_p, SubTaskFactory_p
     type Abstract[T] = T
     type Concrete[T] = T
 

@@ -30,7 +30,7 @@ import doot
 from doot.control.runner.runner import DootRunner
 from doot.control.tracker import NaiveTracker
 from doot.util.dkey import DKey
-from doot.util.factory import TaskFactory
+from doot.workflow.factory import TaskFactory
 from doot.workflow import ActionSpec, DootJob, DootTask, TaskName, TaskSpec
 from doot.workflow._interface import TaskStatus_e
 

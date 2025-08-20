@@ -15,7 +15,7 @@ import warnings
 import pytest
 
 import doot
-from doot.util.factory import TaskFactory
+from doot.workflow.factory import TaskFactory
 from doot.workflow._interface import TaskMeta_e
 from doot.workflow import TaskSpec, DootJob
 from doot.cmds.structs import TaskStub

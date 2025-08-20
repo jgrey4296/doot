@@ -41,7 +41,7 @@ from doot.workflow import TaskName
 
 # ##-| Local
 from . import _interface as API#  noqa: N812
-from doot.util.factory import TaskFactory
+from doot.workflow.factory import TaskFactory
 from ._interface import TaskLoader_p
 
 # # End of Imports.
@@ -58,8 +58,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from doot.util._interface import TaskFactory_p
-    from doot.workflow._interface import TaskName_p, TaskSpec_i
+    from doot.workflow._interface import TaskName_p, TaskSpec_i, TaskFactory_p
     import pathlib as pl
     from jgdv import Maybe
     from typing import Final

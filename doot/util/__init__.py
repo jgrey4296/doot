@@ -61,4 +61,3 @@ Keys can have a number of forms:
 x    : Name form, no expansion
 """
 
-from ._interface import DelayedSpec

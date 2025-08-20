@@ -31,7 +31,7 @@ import pytest
 from jgdv.structs.locator import Location
 import doot
 import doot.errors
-from doot.util.factory import TaskFactory
+from doot.workflow.factory import TaskFactory
 from ..._interface import RelationMeta_e
 from .. import TaskName, InjectSpec, RelationSpec, TaskSpec
 

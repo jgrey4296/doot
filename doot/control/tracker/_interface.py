@@ -57,7 +57,7 @@ if TYPE_CHECKING:
     from jgdv import Maybe, Ident
     from jgdv.structs.chainguard import ChainGuard
     from doot.workflow._interface import Task_i, TaskName_p, Artifact_i, Task_p
-    from doot.util.factory._interface import TaskFactory_p, SubTaskFactory_p, DelayedSpec
+    from doot.workflow._interface import TaskFactory_p, SubTaskFactory_p, DelayedSpec
 
     type Abstract[T] = T
     type Concrete[T] = T

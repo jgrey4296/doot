@@ -28,8 +28,7 @@ import networkx as nx
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.workflow._interface import TaskStatus_e, TaskSpec_i, TaskMeta_e
-from doot.util._interface import DelayedSpec
+from doot.workflow._interface import TaskStatus_e, TaskSpec_i, TaskMeta_e, DelayedSpec
 from doot.util import mock_gen
 from ..naive_tracker import NaiveTracker
 from .. import _interface as API  # noqa: N812
