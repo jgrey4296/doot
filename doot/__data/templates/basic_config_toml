@@ -85,3 +85,6 @@ logs    = "{temp}/logs"
 build   = "{temp}/build"
 docs    = "docs"
 data    = "data"
+
+[[global]]
+# Global State shared between tasks
