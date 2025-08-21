@@ -239,13 +239,13 @@ class _LocationLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs(), # type: ignore[misc]
-            self.build_param(name="--locs",
+            self.build_param(name="-locs",
                              type=bool,
                              default=False,
                              desc="List all Loaded Locations"),
         ]
 
-    def _list_locations(self) -> list[ListVal]:
+    def _list_locations(self, idx) -> list[ListVal]:
         logging.info("---- Listing Defined Locations")
         result : list[ListVal] = []
         result.append("Defined Locations: ")
@@ -263,13 +263,13 @@ class _LoggerLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs(), # type: ignore[misc]
-            self.build_param(name="--loggers",
+            self.build_param(name="-loggers",
                              type=bool,
                              default=False,
                              desc="List All Print Points"),
         ]
 
-    def _list_loggers(self) -> list[ListVal]:
+    def _list_loggers(self, idx) -> list[ListVal]:
         logging.info("---- Listing Logging/Printing info")
 
         result : list[ListVal] = []
@@ -297,13 +297,13 @@ class _FlagLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs(), # type: ignore[misc]
-            self.build_param(name="--flags",
+            self.build_param(name="-flags",
                              type=bool,
                              default=False,
                              desc="List Task Meta"),
         ]
 
-    def _list_flags(self) -> list[ListVal]:
+    def _list_flags(self, idx) -> list[ListVal]:
         logging.info("---- Listing Task Flags")
         result : list[ListVal] = []
         result.append("Task Flags: ")
@@ -318,13 +318,13 @@ class _ActionLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs(), # type: ignore[misc]
-            self.build_param(name="--actions",
+            self.build_param(name="-actions",
                              type=bool,
                              default=False,
                              desc="List All Known Actions"),
         ]
 
-    def _list_actions(self, plugins) -> list[ListVal]:
+    def _list_actions(self, idx, plugins) -> list[ListVal]:
         logging.info("---- Listing Available Actions")
         result : list[ListVal] = []
         result.append("Available Actions:")
@@ -349,7 +349,7 @@ class _PluginLister_m:
                              desc="List All Known Plugins"),
         ]
 
-    def _list_plugins(self, plugins) -> list[ListVal]:
+    def _list_plugins(self, idx, plugins) -> list[ListVal]:
         logging.info("---- Listing Plugins")
         result : list[ListVal] = []
         result.append(("Defined Plugins by Group:", {"colour":"cyan"}))
