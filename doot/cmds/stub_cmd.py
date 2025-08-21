@@ -151,10 +151,10 @@ class _StubAction_m:
         logging.info("---- Stubbing Actions")
         result : list[Maybe[str]] = []
         target_name = doot.args.cmds[self.name][idx].args.name
-        unaliased = doot.aliases.on_fail(target_name).action[target_name]
-        matched = [x for x in plugins.action
-                   if x.name == target_name
-                   or x.value == unaliased]
+        unaliased   = doot.aliases.on_fail(target_name).action[target_name]()
+        matched     = [x for x in plugins.action
+                       if x.name == target_name
+                       or x.value == unaliased]
         if bool(matched):
             loaded = matched[0].load()
             result.append(f"- {matched[0].name} (Action, {matched[0].value})")
@@ -233,6 +233,8 @@ class _StubTask_m:
         match doot.args.on_fail(None).cmds[self.name][idx].args.name():
             case None:
                 raise doot.errors.CommandError("No Name Provided for Stub")
+            case '':
+                name = TaskName("example::task")
             case x:
                 name = TaskName(x)
 
@@ -291,7 +293,7 @@ class _StubPrinter_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs(), # type: ignore[misc]
-            self.build_param(name="--doot.report", type=bool, default=False, desc="Generate a stub doot.report config"),
+            self.build_param(name="--report", type=bool, default=False, desc="Generate a stub doot.report config"),
         ]
 
     def _stub_printer(self) -> list[Maybe[str|tuple]]:
@@ -332,8 +334,10 @@ class StubCmd(BaseCommand):
                 result = self._stub_action(idx, plugins)
             case {"param": True}:
                 result = self._stub_cli_param()
-            case {"doot.report": True}:
+            case {"report": True}:
                 result = self._stub_printer()
+            case {"strang": True}:
+                result = "TODO"
             case _:
                 result = self._stub_task_toml(idx, tasks, plugins)
         ##--|
