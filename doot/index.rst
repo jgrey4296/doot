@@ -164,8 +164,9 @@ When you find a bug, bother me, unsurprisingly, on the `issue tracker <https://g
 
    _docs/getting_started
    _docs/cli
-   _docs/examples/overview
-   _docs/architecture
+   _docs/examples/index
+   _docs/architecture.md
+   _docs/extending
    _docs/reference/reference
    _docs/misc/overview
    FAQ <_docs/faq>
