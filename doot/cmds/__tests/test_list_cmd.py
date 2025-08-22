@@ -332,7 +332,7 @@ class TestListings:
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(list_locs))
         obj = ListCmd()
-        match obj._list_locations():
+        match obj._list_locations(0):
             case []:
                 assert(False)
             case [*xs]:
@@ -344,7 +344,7 @@ class TestListings:
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(list_loggers))
         obj = ListCmd()
-        match obj._list_loggers():
+        match obj._list_loggers(0):
             case []:
                 assert(False)
             case [*xs]:
@@ -356,7 +356,7 @@ class TestListings:
         caplog.set_level(logmod.DEBUG, logger=doot.report.log.name)
         mocker.patch("doot.args", new=ChainGuard.read(list_flags))
         obj = ListCmd()
-        match obj._list_flags():
+        match obj._list_flags(0):
             case []:
                 assert(False)
             case [*xs]:
@@ -369,7 +369,7 @@ class TestListings:
         mocker.patch("doot.args", new=ChainGuard.read(list_actions))
         obj = ListCmd()
         plugins = ChainGuard({"action":[]})
-        match obj._list_actions(plugins):
+        match obj._list_actions(0, plugins):
             case []:
                 assert(False)
             case [*xs]:
@@ -382,7 +382,7 @@ class TestListings:
         mocker.patch("doot.args", new=ChainGuard.read(list_plugins))
         obj = ListCmd()
         plugins = ChainGuard({})
-        match obj._list_plugins(plugins):
+        match obj._list_plugins(0, plugins):
             case []:
                 assert(False)
             case [*xs]:
