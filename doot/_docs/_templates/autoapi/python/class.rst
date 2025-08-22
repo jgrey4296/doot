@@ -1,5 +1,5 @@
 {# module.rst -*- mode: Jinja2 -*- #}
-{% import "python/utils.jinja" as utils %}
+{% import "util/headings.jinja" as utils %}
 
 {% if obj.display %}
    {% set visible_children = obj.children|selectattr("display")|list %}

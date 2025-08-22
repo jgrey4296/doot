@@ -1,5 +1,5 @@
 {# vis_classes.rst.jinja<2> -*- mode: Jinja2 -*- #}
-{% import "python/utils.jinja" as utils %}
+{% import "util/headings.jinja" as utils %}
 {% set viable_classes = visible_classes|rejectattr("obj.bases", "contains", "enum", "Protocol")|list %}
 {% set show_classes_sum = viable_classes and "show-module-summary" in autoapi_options %}
 

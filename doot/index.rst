@@ -168,7 +168,7 @@ When you find a bug, bother me, unsurprisingly, on the `issue tracker <https://g
    _docs/architecture.md
    _docs/extending
    _docs/reference/reference
-   _docs/misc/overview
+   _docs/misc/index
    FAQ <_docs/faq>
    _docs/license
    _docs/glossary
