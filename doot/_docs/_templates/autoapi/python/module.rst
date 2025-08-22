@@ -8,7 +8,8 @@
 
    {{- utils.smartref(obj) }}
 
-   {{ utils.heading(obj.id, above=True) }}
+   
+   {{- utils.heading(obj.id, above=True) }}
 
 .. py:module:: {{ obj.name }}
 
@@ -16,7 +17,7 @@
 .. autoapi-nested-parse::
 
    {{ obj.docstring|indent(3)}}
-   {% endif %} {# obj.docstring #}
+   {% endif %} 
 
    {# SUBMODULES #}
    {% block submodules -%}

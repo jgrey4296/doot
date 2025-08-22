@@ -159,22 +159,22 @@ When you find a bug, bother me, unsurprisingly, on the `issue tracker <https://g
 
 .. toctree::
    :maxdepth: 3
+   :glob:
    :hidden:
 
-   __docs/getting_started
-   __docs/cli
-   __docs/examples/overview
-   __docs/architecture/overview
-   __docs/reference/reference
-   __docs/misc/overview
-   FAQ <__docs/faq>
-   __docs/license
-   __docs/glossary
-   __docs/rst_tests
+   _docs/getting_started
+   _docs/cli
+   _docs/examples/overview
+   _docs/architecture
+   _docs/reference/reference
+   _docs/misc/overview
+   FAQ <_docs/faq>
+   _docs/license
+   _docs/glossary
 
    genindex
    modindex
-   API Reference <autoapi/doot/index>
+   API Reference <_docs/_autoapi/doot/index>
 
 
 .. .. Links

@@ -225,7 +225,7 @@ autoapi_prepare_jinja_env : Callable[[jinja2.Environment], None] | None
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
 # For keeping generated files:
 autoapi_keep_files                       = True
-autoapi_generate_api_docs = True
+autoapi_generate_api_docs                = True
 autoapi_python_user_implicit_namespaces  = False
 # If false, manual toctree entry (eg: _docs/autoapi/doot/index) needs to be added:
 autoapi_add_toctree_entry = False

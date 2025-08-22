@@ -3,16 +3,17 @@
 
 {# Protect against a __ prefix  #}
 {% macro smartref(obj) %}
-  {{- ".." }} {% if obj.name[0] != "_" %}{{"_"}}{% endif %}{{ obj.id ~ ":" -}}
+  {{- ".." }} {% if obj.name[0] != "_" %}{{"_"}}{% endif %}{{ obj.id ~ ":" }}
+  
 {% endmacro %}
 
 {# A Heading  #}
 {% macro heading(name, line="=", above=False) %}
-  {% if above +%}
+  {%- if above +%}
     {{- line * name|length }}
   {% endif %}
-
   {{- name }}
-  {% if False %} {% endif %}
+  {# nl #}
   {{- line * name|length }}
+  
 {% endmacro %}
