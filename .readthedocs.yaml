@@ -7,7 +7,7 @@
 version: 2
 
 sphinx:
-  configuration: jgdv/_docs/conf.py
+  configuration: doot/_docs/conf.py
 
 build:
   os: ubuntu-22.04

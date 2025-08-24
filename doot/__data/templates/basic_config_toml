@@ -38,7 +38,7 @@ max_steps       = 100_000
 
 [settings.commands.list]
 hide            = []
-aliases         = { tasks=[], plugins=["--plugins"] }
+aliases         = { tasks=[], plugins=["-plugins"] }
 
 [logging]
 # Setup output 'stream', 'file' and 'printer' logging.

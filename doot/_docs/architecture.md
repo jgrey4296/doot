@@ -1,4 +1,4 @@
-# doot Architecture
+# Architecture
 
 ## Top Level
 
@@ -50,6 +50,7 @@ and then add '--help' to figure out what next.
 
 ## Plugins
 Using the pyproject.toml entry-points, plugins can be added to doot.
+(see [https://packaging.python.org/en/latest/specifications/pyproject-toml/#entry-points])
 eg:
 ```toml
 [project.entry-points."doot.plugins.command"]

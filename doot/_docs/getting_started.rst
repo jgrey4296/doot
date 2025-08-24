@@ -18,7 +18,10 @@ Surprising no one:
 .. code-block:: bash
 
    pip install doot
+   # or
+   uv add doot
 
+   
 
 -----------------
 Starting Concepts
@@ -26,7 +29,7 @@ Starting Concepts
 
 1. Files.
 
-   The **doot.toml** file marks the root of a doot project. The **.tasks/{}.toml** files contain tasks. See :ref:`DootFileRef` and :ref:`TaskFileRef`.
+   The **doot.toml** file marks the root of a doot project. The **.tasks** directory contain tasks sepcifications, in TOML files. See :ref:`DootFileRef` and :ref:`TaskFileRef`.
 
 2. Commands.
 
@@ -44,52 +47,94 @@ Starting Concepts
 The Doot File
 -------------
 
-When you initially run ``doot``, a stub ``doot.toml`` file will be created.
+To start using doot, run ``doot stub --config`` to generate a config file in the project root.
 This allows you to customize plugins, locations, logging etc.
 
 .. code:: toml
-
-   # -*- mode:conf-toml; -*-
-
-   [settings.general]
-   loaders                  = { commands="default", task="default", parser="default"}
-   location_check           = { make_missing = true }
-
-   [settings.tasks]
-   sources = [".tasks", "~/.config/.templates/doot/repo_chores"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
-   code    = []                                       # Directories where task specific code can be imported from, expanded according to [[locations]] keys
-   sleep   = { tasks=0.2, subtask=1, batch=1 }
-
+          
+   
+   # -*- mode:toml; -*-
+   # Config File for doot (http://github.com/jgrey4296/doot)
+   
+   [startup]
+   # The version this config file works with:
+   doot_version         = "1.1"
+   loaders              = { commands="default", task="default", parser="default" }
+   sources              = { tasks=[".tasks"], code=[] }
+   skip_default_plugins = false
+   skip_plugin_search   = false
+   # Implicit Cmds. prepended to the raw cli args if no cmd is parsed
+   empty_cmd            = ["list"]
+   implicit_task_cmd    = ["run"]
+   # constants_file     = ""
+   # aliases_file       = ""
+   
+   [shutdown]
+   notify           = { exit="Dooted" } # success_msg="", fail_msg=""
+   defaulted_values = { write=false, path=".defaulted_values.toml" }
+   # exit_on_load_failures = true
+   
    [settings.commands]
-   # Settings for commands, like telling the 'run' command what backends to use
-   run  = { tracker="default", runner="default", reporter= "default", report-line=[] }
-   list = { hide=[] }
-
-   [plugins]
-   # Allows for defining aliases
-   command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
-
+   # Set command specific values, and aliases
+   # if an entry has an aliases entry, the cmd is called with the given args
+   [settings.commands.run]
+   tracker         = "default"
+   runner          = "default"
+   reporter        = "default"
+   location_check  = { active=true, make_missing=false, strict=true }
+   sleep           = { task=0.2, subtask=1, batch=1 }
+   max_steps       = 100_000
+   # stepper         = { break_on="job" }
+   
    [logging]
-   # Standard loggers. See LoggerSpec.
-   stream  = { level="WARNING", filter=[],                 target="stdout", format="{levelname:<8} : {message}"  }
-   file    = { level="DEBUG",   filter=["tomlguard"],      target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
-   printer = { level="NOTSET",  colour=true,                target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
-
-   [logging.subprinters]
-   default       = {level="WARNING"}
-   shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
-   cmd           = {level="INFO"}
-   task          = {level="INFO" }
-   header        = {level="INFO" }
-   task_header   = {level="INFO"}
-
+   # Setup output 'stream', 'file' and 'printer' logging.
+   # See jgdv.logging for details.
+   # Or call 'doot list --loggers'
+   # Loggers can be in line format:
+   # stream  = { level="WARN", filter=[],  target="stdout",   format="{levelname:<8} : {message}"  }
+   # And disabled quickly using:
+   # stream = false
+   # Or as sections:
+   
+   [logging.stream]
+   disabled  = false
+   level     = "user"
+   filter    = []
+   # allow     = []
+   target    = ["stdout"]
+   format    = "{levelname:<8} : {message}"
+   
+   [logging.file]
+   disabled      = true
+   level         = "trace"
+   filter        = ["jgdv"]
+   target        = ["rotate"]
+   format        = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
+   filename_fmt  = "doot.log"
+   
+   [logging.printer]
+   disabled      = false
+   level         = "NOTSET"
+   colour        = true
+   target        = ["stdout"]
+   format        = "{message}"
+   filename_fmt  = "doot_printed.log"
+   
    [logging.extra]
-
+   # Control specific loggers by their path.
+   
    [[locations]]
-   tasks        = ".tasks"
-   temp         = {loc=".temp", cleanable=true}
-   src          = {loc="doot", protected=true}
-   logs         = "{temp}/logs"
+   # Locations as structured strings. See jgdv.structs.locator
+   src     = "src"
+   temp    = "clean::.temp"
+   logs    = "{temp}/logs"
+   build   = "{temp}/build"
+   docs    = "docs"
+   data    = "data"
+   
+   [[global]]
+   # Global State shared between tasks
+
 
 ---------------
 Your First Task
@@ -103,30 +148,42 @@ Your First Task
 .. code:: toml
 
    [[tasks.basic]]
-   name                 = "task"
-   version              = "0.13.0"             # <str>                #
-   doc                  = []                   # <list>               #
-   ctor                 = "task"               # <str>                #
-   depends_on           = []                   # <list[ActionSpec | RelationSpec]> #
-   required_for         = []                   # <list[ActionSpec | RelationSpec]> #
-   sources              = []                   # <list[TaskName | Path | NoneType]> #
-   setup                = []                   # <list[ActionSpec | RelationSpec]> #
-   cleanup              = []                   # <list[ActionSpec | RelationSpec]> #
-   on_fail              = []                   # <list[ActionSpec | RelationSpec]> #
-   priority             = 10                   # <int>                #
-   queue_behaviour      = "default"            # <QueueMeta_e>        # reactive | onRegister | reactiveFail | default
-   flags                = [ "TASK" ]           # <TaskMeta_f>         # STATELESS | TASK | REQ_TEARDOWN | DISABLED | THREAD_SAFE | IS_SETUP | EPHEMERAL | REQ_SETUP | IS_TEARDOWN | JOB_HEAD | INTERNAL | CONCRETE | STATEFUL | IDEMPOTENT | TRANSFORMER | JOB | VERSIONED
-   inject               = []                   # <list>               #
-   actions              = []                   # <list[ActionSpec | RelationSpec]> #
+   name             = "task"
+   version          = "0.1"       # <str>                #
+   doot_version     = "1.1.1"     # <str>
+   doc              = []          # <list>               #
+   ctor             = "task"      # <str>                #
+   depends_on       = []          # <list[ActionSpec | RelationSpec]> #
+   required_for     = []          # <list[RelationSpec]>              #
+   setup            = []          # <list[ActionSpec | RelationSpec]> #
+   cleanup          = []          # <list[ActionSpec | RelationSpec]> #
+   actions          = []          # <list[ActionSpec | RelationSpec]> #
 
-   Doot Shutting Down Normally
-
-
-
-Action Groups
+   
+Actions in Groups
 --------------
 
-Tasks are specified in blocks of ``[[tasks.GROUPNAME]]``.
+Currently ``basic::task`` doesn't actually do anything.
+Actions can be added in the ``actions`` list of task. eg: 
+
+.. code:: toml
+
+   actions = [
+      {do="log", msg="This is an example Action"},
+   ]
+          
+
+It doesn't do anything special, but by calling ``doot basic::task`` (or more fully, ``doot run basic::task``),
+the task will be constructed and run, printing out the message.
+
+Available actions can be listed with ``doot list -actions``. 
+The default action groups, run in order, are::
+
+1. depends_on.
+2. setup.
+3. actions
+4. cleanup
+   
 
 Adding CLI Params
 -----------------
@@ -164,7 +221,11 @@ For now, lets focus just on dependencies.
 Passing Information between the Tasks
 -------------------------------------
 
-Tasks can pass information between each other using cli args.
+Tasks can pass information between each other using two mechanisms:
+
+1. Injection into state as part of the dependency specification.
+2. Using ``Postboxes``.
+
 
 .. code:: toml
 
@@ -207,5 +268,8 @@ They can... touch files as well.
 Where To Go Now
 ---------------
 
-Run ``doot plugins action`` to see a list of everything available
-for ``{do="ACTION"}``. You can find the action's arguments with `doot stub -actions ACTION``.
+Run ``doot list -actions`` to see a list of everything available
+for ``{do="ACTION"}``. You can find the action's arguments with ``doot stub -actions ACTION``.
+Or take a look at the :ref:`examples`.
+
+

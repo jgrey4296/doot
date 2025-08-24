@@ -1,6 +1,6 @@
 {# module.rst -*- mode: Jinja2 -*- #}
-{% import "python/debug_obj.rst.jinja" as jgdb %}
-{% import "python/utils.jinja" as utils %}
+{% import "util/debug_obj.rst.jinja" as jgdb %}
+{% import "util/headings.jinja" as utils %}
 
 {% if obj.display %}
    {% set visible_children   = obj.children|selectattr("display")|list %}
@@ -8,7 +8,8 @@
 
    {{- utils.smartref(obj) }}
 
-   {{ utils.heading(obj.id, above=True) }}
+   
+   {{- utils.heading(obj.id, above=True) }}
 
 .. py:module:: {{ obj.name }}
 
@@ -16,11 +17,11 @@
 .. autoapi-nested-parse::
 
    {{ obj.docstring|indent(3)}}
-   {% endif %} {# obj.docstring #}
+   {% endif %} 
 
    {# SUBMODULES #}
    {% block submodules -%}
-   {%+ include "python/vis_submods.rst.jinja" %}
+   {%+ include "visible/vis_submods.rst.jinja" %}
    {% endblock submodules %}
    {# -------------------------------------------------- #}
 
@@ -28,13 +29,13 @@
       {% if visible_children %}
             {% set visible_data = visible_children|selectattr("type", "equalto", "data")|list %}
             {% set visible_classes = visible_children|selectattr("type", "equalto", "class")|list %}
-            {% include "python/vis_types.rst.jinja" %}
-            {% include "python/vis_enums.rst.jinja" %}
-            {% include "python/vis_protos.rst.jinja" %}
-            {# {% include "python/vis_attrs.rst.jinja" %}            #}
-            {% include "python/vis_excs.rst.jinja" %}
-            {% include "python/vis_funcs.rst.jinja" %}
-            {% include "python/vis_classes.rst.jinja" %}
+            {% include "visible/vis_types.rst.jinja" %}
+            {% include "visible/vis_enums.rst.jinja" %}
+            {% include "visible/vis_protos.rst.jinja" %}
+            {# {% include "visible/vis_attrs.rst.jinja" %}            #}
+            {% include "visible/vis_excs.rst.jinja" %}
+            {% include "visible/vis_funcs.rst.jinja" %}
+            {% include "visible/vis_classes.rst.jinja" %}
       {% endif %}
    {% endblock summary %}
 

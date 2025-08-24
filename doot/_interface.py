@@ -86,22 +86,22 @@ LASTERR            : Final[str]              = "doot.lasterror"
 
 ##--|
 class ExitCodes(enum.IntEnum):
-    SUCCESS                                  = 0
-    UNKNOWN_FAIL                             = -1
-    NOT_SETUP                                = -2
-    EARLY           = -3
-    MISSING_CONFIG  = -4
-    BAD_CONFIG      = -5
-    BAD_CMD         = -6
-    TASK_FAIL       = -7
-    BAD_STATE       = -8
-    BAD_STRUCT      = -9
-    TRACKING_FAIL   = -10
-    BACKEND_FAIL    = -11
-    FRONTEND_FAIL   = -12
-    DOOT_FAIL       = -13
-    NOT_IMPLEMENTED = -14
-    IMPORT_FAIL     = -15
-    PYTHON_FAIL     = -16
+    SUCCESS          = 0
+    UNKNOWN_FAIL     = -1
+    NOT_SETUP        = -2
+    EARLY            = -3
+    MISSING_CONFIG   = -4
+    BAD_CONFIG       = -5
+    BAD_CMD          = -6
+    TASK_FAIL        = -7
+    BAD_STATE        = -8
+    BAD_STRUCT       = -9
+    TRACKING_FAIL    = -10
+    BACKEND_FAIL     = -11
+    FRONTEND_FAIL    = -12
+    DOOT_FAIL        = -13
+    NOT_IMPLEMENTED  = -14
+    IMPORT_FAIL      = -15
+    PYTHON_FAIL      = -16
 
-    INITIAL         = -99
+    INITIAL          = -99

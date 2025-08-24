@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: publishing
-      url: https:://pypi.org/p/jgdv
+      url: https:://pypi.org/p/doot
     permissions:
       id-token: write
     steps:

@@ -343,7 +343,7 @@ class _PluginLister_m:
     def param_specs(self) -> list:
         return [
             *super().param_specs(), # type: ignore[misc]
-            self.build_param(name="--plugins",
+            self.build_param(name="-plugins",
                              type=bool,
                              default=False,
                              desc="List All Known Plugins"),
